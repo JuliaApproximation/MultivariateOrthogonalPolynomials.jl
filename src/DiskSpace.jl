@@ -1,6 +1,6 @@
 
 
-export Disk
+export Disk, DiskSpace
 
 ##TODO: make argument
 immutable Disk <: BivariateDomain{Float64}

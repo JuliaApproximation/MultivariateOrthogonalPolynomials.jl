@@ -1,3 +1,6 @@
+export WeightedSquare, JacobiSquare
+
+
 # represents function of the form r^m g(r^2)T
 # as r^m P_k^{a,b}(1-2r^2)
 # when domain is Interval(1,0)
