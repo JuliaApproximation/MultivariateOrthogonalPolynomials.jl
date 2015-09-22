@@ -172,28 +172,28 @@ end
 ## jacobi square special
 
 
-function transform(S::JacobiSquare,vals::Vector,sxw)
-    @assert isapproxinteger(S.m)
-    m=round(Int,S.m);a=S.space.a;b=S.space.b
-    s,x,xw=sxw
-    x,w=xw
-
-    n=length(vals)
-
-
-    if m==s.m==0
-        V=jacobip(0:n-1,a,b,x)'
-        nrm=(V.^2)*w
-        (V*(w.*vals))./nrm
-    elseif m==a && b==0
-        ## Same as jacobitransform.jl
-
-        w2=(1-x).^(m/2)
-        mw=w2.*w
-        V=jacobip(0:n-div(m,2)-1,a,b,x)'
-        nrm=(V.^2)*(w2.*mw)
-        (V*(mw.*vals))./nrm*2^(m/2)
-    else
-        error("transform only implemented for first case")
-    end
-end
+# function transform(S::JacobiSquare,vals::Vector,sxw)
+#     @assert isapproxinteger(S.m)
+#     m=round(Int,S.m);a=S.space.a;b=S.space.b
+#     s,x,xw=sxw
+#     x,w=xw
+#
+#     n=length(vals)
+#
+#
+#     if m==s.m==0
+#         V=jacobip(0:n-1,a,b,x)'
+#         nrm=(V.^2)*w
+#         (V*(w.*vals))./nrm
+#     elseif m==a && b==0
+#         ## Same as jacobitransform.jl
+#
+#         w2=(1-x).^(m/2)
+#         mw=w2.*w
+#         V=jacobip(0:n-div(m,2)-1,a,b,x)'
+#         nrm=(V.^2)*(w2.*mw)
+#         (V*(mw.*vals))./nrm*2^(m/2)
+#     else
+#         error("transform only implemented for first case")
+#     end
+# end
