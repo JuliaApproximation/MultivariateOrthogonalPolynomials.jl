@@ -5,7 +5,7 @@ export Disk, DiskSpace
 ##TODO: make argument
 immutable Disk <: BivariateDomain{Float64}
     radius::Float64
-    center::@compat(Tuple{Float64,Float64})
+    center::Tuple{Float64,Float64}
 end
 
 Disk(r)=Disk(r,(0.,0.))
@@ -74,7 +74,7 @@ evaluate(f::AbstractVector,sp::DiskSpace,x...)=evaluate(ProductFun(Fun(f,sp)),x.
 
 
 
-function Base.real{JS}(f::ProductFun{JS,Laurent,DiskSpace{0,0,0,JS,Laurent}})
+function Base.real{JS,DD}(f::ProductFun{JS,Laurent{DD},DiskSpace{0,0,0,JS,Laurent{DD}}})
     cfs=f.coefficients
     n=length(cfs)
 

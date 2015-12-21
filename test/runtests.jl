@@ -1,13 +1,19 @@
-using ApproxFun,DiskFun
-using Base.Test
+using ApproxFun,DiskFun,Base.Test
 
 
+
+##  bessel
+
+for k=0:10
+    @test_approx_eq Fun(r->besselj(k,r),JacobiSquare(k))(0.9) besselj(k,0.9)
+end
 
 
 ## Disk
 
 f=(x,y)->exp(x.*sin(y))
 u=ProductFun(f,Disk(),50,51)
+
 @test_approx_eq u(.1,.1) f(.1,.1)
 
 
