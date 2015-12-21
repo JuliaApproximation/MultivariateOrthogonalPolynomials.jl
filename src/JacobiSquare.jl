@@ -5,13 +5,13 @@ export WeightedSquare, JacobiSquare
 # as r^m P_k^{a,b}(1-2r^2)
 # when domain is Interval(1,0)
 
-immutable WeightedSquare{S} <: IntervalSpace
+immutable WeightedSquare{S} <: RealUnivariateSpace{Interval{Float64}}
     m::Float64
     space::S
 end
 WeightedSquare(m::Number,S)=WeightedSquare{typeof(S)}(m,S)
 
-typealias JacobiSquare WeightedSquare{Jacobi}
+typealias JacobiSquare WeightedSquare{Jacobi{Interval{Float64}}}
 
 
 JacobiSquare(m,d::Domain)=WeightedSquare(m,Jacobi(m,0,d))
@@ -33,15 +33,13 @@ canonicalspace(S::WeightedSquare)=S
 points(S::WeightedSquare,n)=sqrt(points(S.space,n))
 checkpoints(S::WeightedSquare)=sqrt(checkpoints(S.space))
 
-# include the space as the transform sometimes starts with S[1]==1
-plan_transform(S::WeightedSquare,vals::Vector)=(S,points(S,length(vals)),plan_transform(S.space,vals))
+plan_transform(S::WeightedSquare,vals::Vector)=(points(S,length(vals)),plan_transform(S.space,vals))
 
 function transform(S::WeightedSquare,vals::Vector,plan)
-    @assert plan[1]==S
     if S.m ==0
-        transform(S.space,vals,plan[3])
+        transform(S.space,vals,plan[2])
     else
-        transform(S.space,plan[2].^(-S.m).*vals)
+        transform(S.space,plan[1].^(-S.m).*vals)
     end
 end
 
@@ -51,22 +49,21 @@ end
 plan_itransform(S::WeightedSquare,vals::Vector)=(points(S,length(vals)),plan_itransform(S.space,vals))
 itransform(S::WeightedSquare,cfs::Vector,plan)=isempty(cfs)?cfs:plan[1].^S.m.*itransform(S.space,cfs,plan[2])
 
-evaluate{WS<:WeightedSquare}(f::Fun{WS},x)=x.^space(f).m.*Fun(f.coefficients,space(f).space)[x.^2]
+evaluate(f::AbstractVector,sp::WeightedSquare,x)=x.^sp.m.*evaluate(f,sp.space,x.^2)
 
 
 ## Operators
 
 # Override JacobiWeight default
-Multiplication(f::Fun{JacobiWeight{Chebyshev}},S::WeightedSquare)=Multiplication{JacobiWeight{Chebyshev},typeof(S),
-                                                                             eltype(f),eltype(f)}(f,S)
-bandinds{WS<:WeightedSquare}(M::Multiplication{JacobiWeight{Chebyshev},WS})=0,0
+Multiplication(f::Fun{JacobiWeight{Chebyshev}},S::WeightedSquare)=ConcreteMultiplication(f,S)
+bandinds{WS<:WeightedSquare}(M::ConcreteMultiplication{JacobiWeight{Chebyshev},WS})=0,0
 
-function addentries!{WS<:WeightedSquare}(M::Multiplication{JacobiWeight{Chebyshev},WS},A,kr::Range)
+function addentries!{WS<:WeightedSquare}(M::ConcreteMultiplication{JacobiWeight{Chebyshev},WS},A,kr::Range)
     @assert length(M.f)==1
     @assert M.f.space.α ==0.
     addentries!(ConstantOperator(2.0^M.f.space.β*M.f.coefficients[1]),A,kr)
 end
-function rangespace{WS<:WeightedSquare}(M::Multiplication{JacobiWeight{Chebyshev},WS})
+function rangespace{WS<:WeightedSquare}(M::ConcreteMultiplication{JacobiWeight{Chebyshev},WS})
     @assert length(M.f)==1
     @assert M.f.space.α ==0.
     @assert isinteger(M.f.space.β)
@@ -78,7 +75,6 @@ end
 
 
 function Derivative(S::WeightedSquare)
-
      m=S.m
      d=domain(S)
      @assert d==Interval(1.,0.)
@@ -135,11 +131,11 @@ function Base.getindex{WS<:WeightedSquare}(op::Evaluation{WS,Bool},kr::Range)
     m=op.space.m
     js=op.space.space
     if op.order ==0
-        getindex(Evaluation(js,false,0),kr)
+        Evaluation(js,false,0)[kr]
     elseif m==0
-        2getindex(Evaluation(js,false,1),kr)
+        2Evaluation(js,false,1)[kr]
     else
-        2getindex(Evaluation(js,false,1),kr)+m*getindex(Evaluation(js,false,0),kr)
+        2Evaluation(js,false,1)[kr]+m*Evaluation(js,false,0)[kr]
     end
 end
 

@@ -8,7 +8,7 @@ using Base.Test
 
 f=(x,y)->exp(x.*sin(y))
 u=ProductFun(f,Disk(),50,51)
-@test_approx_eq u[.1,.1] f(.1,.1)
+@test_approx_eq u(.1,.1) f(.1,.1)
 
 
 
@@ -17,7 +17,7 @@ u=ProductFun(f,Disk(),50,51)
 # Laplace
 d=Disk()
 u=[dirichlet(d),lap(d)]\Fun(z->real(exp(z)),Circle())
-@test_approx_eq u[.1,.2] real(exp(.1+.2im))
+@test_approx_eq u(.1,.2) real(exp(.1+.2im))
 
 # remaining numbers determined numerically, may be
 # inaccurate
@@ -25,21 +25,21 @@ u=[dirichlet(d),lap(d)]\Fun(z->real(exp(z)),Circle())
 # Poisson
 f=Fun((x,y)->exp(-10(x+.2).^2-20(y-.1).^2),d)
 u=[dirichlet(d),lap(d)]\[0.,f]
-@test_approx_eq u[.1,.2] -0.039860694987858845
+@test_approx_eq u(.1,.2) -0.039860694987858845
 
 #Helmholtz
 u=[dirichlet(d),lap(d)+100I]\1.0
-@test_approx_eq u[.1,.2] -0.3675973169667076
+@test_approx_eq u(.1,.2) -0.3675973169667076
 u=[neumann(d),lap(d)+100I]\1.0
-@test_approx_eq u[.1,.2] -0.20795862954551195
+@test_approx_eq u(.1,.2) -0.20795862954551195
 
 # Screened Poisson
 u=[neumann(d),lap(d)-100.0I]\1.0
-@test_approx_eq u[.1,.9] 0.04313812031635443
+@test_approx_eq u(.1,.9) 0.04313812031635443
 
 # Lap^2
 u=[dirichlet(d),neumann(d),lap(d)^2]\Fun(z->real(exp(z)),Circle())
-@test_approx_eq u[.1,.2] 1.1137317420521624
+@test_approx_eq u(.1,.2) 1.1137317420521624
 
 
 

@@ -34,7 +34,7 @@ checkpoints(d::Disk)=[fromcanonical(d,(.1,.2243));fromcanonical(d,(-.212423,-.3)
 ∂(d::Disk)=Circle(Complex(d.center...),d.radius)
 
 
-immutable DiskSpace{m,a,b,JS,S} <: AbstractProductSpace{@compat(Tuple{JS,S}),Complex128,2}
+immutable DiskSpace{m,a,b,JS,S} <: AbstractProductSpace{Tuple{JS,S},Complex128,2}
     domain::Disk
     spacet::S
     DiskSpace(d,sp)=new(d,sp)
@@ -42,7 +42,7 @@ immutable DiskSpace{m,a,b,JS,S} <: AbstractProductSpace{@compat(Tuple{JS,S}),Com
 end
 
 
-DiskSpace(D::Disk,S::FunctionSpace)=DiskSpace{0,0,0,JacobiSquare,typeof(S)}(D,S)
+DiskSpace(D::Disk,S::Space)=DiskSpace{0,0,0,JacobiSquare,typeof(S)}(D,S)
 DiskSpace(D::Disk)=DiskSpace(D,Laurent())
 DiskSpace(d::AnyDomain)=DiskSpace(Disk(d))
 DiskSpace()=DiskSpace(Disk())
@@ -70,7 +70,7 @@ columnspace{M,a,b,SS}(D::DiskSpace{M,a,b,SS},k)=(m=div(k,2);JacobiSquare(M+m,a+m
 #transform(S::DiskSpace,V::Matrix)=transform([columnspace(S,k) for k=1:size(V,2)],S.spacet,V)
 
 
-evaluate{DS<:DiskSpace}(f::Fun{DS},x...)=evaluate(ProductFun(f),x...)
+evaluate(f::AbstractVector,sp::DiskSpace,x...)=evaluate(ProductFun(Fun(f,sp)),x...)
 
 
 
@@ -152,9 +152,9 @@ end
 
 
 
-isproductop{DS1<:DiskSpace,DS2<:DiskSpace}(C::Conversion{DS1,DS2})=true
-isdiagop{DS1<:DiskSpace,DS2<:DiskSpace}(C::Conversion{DS1,DS2},k)=k==2
-diagop{DS1<:DiskSpace,DS2<:DiskSpace}(C::Conversion{DS1,DS2},col)=Conversion(columnspace(domainspace(C),col),
+isproductop{DS1<:DiskSpace,DS2<:DiskSpace}(C::ConcreteConversion{DS1,DS2})=true
+isdiagop{DS1<:DiskSpace,DS2<:DiskSpace}(C::ConcreteConversion{DS1,DS2},k)=k==2
+diagop{DS1<:DiskSpace,DS2<:DiskSpace}(C::ConcreteConversion{DS1,DS2},col)=Conversion(columnspace(domainspace(C),col),
                                                                                columnspace(rangespace(C),col))
 #deprod{DS1<:DiskSpace,DS2<:DiskSpace}(C::Conversion{DS1,DS2},k,::Colon)=ConstantOperator(1.0)
 
@@ -169,7 +169,7 @@ neumann(d::DiskSpace)=Neumann(d)
 
 
 
-function rangespace{m,a,b,JS,S}(L::Laplacian{DiskSpace{m,a,b,JS,S}})
+function rangespace{m,a,b,JS,S}(L::ConcreteLaplacian{DiskSpace{m,a,b,JS,S}})
     sp=domainspace(L)
     DiskSpace{m-2L.order,a+2L.order,b+2L.order,JS,S}(sp.domain,sp.spacet)
 end
@@ -177,7 +177,7 @@ end
 
 
 # special case of integer modes
-function diagop{b}(L::Laplacian{DiskSpace{0,0,b,JacobiSquare,Laurent}},col)
+function diagop{b}(L::ConcreteLaplacian{DiskSpace{0,0,b,JacobiSquare,Laurent}},col)
     S=columnspace(domainspace(L),col)
     Dp=DDp(S)
     Dm=DDm(rangespace(Dp))
@@ -186,7 +186,7 @@ end
 
 
 
-function rangespace{b,JS,S}(L::Laplacian{DiskSpace{0,0,b,JS,S}})
+function rangespace{b,JS,S}(L::ConcreteLaplacian{DiskSpace{0,0,b,JS,S}})
     sp=domainspace(L)
     DiskSpace{0,0,b+2,JS,S}(sp.domain,sp.spacet)
 end
