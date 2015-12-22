@@ -35,17 +35,17 @@ u=[dirichlet(d),lap(d)]\[0.,f]
 
 #Helmholtz
 u=[dirichlet(d),lap(d)+100I]\1.0
-@test_approx_eq u(.1,.2) -0.3675973169667076
+@test_approx_eq_eps u(.1,.2) -0.3675973169667076 1E-11
 u=[neumann(d),lap(d)+100I]\1.0
-@test_approx_eq u(.1,.2) -0.20795862954551195
+@test_approx_eq_eps u(.1,.2) -0.20795862954551195 1E-11
 
 # Screened Poisson
 u=[neumann(d),lap(d)-100.0I]\1.0
-@test_approx_eq u(.1,.9) 0.04313812031635443
+@test_approx_eq_eps u(.1,.9) 0.04313812031635443 1E-11
 
 # Lap^2
 u=[dirichlet(d),neumann(d),lap(d)^2]\Fun(z->real(exp(z)),Circle())
-@test_approx_eq u(.1,.2) 1.1137317420521624
+@test_approx_eq_eps u(.1,.2) 1.1137317420521624 1E-11
 
 
 
