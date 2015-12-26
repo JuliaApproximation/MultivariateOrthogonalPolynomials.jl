@@ -44,8 +44,6 @@ import ApproxFun: jacobip, JacobiSD
 
 
 
-
-
 include("JacobiSquare.jl")
 include("DiskSpace.jl")
 

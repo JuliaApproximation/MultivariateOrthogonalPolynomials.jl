@@ -1,37 +1,7 @@
 
 
-export Disk, DiskSpace
+export DiskSpace
 
-##TODO: make argument
-immutable Disk <: BivariateDomain{Float64}
-    radius::Float64
-    center::Tuple{Float64,Float64}
-end
-
-Disk(r)=Disk(r,(0.,0.))
-Disk()=Disk(1.)
-Disk(::AnyDomain)=Disk(NaN,(NaN,NaN))
-
-
-isambiguous(d::Disk)=isnan(d.radius) && all(isnan,d.center)
-Base.convert(::Type{Disk},::AnyDomain)=Disk(AnyDomain())
-
-
-#canonical is rectangle [r,0]x[-π,π]
-# we assume radius and centre are zero for now
-fromcanonical(D::Disk,x,t)=x*cos(t),x*sin(t)
-tocanonical(D::Disk,x,y)=sqrt(x^2+y^2),atan2(y,x)
-checkpoints(d::Disk)=[fromcanonical(d,(.1,.2243));fromcanonical(d,(-.212423,-.3))]
-
-# function points(d::Disk,n,m,k)
-#     ptsx=0.5*(1-gaussjacobi(n,1.,0.)[1])
-#     ptst=points(PeriodicInterval(),m)
-#
-#     Float64[fromcanonical(d,x,t)[k] for x in ptsx, t in ptst]
-# end
-
-
-∂(d::Disk)=Circle(Complex(d.center...),d.radius)
 
 
 immutable DiskSpace{m,a,b,JS,S} <: AbstractProductSpace{Tuple{JS,S},Complex128,2}
