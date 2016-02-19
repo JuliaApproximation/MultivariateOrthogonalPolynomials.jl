@@ -1,4 +1,4 @@
-module DiskFun
+module Geometries
     using Base, Compat, Plots, ApproxFun
 
 # package code goes here
