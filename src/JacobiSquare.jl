@@ -11,7 +11,7 @@ immutable WeightedSquare{S} <: RealUnivariateSpace{Interval{Float64}}
 end
 WeightedSquare(m::Number,S)=WeightedSquare{typeof(S)}(m,S)
 
-typealias JacobiSquare WeightedSquare{Jacobi{Interval{Float64}}}
+typealias JacobiSquare WeightedSquare{Jacobi{Float64,Interval{Float64}}}
 
 
 JacobiSquare(m,d::Domain)=WeightedSquare(m,Jacobi(m,0,d))
