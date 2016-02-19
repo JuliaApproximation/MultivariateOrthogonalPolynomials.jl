@@ -1,4 +1,4 @@
-module Geometries
+module MultivariateOrthogonalPolynomials
     using Base, Compat, Plots, ApproxFun
 
 # package code goes here
