@@ -4,7 +4,7 @@ export Triangle
 using ApproxFun
     import ApproxFun: BivariateDomain, RealBasis, Derivative, domain, ConcreteDerivative,
                 rangespace, bandinds, blockbandinds,spacescompatible,addentries!,conversion_rule,maxspace_rule,
-                ConcreteConversion, isapproxinteger
+                ConcreteConversion, isapproxinteger, Conversion
 
 
 ## Triangle Def
@@ -98,35 +98,118 @@ function Conversion(K1::KoornwinderTriangle,K2::KoornwinderTriangle)
     end
 end
 bandinds(C::ConcreteConversion{KoornwinderTriangle,KoornwinderTriangle})=(0,1)
-blockbandinds(C::ConcreteConversion{KoornwinderTriangle,KoornwinderTriangle})=(0,1)
+blockbandinds(C::ConcreteConversion{KoornwinderTriangle,KoornwinderTriangle},k::Integer)=k==1?0:1
 
 
 function addentries!(C::ConcreteConversion{KoornwinderTriangle,KoornwinderTriangle},A,kr::Range,::Colon)
     K1=domainspace(C);K2=rangespace(C)
     α,β,γ = K1.α,K1.β,K1.γ
-    @assert K2.α==α+1 && K2.β==β && K2.γ==γ
+    if K2.α==α+1 && K2.β==β && K2.γ==γ
+        for n=kr
+            B=A[n,n]
 
-    for n=kr
-        B=A[n,n]
+            for k=1:size(B,1)
+                B[k,k]+=(n+k+α+β+γ)/(2n+α+β+γ)
+            end
 
-        for k=1:size(B,1)
-            B[k,k]+=(n+k+α+β+γ)/(2n+α+β+γ)
+            B=A[n,n+1]
+            for k=1:size(B,1)
+                B[k,k]+=(n+k+β+γ)/(2n+α+β+γ+2)
+            end
         end
+    elseif K2.α==α && K2.β==β+1 && K2.γ==γ
+        for n=kr
+            B=A[n,n]
 
-        B=A[n,n+1]
-        for k=1:size(B,1)
-            B[k,k]+=(n+k+β+γ)/(2n+α+β+γ+2)
+            for k=1:size(B,1)
+                B[k,k]  += (n+k+α+β+γ)/(2n+α+β+γ)*(k+β+γ)/(2k+β+γ-1)
+                if k+1 ≤ size(B,2)
+                    B[k,k+1]-= (k+γ)/(2k+β+γ+1)*(n-k)/(2n+α+β+γ)
+                end
+            end
+
+            B=A[n,n+1]
+            for k=1:size(B,1)
+                B[k,k]  -= (n-k+α+1)/(2n+α+β+γ+2)*(k+β+γ)/(2k+β+γ-1)
+                if k+1 ≤ size(B,2)
+                    B[k,k+1]+= (k+γ)/(2k+β+γ+1)*(n+k+β+γ+1)/(2n+α+β+γ+2)
+                end
+            end
         end
+    elseif K2.α==α && K2.β==β && K2.γ==γ+1
+        for n=kr
+            B=A[n,n]
+
+            for k=1:size(B,1)
+                B[k,k]  += (n+k+α+β+γ)/(2n+α+β+γ)*(k+β+γ)/(2k+β+γ-1)
+                if k+1 ≤ size(B,2)
+                    B[k,k+1]-= (k+β)/(2k+β+γ+1)*(n-k)/(2n+α+β+γ)
+                end
+            end
+
+            B=A[n,n+1]
+            for k=1:size(B,1)
+                B[k,k]  -= (n-k+α+1)/(2n+α+β+γ+2)*(k+β+γ)/(2k+β+γ-1)
+                if k+1 ≤ size(B,2)
+                    B[k,k+1]+= (k+β)/(2k+β+γ+1)*(n+k+β+γ+1)/(2n+α+β+γ+2)
+                end
+            end
+        end
+    else
+        error("Not implemented")
     end
+
     A
 end
 
 
 
 C=Conversion(KoornwinderTriangle(0,0,0),
+             KoornwinderTriangle(1,1,1))
+
+
+(C.op.ops[2][1:10,1:10],C.op.ops[3][1:10,1:10])
+
+
+
+C=Conversion(KoornwinderTriangle(1,0,0),
+             KoornwinderTriangle(1,1,1))*Conversion(KoornwinderTriangle(0,0,0),
              KoornwinderTriangle(1,0,0))
+    C1=Matrix{Float64}(C.op.ops[1][1:10,1:10])
+    C2=Matrix{Float64}(C.op.ops[2][1:10,1:10])
+    C3=Matrix{Float64}(C.op.ops[3][1:10,1:10])
+    CC=C1*C2*C3
 
 
+C=Conversion(KoornwinderTriangle(0,1,0),
+             KoornwinderTriangle(1,1,1))*Conversion(KoornwinderTriangle(0,0,0),
+             KoornwinderTriangle(0,1,0))
+    C1=Matrix{Float64}(C.op.ops[1][1:10,1:10])
+    C2=Matrix{Float64}(C.op.ops[2][1:10,1:10])
+    C3=Matrix{Float64}(C.op.ops[3][1:10,1:10])
+    C1*C2*C3-CC|>norm
+
+
+C=Conversion(KoornwinderTriangle(0,0,1),
+             KoornwinderTriangle(1,1,1))*Conversion(KoornwinderTriangle(0,0,0),
+             KoornwinderTriangle(0,0,1))
+    C1=Matrix{Float64}(C.op.ops[1][1:10,1:10])
+    C2=Matrix{Float64}(C.op.ops[2][1:10,1:10])
+    C3=Matrix{Float64}(C.op.ops[3][1:10,1:10])
+    C1*C2*C3-CC|>norm
+
+
+C1
+
+
+C1
+
+
+C1*C2*C3
+
+C1*C2*C3|>chopm
+
+|>full
 C[1:10,1:10]|>full
 
 K=KoornwinderTriangle(0,0,0)
