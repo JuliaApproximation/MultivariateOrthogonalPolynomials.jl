@@ -166,7 +166,45 @@ end
 
 C=Conversion(KoornwinderTriangle(0,0,0),
              KoornwinderTriangle(1,1,1))
+full(C[1:10,1:10])
+bandinds(C)
 
+P=C.op
+n=10
+A=ApproxFun.bazeros(P,n,:);kr=1:10
+
+if length(kr)==0
+    return A
+end
+
+st=step(kr)
+
+krl=Array(Int,length(P.ops),2)
+
+krl[1,1],krl[1,2]=kr[1],kr[end]
+
+for m=1:length(P.ops)-1
+    br=bandinds(P.ops[m])
+    krl[m+1,1]=max(st-mod(kr[1],st),br[1] + krl[m,1])  # no negative
+    krl[m+1,2]=br[end] + krl[m,2]
+end
+
+krl
+
+# The following returns a banded Matrix with all rows
+# for large k its upper triangular
+BA=slice(P.ops[end],krl[end,1]:st:krl[end,2],:)
+m=(length(P.ops)-1)
+C=slice(P.ops[m],krl[m,1]:st:krl[m,2],:)
+
+ApproxFun.blockbandzeros(
+
+n,m=size(A,1),size(B,2)
+ApproxFun.bamultiply!(ApproxFun.bazeros(Matrix{Float64},n,m,A.l+B.l,A.u+B.u),A,B)
+A,B=C,BA
+A*B
+A
+ApproxFun.BandedMatrix(C,10)
 
 (C.op.ops[2][1:10,1:10],C.op.ops[3][1:10,1:10])
 
