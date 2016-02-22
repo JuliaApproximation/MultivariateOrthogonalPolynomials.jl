@@ -3,9 +3,12 @@ export Triangle
 
 using ApproxFun
     import ApproxFun: BivariateDomain, RealBasis, Derivative, domain, ConcreteDerivative,
-                rangespace, bandinds, blockbandinds,spacescompatible,addentries!,conversion_rule,maxspace_rule
+                rangespace, bandinds, blockbandinds,spacescompatible,addentries!,conversion_rule,maxspace_rule,
+                ConcreteConversion, isapproxinteger
 
-    # currently right trianglel
+
+## Triangle Def
+# currently right trianglel
     immutable Triangle <: BivariateDomain{Float64} end
 
     #Triangle(::AnyDomain)=Triangle(NaN,(NaN,NaN))e
@@ -50,12 +53,6 @@ using ApproxFun
     bandinds(D::ConcreteDerivative{KoornwinderTriangle})=0,sum(D.order)
     blockbandinds(D::ConcreteDerivative{KoornwinderTriangle})=0,sum(D.order)
 
-    conversion_rule(K1::KoornwinderTriangle,K2::KoornwinderTriangle)=
-        KoornwinderTriangle(min(K1.α,K2.α),min(K1.β,K2.β),min(K1.γ,K2.γ))
-    maxspace_rule(K1::KoornwinderTriangle,K2::KoornwinderTriangle)=
-        KoornwinderTriangle(max(K1.α,K2.α),max(K1.β,K2.β),max(K1.γ,K2.γ))
-
-
     function addentries!(D::ConcreteDerivative{KoornwinderTriangle},A,kr::Range,::Colon)
         @assert D.order==(0,1)
         α,β,γ = K.α,K.β,K.γ
@@ -69,9 +66,75 @@ using ApproxFun
         A
     end
 
-K=KoornwinderTriangle(0,0,0)
 
-Dy=Derivative(K,(0,1))
+
+## Conversion
+
+    conversion_rule(K1::KoornwinderTriangle,K2::KoornwinderTriangle)=
+        KoornwinderTriangle(min(K1.α,K2.α),min(K1.β,K2.β),min(K1.γ,K2.γ))
+    maxspace_rule(K1::KoornwinderTriangle,K2::KoornwinderTriangle)=
+        KoornwinderTriangle(max(K1.α,K2.α),max(K1.β,K2.β),max(K1.γ,K2.γ))
+
+function Conversion(K1::KoornwinderTriangle,K2::KoornwinderTriangle)
+    @assert K1.α≤K2.α && K1.β≤K2.β && K1.γ≤K2.γ &&
+                isapproxinteger(K1.α-K2.α) && isapproxinteger(K1.β-K2.β) &&
+                isapproxinteger(K1.γ-K2.γ)
+
+    if (K1.α+1==K2.α && K1.β==K2.β && K1.γ==K2.γ) ||
+        (K1.α==K2.α && K1.β+1==K2.β && K1.γ==K2.γ) ||
+        (K1.α==K2.α && K1.β==K2.β && K1.γ+1==K2.γ)
+        ConcreteConversion(K1,K2)
+    elseif K1.α+1<K2.α || (K1.α+1==K2.α && (K1.β+1≥K2.β || K1.γ+1≥K2.γ))
+        # increment α if we have e.g. (α+2,β,γ) or  (α+1,β+1,γ)
+        Conversion(K1,KoornwinderTriangle(K1.α+1,K1.β,K1.γ),K2)
+    elseif K1.β+1<K2.β || (K1.β+1==K2.β && K1.γ+1≥K2.γ)
+        # increment β
+        Conversion(K1,KoornwinderTriangle(K1.α,K1.β+1,K1.γ),K2)
+    elseif K1.γ+1>K2.γ
+        # increment γ
+        Conversion(K1,KoornwinderTriangle(K1.α,K1.β,K1.γ+1),K2)
+    else
+        error("There is a bug")
+    end
+end
+bandinds(C::ConcreteConversion{KoornwinderTriangle,KoornwinderTriangle})=(0,1)
+blockbandinds(C::ConcreteConversion{KoornwinderTriangle,KoornwinderTriangle})=(0,1)
+
+
+function addentries!(C::ConcreteConversion{KoornwinderTriangle,KoornwinderTriangle},A,kr::Range,::Colon)
+    K1=domainspace(C);K2=rangespace(C)
+    α,β,γ = K1.α,K1.β,K1.γ
+    @assert K2.α==α+1 && K2.β==β && K2.γ==γ
+
+    for n=kr
+        B=A[n,n]
+
+        for k=1:size(B,1)
+            B[k,k]+=(n+k+α+β+γ)/(2n+α+β+γ)
+        end
+
+        B=A[n,n+1]
+        for k=1:size(B,1)
+            B[k,k]+=(n+k+β+γ)/(2n+α+β+γ+2)
+        end
+    end
+    A
+end
+
+
+
+C=Conversion(KoornwinderTriangle(0,0,0),
+             KoornwinderTriangle(1,0,0))
+
+
+C[1:10,1:10]|>full
+
+K=KoornwinderTriangle(0,0,0)
+ApproxFun.op_eltype(K)
+@which Derivative(K,(0,1))
+
+Dy[1:10,1:10]
+
 Dx=Derivative(K,(1,0))
 maxspace(rangespace(Dx),
     rangespace(Dy))
