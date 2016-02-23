@@ -18,7 +18,8 @@ import ApproxFun:    bandinds,SpaceOperator, ConversionWrapper, DerivativeWrappe
                   promotedomainspace,  CalculusOperator, interlace, Multiplication,
                   DiagonalArrayOperator, Recurrence, FiniteFunctional, choosedomainspace,
                     Dirichlet, Neumann, Laplacian, ConstantTimesOperator, Conversion, isfunctional,
-                    dirichlet, neumann, Derivative, ConcreteMultiplication, ConcreteConversion, ConcreteLaplacian
+                    dirichlet, neumann, Derivative, ConcreteMultiplication, ConcreteConversion, ConcreteLaplacian,
+                    ConcreteDerivative, TimesOperator
 
 
 # Spaces import
@@ -34,7 +35,7 @@ import ApproxFun: PolynomialSpace,ConstantSpace,
 # Multivariate import
 import ApproxFun: BivariateDomain,DirectSumSpace,TupleSpace, AbstractProductSpace,
                     BivariateFun,  ProductFun, LowRankFun, lap, columnspace, diagop, isproductop, discretize,
-                    schurfact, kronfact, isdiagop
+                    schurfact, kronfact, isdiagop, blockbandinds
 
 
 # Jacobi import
@@ -46,6 +47,7 @@ import ApproxFun: jacobip, JacobiSD
 
 include("JacobiSquare.jl")
 include("DiskSpace.jl")
+include("Triangle.jl")
 
 include("plot.jl")
 
