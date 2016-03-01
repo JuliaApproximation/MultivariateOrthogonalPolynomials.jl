@@ -11,6 +11,9 @@ immutable WeightedSquare{S} <: RealUnivariateSpace{Interval{Float64}}
 end
 WeightedSquare(m::Number,S)=WeightedSquare{typeof(S)}(m,S)
 
+Base.promote_rule{S1,S2}(::Type{WeightedSquare{S1}},::Type{WeightedSquare{S2}})=WeightedSquare{promote_type(S1,S2)}
+Base.convert{S1}(::Type{WeightedSquare{S1}},W::WeightedSquare)=WeightedSquare{S1}(W.m,W.space)
+
 typealias JacobiSquare WeightedSquare{Jacobi{Float64,Interval{Float64}}}
 
 
@@ -36,8 +39,7 @@ checkpoints(S::WeightedSquare)=sqrt(checkpoints(S.space))
 plan_transform(S::WeightedSquare,vals::Vector)=(S,points(S,length(vals)),plan_transform(S.space,vals))
 
 function transform(S::WeightedSquare,vals::Vector,plan)
-    @assert S=plan[1]
-    if S.m ==0
+    if S.m == 0
         transform(S.space,vals,plan[3])
     else
         transform(S.space,plan[2].^(-S.m).*vals,plan[3])

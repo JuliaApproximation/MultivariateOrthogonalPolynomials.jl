@@ -6,22 +6,45 @@ export Triangle,KoornwinderTriangle
 # currently right trianglel
 immutable Triangle <: BivariateDomain{Float64} end
 
+
+#canonical is rectangle [0,1]^2
+# with the map (x,y)=(s,(1-s)*t)
+fromcanonical(::Triangle,s,t)=s,(1-s)*t
+tocanonical(::Triangle,x,y)=x,y/(1-x)
+checkpoints(d::Triangle)=[fromcanonical(d,(.1,.2243));fromcanonical(d,(-.212423,-.3))]
+
 # expansion in OPs orthogonal to
 # x^α*y^β*(1-x-y)^γ
 # defined as
 # P_{n-k}^{2k+β+γ+1,α}(2x-1)*(1-x)^k*P_k^{γ,β}(2y/(1-x)-1)
 
 
-immutable KoornwinderTriangle <: Space{RealBasis,Triangle,2}
+immutable KoornwinderTriangle <: AbstractProductSpace{Tuple{WeightedJacobi{Interval{Float64}},Jacobi{Float64,Interval{Float64}}},Float64,2}
     α::Float64
     β::Float64
     γ::Float64
     domain::Triangle
 end
 
+
 KoornwinderTriangle(α,β,γ)=KoornwinderTriangle(α,β,γ,Triangle())
 KoornwinderTriangle(T::Triangle)=KoornwinderTriangle(0.,0.,0.,T)
 Space(T::Triangle)=KoornwinderTriangle(T)
+
+
+
+
+# support for ProductFun constructor
+
+function space(T::KoornwinderTriangle,k::Integer)
+    @assert k==2
+    Jacobi(T.γ,T.β,Interval(0.,1.))
+end
+
+columnspace(T::KoornwinderTriangle,k::Integer)=JacobiWeight(0.,k-1.,Jacobi(2k-1+T.β+T.γ,T.α,Interval(0.,1.)))
+
+
+
 
 spacescompatible(K1::KoornwinderTriangle,K2::KoornwinderTriangle)=K1.α==K2.α && K1.β==K2.β && K1.γ==K2.γ
 
