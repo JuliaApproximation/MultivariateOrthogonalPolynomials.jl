@@ -139,6 +139,8 @@ neumann(d::DiskSpace)=Neumann(d)
 
 
 
+Laplacian(S::DiskSpace,k::Integer)=ConcreteLaplacian{typeof(S),Int,BandedMatrix{eltype(S)}}(S,k)
+
 function rangespace{m,a,b,JS,S}(L::ConcreteLaplacian{DiskSpace{m,a,b,JS,S}})
     sp=domainspace(L)
     DiskSpace{m-2L.order,a+2L.order,b+2L.order,JS,S}(sp.domain,sp.spacet)
