@@ -121,6 +121,8 @@ function diagop{DS<:DiskSpace}(L::Laplacian{DS},col)
 end
 
 
+Conversion(a::DiskSpace,b::DiskSpace) =
+    ConcreteConversion(a,b)
 
 isproductop{DS1<:DiskSpace,DS2<:DiskSpace}(C::ConcreteConversion{DS1,DS2})=true
 isdiagop{DS1<:DiskSpace,DS2<:DiskSpace}(C::ConcreteConversion{DS1,DS2},k)=k==2
@@ -139,7 +141,8 @@ neumann(d::DiskSpace)=Neumann(d)
 
 
 
-Laplacian(S::DiskSpace,k::Integer)=ConcreteLaplacian{typeof(S),Int,BandedMatrix{eltype(S)}}(S,k)
+Laplacian(S::DiskSpace,k::Integer) =
+    ConcreteLaplacian{typeof(S),Int,BandedMatrix{eltype(S)}}(S,k)
 
 function rangespace{m,a,b,JS,S}(L::ConcreteLaplacian{DiskSpace{m,a,b,JS,S}})
     sp=domainspace(L)

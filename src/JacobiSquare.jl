@@ -56,23 +56,13 @@ evaluate(f::AbstractVector,sp::WeightedSquare,x)=x.^sp.m.*evaluate(f,sp.space,x.
 ## Operators
 
 # Override JacobiWeight default
-Multiplication{DD}(f::Fun{JacobiWeight{Chebyshev{DD},DD}},S::WeightedSquare)=ConcreteMultiplication(f,S)
-bandinds{DD,WS<:WeightedSquare}(M::ConcreteMultiplication{JacobiWeight{Chebyshev{DD},DD},WS})=0,0
-
-function addentries!{DD,WS<:WeightedSquare}(M::ConcreteMultiplication{JacobiWeight{Chebyshev{DD},DD},WS},A,kr::Range,::Colon)
-    @assert length(M.f)==1
-    @assert M.f.space.α ==0.
-    addentries!(ConstantOperator(2.0^M.f.space.β*M.f.coefficients[1]),A,kr,:)
+function Multiplication{DD}(f::Fun{JacobiWeight{Chebyshev{DD},DD}},ds::WeightedSquare)
+    @assert length(f)==1
+    @assert f.space.α ==0.
+    @assert isinteger(f.space.β)
+    rs=WeightedSquare(ds.m+round(Int,f.space.β),ds.space)
+    MultiplicationWrapper(f,SpaceOperator(ConstantOperator(2.0^f.space.β*f.coefficients[1]),ds,rs))
 end
-function rangespace{DD,WS<:WeightedSquare}(M::ConcreteMultiplication{JacobiWeight{Chebyshev{DD},DD},WS})
-    @assert length(M.f)==1
-    @assert M.f.space.α ==0.
-    @assert isinteger(M.f.space.β)
-    ds=domainspace(M)
-    WeightedSquare(ds.m+round(Int,M.f.space.β),ds.space)
-end
-
-
 
 
 function Derivative(S::WeightedSquare)
