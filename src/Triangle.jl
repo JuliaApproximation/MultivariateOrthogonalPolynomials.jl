@@ -19,16 +19,33 @@ checkpoints(d::Triangle)=[fromcanonical(d,(.1,.2243));fromcanonical(d,(-.212423,
 # P_{n-k}^{2k+β+γ+1,α}(2x-1)*(1-x)^k*P_k^{γ,β}(2y/(1-x)-1)
 
 
-immutable KoornwinderTriangle <: AbstractProductSpace{Tuple{WeightedJacobi{Interval{Float64}},Jacobi{Float64,Interval{Float64}}},Float64,2}
+immutable ProductTriangle <: AbstractProductSpace{Tuple{WeightedJacobi{Interval{Float64}},Jacobi{Float64,Interval{Float64}}},Float64,2}
     α::Float64
     β::Float64
     γ::Float64
     domain::Triangle
 end
 
+immutable KoornwinderTriangle <: Space{RealBasis,Triangle,2}
+    α::Float64
+    β::Float64
+    γ::Float64
+    domain::Triangle
+end
 
-KoornwinderTriangle(α,β,γ)=KoornwinderTriangle(α,β,γ,Triangle())
-KoornwinderTriangle(T::Triangle)=KoornwinderTriangle(0.,0.,0.,T)
+ProductTriangle(K::KoornwinderTriangle) = ProductTriangle(K.α,K.β,K.γ,K.domain)
+
+
+for TYP in (:ProductTriangle,:KoornwinderTriangle)
+    @eval begin
+        $TYP(α,β,γ)=$TYP(α,β,γ,Triangle())
+        $TYP(T::Triangle)=$TYP(0.,0.,0.,T)
+        spacescompatible(K1::$TYP,K2::$TYP)=K1.α==K2.α && K1.β==K2.β && K1.γ==K2.γ
+    end
+end
+
+
+
 Space(T::Triangle)=KoornwinderTriangle(T)
 
 
@@ -36,17 +53,38 @@ Space(T::Triangle)=KoornwinderTriangle(T)
 
 # support for ProductFun constructor
 
-function space(T::KoornwinderTriangle,k::Integer)
+function space(T::ProductTriangle,k::Integer)
     @assert k==2
     Jacobi(T.γ,T.β,Interval(0.,1.))
 end
 
-columnspace(T::KoornwinderTriangle,k::Integer)=JacobiWeight(0.,k-1.,Jacobi(2k-1+T.β+T.γ,T.α,Interval(0.,1.)))
+columnspace(T::ProductTriangle,k::Integer)=JacobiWeight(0.,k-1.,Jacobi(2k-1+T.β+T.γ,T.α,Interval(0.,1.)))
 
 
+# convert coefficients
+
+Fun(f::Function,S::KoornwinderTriangle) =
+    Fun(Fun(f,ProductTriangle(S)),S)
+
+function coefficients(f::AbstractVector,K::KoornwinderTriangle,P::ProductTriangle)
+    C=totensor(f)
+    D=Float64[2.0^(-k) for k=0:size(C,1)-1]
+    fromtensor((C.')*diagm(D))
+end
+
+function coefficients(f::AbstractVector,K::ProductTriangle,P::KoornwinderTriangle)
+    C=totensor(f)
+    D=Float64[2.0^(k) for k=0:size(C,1)-1]
+    fromtensor((C*diagm(D)).')
+end
+
+evaluate(f::AbstractVector,K::KoornwinderTriangle,x...) =
+    evaluate(coefficients(f,K,ProductTriangle(K)),ProductTriangle(K),x...)
 
 
-spacescompatible(K1::KoornwinderTriangle,K2::KoornwinderTriangle)=K1.α==K2.α && K1.β==K2.β && K1.γ==K2.γ
+# Operators
+
+
 
 function Derivative(K::KoornwinderTriangle,order::Vector{Int})
     @assert length(order)==2
@@ -67,39 +105,43 @@ rangespace(D::ConcreteDerivative{KoornwinderTriangle})=KoornwinderTriangle(D.spa
 bandinds(D::ConcreteDerivative{KoornwinderTriangle})=0,sum(D.order)
 blockbandinds(D::ConcreteDerivative{KoornwinderTriangle},k::Integer)=k==0?0:sum(D.order)
 
-function addentries!(D::ConcreteDerivative{KoornwinderTriangle},A,kr::Range,::Colon)
+function getindex(D::ConcreteDerivative{KoornwinderTriangle},n::Integer,j::Integer)
     K=domainspace(D)
     α,β,γ = K.α,K.β,K.γ
     if D.order==[0,1]
-        for n=kr
-            Mkj=A[n,n+1]
+        if j==n+1
+            ret=bzeros(n,j,0,1)
 
-            for k=1:size(Mkj,1)
-                Mkj[k,k+1]+=(1+k+β+γ)
+            for k=1:size(ret,1)
+                ret[k,k+1]+=(1+k+β+γ)
             end
+        else
+            ret=bzeros(n,j,0,0)
         end
     elseif D.order==[1,0]
-        for n=kr
-            Mkj=A[n,n+1]
+        if j==n+1
+            ret=bzeros(n,j,0,1)
 
-            for k=1:size(Mkj,1)
-                Mkj[k,k]+=(1+k+n+α+β+γ)*(k+γ+β)/(2k+γ+β-1)
-                Mkj[k,k+1]+=(k+β)*(k+n+γ+β+1)/(2k+γ+β+1)
+            for k=1:size(ret,1)
+                ret[k,k]+=(1+k+n+α+β+γ)*(k+γ+β)/(2k+γ+β-1)
+                ret[k,k+1]+=(k+β)*(k+n+γ+β+1)/(2k+γ+β+1)
             end
+        else
+            ret=bzeros(n,j,0,0)
         end
     else
         error("Not implemented")
     end
-    A
+    ret
 end
 
 
 
 ## Conversion
 
-conversion_rule(K1::KoornwinderTriangle,K2::KoornwinderTriangle)=
+conversion_rule(K1::KoornwinderTriangle,K2::KoornwinderTriangle) =
     KoornwinderTriangle(min(K1.α,K2.α),min(K1.β,K2.β),min(K1.γ,K2.γ))
-maxspace_rule(K1::KoornwinderTriangle,K2::KoornwinderTriangle)=
+maxspace_rule(K1::KoornwinderTriangle,K2::KoornwinderTriangle) =
     KoornwinderTriangle(max(K1.α,K2.α),max(K1.β,K2.β),max(K1.γ,K2.γ))
 
 function Conversion(K1::KoornwinderTriangle,K2::KoornwinderTriangle)
@@ -128,64 +170,66 @@ bandinds(C::ConcreteConversion{KoornwinderTriangle,KoornwinderTriangle})=(0,1)
 blockbandinds(C::ConcreteConversion{KoornwinderTriangle,KoornwinderTriangle},k::Integer)=k==1?0:1
 
 
-function addentries!(C::ConcreteConversion{KoornwinderTriangle,KoornwinderTriangle},A,kr::Range,::Colon)
+function getindex(C::ConcreteConversion{KoornwinderTriangle,KoornwinderTriangle},n::Integer,j::Integer)
     K1=domainspace(C);K2=rangespace(C)
     α,β,γ = K1.α,K1.β,K1.γ
     if K2.α==α+1 && K2.β==β && K2.γ==γ
-        for n=kr
-            B=A[n,n]
-
-            for k=1:size(B,1)
-                B[k,k]+=(n+k+α+β+γ)/(2n+α+β+γ)
+        ret=bzeros(n,j,0,0)
+        if n==j
+            for k=1:size(ret,1)
+                ret[k,k]=(n+k+α+β+γ)/(2n+α+β+γ)
             end
-
-            B=A[n,n+1]
-            for k=1:size(B,1)
-                B[k,k]+=(n+k+β+γ)/(2n+α+β+γ+2)
+        elseif j==n+1
+            for k=1:size(ret,1)
+                ret[k,k]=(n+k+β+γ)/(2n+α+β+γ+2)
             end
         end
     elseif K2.α==α && K2.β==β+1 && K2.γ==γ
-        for n=kr
-            B=A[n,n]
+        if j==n
+            ret=bzeros(n,j,0,1)
 
-            for k=1:size(B,1)
-                B[k,k]  += (n+k+α+β+γ)/(2n+α+β+γ)*(k+β+γ)/(2k+β+γ-1)
-                if k+1 ≤ size(B,2)
-                    B[k,k+1]-= (k+γ)/(2k+β+γ+1)*(n-k)/(2n+α+β+γ)
+            for k=1:size(ret,1)
+                ret[k,k]  += (n+k+α+β+γ)/(2n+α+β+γ)*(k+β+γ)/(2k+β+γ-1)
+                if k+1 ≤ size(ret,2)
+                    ret[k,k+1]-= (k+γ)/(2k+β+γ+1)*(n-k)/(2n+α+β+γ)
                 end
             end
-
-            B=A[n,n+1]
-            for k=1:size(B,1)
-                B[k,k]  -= (n-k+α+1)/(2n+α+β+γ+2)*(k+β+γ)/(2k+β+γ-1)
-                if k+1 ≤ size(B,2)
-                    B[k,k+1]+= (k+γ)/(2k+β+γ+1)*(n+k+β+γ+1)/(2n+α+β+γ+2)
+        elseif j==n+1
+            ret=bzeros(n,j,0,1)
+            for k=1:size(ret,1)
+                ret[k,k]  -= (n-k+α+1)/(2n+α+β+γ+2)*(k+β+γ)/(2k+β+γ-1)
+                if k+1 ≤ size(ret,2)
+                    ret[k,k+1]+= (k+γ)/(2k+β+γ+1)*(n+k+β+γ+1)/(2n+α+β+γ+2)
                 end
             end
+        else
+            ret=bzeros(k,j,0,0)
         end
     elseif K2.α==α && K2.β==β && K2.γ==γ+1
-        for n=kr
-            B=A[n,n]
+        if n==j
+            ret=bzeros(n,j,0,1)
 
-            for k=1:size(B,1)
-                B[k,k]  += (n+k+α+β+γ)/(2n+α+β+γ)*(k+β+γ)/(2k+β+γ-1)
-                if k+1 ≤ size(B,2)
-                    B[k,k+1]-= (k+β)/(2k+β+γ+1)*(n-k)/(2n+α+β+γ)
+            for k=1:size(ret,1)
+                ret[k,k]  += (n+k+α+β+γ)/(2n+α+β+γ)*(k+β+γ)/(2k+β+γ-1)
+                if k+1 ≤ size(ret,2)
+                    ret[k,k+1]-= (k+β)/(2k+β+γ+1)*(n-k)/(2n+α+β+γ)
                 end
             end
+        elseif j==n+1
+            ret=bzeros(n,j,0,1)
 
-            B=A[n,n+1]
-            for k=1:size(B,1)
-                B[k,k]  -= (n-k+α+1)/(2n+α+β+γ+2)*(k+β+γ)/(2k+β+γ-1)
-                if k+1 ≤ size(B,2)
-                    B[k,k+1]+= (k+β)/(2k+β+γ+1)*(n+k+β+γ+1)/(2n+α+β+γ+2)
+            for k=1:size(ret,1)
+                ret[k,k]  -= (n-k+α+1)/(2n+α+β+γ+2)*(k+β+γ)/(2k+β+γ-1)
+                if k+1 ≤ size(ret,2)
+                    ret[k,k+1]+= (k+β)/(2k+β+γ+1)*(n+k+β+γ+1)/(2n+α+β+γ+2)
                 end
             end
+        else
+            ret=bzeros(n,j,0,0)
         end
     else
         error("Not implemented")
     end
 
-    A
+    ret
 end
-
