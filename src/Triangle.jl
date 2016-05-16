@@ -94,7 +94,7 @@ function Derivative(K::KoornwinderTriangle,order::Vector{Int})
         D=Derivative(K,[1,0])
         DerivativeWrapper(TimesOperator(Derivative(rangespace(D),[order[1]-1,order[2]]),D),order)
     else
-        @assert order[2]>1
+        @assert order[2]≥1
         D=Derivative(K,[0,1])
         DerivativeWrapper(TimesOperator(Derivative(rangespace(D),[order[1],order[2]-1]),D),order)
     end
