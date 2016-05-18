@@ -1,11 +1,14 @@
 using FixedSizeArrays,Plots,BandedMatrices,ApproxFun,MultivariateOrthogonalPolynomials, Base.Test
+
 import MultivariateOrthogonalPolynomials: Recurrence
 
-K=KoornwinderTriangle(0,0,0)
 
-f=Fun((x,y)->exp(x*cos(y)),KoornwinderTriangle(1,1,1))(0.1,0.2)
+
+f=Fun((x,y)->exp(x*cos(y)),KoornwinderTriangle(1,1,1))
 @test_approx_eq f(0.1,0.2) ((x,y)->exp(x*cos(y)))(0.1,0.2)
 
+
+K=KoornwinderTriangle(0,0,0)
 
 f=Fun((x,y)->exp(x*cos(y)),K)
 @test_approx_eq f(0.1,0.2) ((x,y)->exp(x*cos(y)))(0.1,0.2)
