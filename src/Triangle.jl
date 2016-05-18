@@ -246,8 +246,12 @@ end
 Recurrence(k::Integer,sp) = Recurrence{k,typeof(sp),promote_type(eltype(sp),eltype(domain(sp)))}(sp)
 Base.convert{x,T,S}(::Type{BandedOperator{BandedMatrix{T}}},J::Recurrence{x,S}) = Recurrence{x,S,T}(J.space)
 
+
 domainspace(R::Recurrence) = R.space
-rangespace(R::Recurrence) = R.space
+
+rangespace(R::Recurrence{1,KoornwinderTriangle}) = R.space
+rangespace(R::Recurrence{2,KoornwinderTriangle}) =
+    KoornwinderTriangle(R.space.α,R.space.β-1,R.space.γ)
 
 function getindex{T}(R::Recurrence{1,KoornwinderTriangle,T},n::Integer,j::Integer)
     α,β,γ=R.space.α,R.space.β,R.space.γ
@@ -265,6 +269,29 @@ function getindex{T}(R::Recurrence{1,KoornwinderTriangle,T},n::Integer,j::Intege
         for k=1:j
             ret[k,k]=((1 + j - k)*(j + k + α + β + γ))/((2 + 2*(-1 + j) + α + β + γ)*(3 + 2*(-1 + j) + α + β + γ))
         end
+    end
+    ret
+end
+
+function getindex{T}(R::Recurrence{2,KoornwinderTriangle,T},n::Integer,j::Integer)
+    α,β,γ=R.space.α,R.space.β,R.space.γ
+
+    if n==j
+        ret=BandedMatrix(T,n,j,1,0)
+        for k=1:n
+            ret[k,k]=(k-1+β)*(n+k+β+γ-1)/((2k-1+β+γ)*(2n+α+β+γ))
+        end
+        for k=1:n-1
+            ret[k+1,k]=-k*(n-k+α)/((2k-1+β+γ)*(2n+α+β+γ))
+        end
+    elseif n==j+1
+        ret=BandedMatrix(T,n,j,1,0)
+        for k=1:j
+            ret[k,k]=-(k-1+β)*(j-k+1)/((2k-1+β+γ)*(2j+α+β+γ))
+            ret[k+1,k]=k*(j+k+α+β+γ)/((2k-1+β+γ)*(2j+α+β+γ))
+        end
+    else
+        ret=bzeros(T,n,j,0,0)
     end
     ret
 end
