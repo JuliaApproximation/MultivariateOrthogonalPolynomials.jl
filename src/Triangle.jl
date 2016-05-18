@@ -233,3 +233,38 @@ function getindex(C::ConcreteConversion{KoornwinderTriangle,KoornwinderTriangle}
 
     ret
 end
+
+
+
+## Jacobi Operators
+
+# x is 1, 2, ... for x, y, z,...
+immutable Recurrence{x,S,T} <: TridiagonalOperator{BandedMatrix{T}}
+    space::S
+end
+
+Recurrence(k::Integer,sp) = Recurrence{k,typeof(sp),promote_type(eltype(sp),eltype(domain(sp)))}(sp)
+Base.convert{x,T,S}(::Type{BandedOperator{BandedMatrix{T}}},J::Recurrence{x,S}) = Recurrence{x,S,T}(J.space)
+
+domainspace(R::Recurrence) = R.space
+rangespace(R::Recurrence) = R.space
+
+function getindex{T}(R::Recurrence{1,KoornwinderTriangle,T},n::Integer,j::Integer)
+    α,β,γ=R.space.α,R.space.β,R.space.γ
+    ret=BandedMatrix(T,n,j,0,0)
+    if n==j
+        for k=1:n
+            ret[k,k]=(-2k^2 + 2n^2 - 2k*(-1 + β + γ) + (1 + α)*(-1 + α + β + γ) + 2n*(α + β + γ))/
+                    ((-1 + 2n + α + β + γ)*(1 + 2n + α + β + γ))
+        end
+    elseif n==j-1
+        for k=1:n
+            ret[k,k]=((1 - k + n + α)*(k + n + β + γ))/((1 + 2n + α + β + γ)*(2 + 2n + α + β + γ))
+        end
+    elseif n==j+1
+        for k=1:j
+            ret[k,k]=((1 + j - k)*(j + k + α + β + γ))/((2 + 2*(-1 + j) + α + β + γ)*(3 + 2*(-1 + j) + α + β + γ))
+        end
+    end
+    ret
+end

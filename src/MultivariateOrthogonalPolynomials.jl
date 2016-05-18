@@ -19,7 +19,7 @@ import ApproxFun:    bandinds,SpaceOperator, ConversionWrapper, DerivativeWrappe
                   DiagonalArrayOperator, Recurrence, FiniteFunctional, choosedomainspace,
                     Dirichlet, Neumann, Laplacian, ConstantTimesOperator, Conversion, isfunctional,
                     dirichlet, neumann, Derivative, ConcreteMultiplication, ConcreteConversion, ConcreteLaplacian,
-                    ConcreteDerivative, TimesOperator, MultiplicationWrapper
+                    ConcreteDerivative, TimesOperator, MultiplicationWrapper, TridiagonalOperator
 
 
 # Spaces import
