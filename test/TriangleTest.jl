@@ -1,5 +1,5 @@
 using FixedSizeArrays,Plots,BandedMatrices,ApproxFun,MultivariateOrthogonalPolynomials, Base.Test
-
+import MultivariateOrthogonalPolynomials: Recurrence
 
 K=KoornwinderTriangle(0,0,0)
 
@@ -42,3 +42,19 @@ D=Derivative(space(f),[0,2])
 
 D=Derivative(space(f),[2,0])
 @test_approx_eq_eps (D*f)(0.1,0.2) ((x,y)->cos(y)^2*exp(x*cos(y)))(0.1,0.2)  1000000eps()
+
+
+
+## Recurrence
+
+
+
+S=KoornwinderTriangle(1,1,1)
+
+Mx=Recurrence(1,S)
+My=Recurrence(2,S)
+f=Fun((x,y)->exp(x*sin(y)),S)
+
+@test_approx_eq (Mx*f)(0.1,0.2) 0.1*f(0.1,0.2)
+@test_approx_eq (My*f)(0.1,0.2) 0.2*f(0.1,0.2)
+@test_approx_eq ((Mx+My)*f)(0.1,0.2) 0.3*f(0.1,0.2)
