@@ -203,7 +203,7 @@ function getindex(C::ConcreteConversion{KoornwinderTriangle,KoornwinderTriangle}
                 end
             end
         else
-            ret=bzeros(k,j,0,0)
+            ret=bzeros(n,j,0,0)
         end
     elseif K2.α==α && K2.β==β && K2.γ==γ+1
         if n==j
@@ -255,7 +255,7 @@ rangespace(R::Recurrence{2,KoornwinderTriangle}) =
 
 function getindex{T}(R::Recurrence{1,KoornwinderTriangle,T},n::Integer,j::Integer)
     α,β,γ=R.space.α,R.space.β,R.space.γ
-    ret=BandedMatrix(T,n,j,0,0)
+    ret=bzeros(T,n,j,0,0)
     if n==j
         for k=1:n
             ret[k,k]=(-2k^2 + 2n^2 - 2k*(-1 + β + γ) + (1 + α)*(-1 + α + β + γ) + 2n*(α + β + γ))/
