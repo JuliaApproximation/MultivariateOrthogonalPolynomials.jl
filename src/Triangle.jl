@@ -210,19 +210,18 @@ function getindex(C::ConcreteConversion{KoornwinderTriangle,KoornwinderTriangle}
             ret=bzeros(n,j,0,1)
 
             for k=1:size(ret,1)
-                ret[k,k]  += (n+k+α+β+γ)/(2n+α+β+γ)*(k+β+γ)/(2k+β+γ-1)
-                if k+1 ≤ size(ret,2)
-                    ret[k,k+1]-= (k+β)/(2k+β+γ+1)*(n-k)/(2n+α+β+γ)
-                end
+                ret[k,k]  = (n+k+α+β+γ)/(2n+α+β+γ)*(k+β+γ)/(2k+β+γ-1)
             end
+            for k=1:size(ret,1)-1
+                ret[k,k+1]= (k+β)/(2k+β+γ+1)*(n-k)/(2n+α+β+γ)
+            end
+
         elseif j==n+1
             ret=bzeros(n,j,0,1)
 
             for k=1:size(ret,1)
-                ret[k,k]  -= (n-k+α+1)/(2n+α+β+γ+2)*(k+β+γ)/(2k+β+γ-1)
-                if k+1 ≤ size(ret,2)
-                    ret[k,k+1]+= (k+β)/(2k+β+γ+1)*(n+k+β+γ+1)/(2n+α+β+γ+2)
-                end
+                ret[k,k]  = -(n-k+α+1)/(2n+α+β+γ+2)*(k+β+γ)/(2k+β+γ-1)
+                ret[k,k+1]= -(k+β)/(2k+β+γ+1)*(n+k+β+γ+1)/(2n+α+β+γ+2)
             end
         else
             ret=bzeros(n,j,0,0)

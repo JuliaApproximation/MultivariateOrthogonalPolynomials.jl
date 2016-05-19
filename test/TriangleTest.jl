@@ -10,6 +10,18 @@ f=Fun((x,y)->exp(x*cos(y)),KoornwinderTriangle(1,1,1))
 
 K=KoornwinderTriangle(0,0,0)
 
+f=Fun([1.],K)
+@test_approx_eq Fun(f,KoornwinderTriangle(0,0,1))(0.1,0.2) f(0.1,0.2)
+f=Fun([0.,1.],K)
+@test_approx_eq Fun(f,KoornwinderTriangle(0,0,1))(0.1,0.2) f(0.1,0.2)
+f=Fun([0.,0.,1.],K)
+@test_approx_eq Fun(f,KoornwinderTriangle(0,0,1))(0.1,0.2) f(0.1,0.2)
+f=Fun([0.,0.,0.,1.],K)
+@test_approx_eq Fun(f,KoornwinderTriangle(0,0,1))(0.1,0.2) f(0.1,0.2)
+f=Fun([0.,0.,0.,0.,1.],K)
+@test_approx_eq Fun(f,KoornwinderTriangle(0,0,1))(0.1,0.2) f(0.1,0.2)
+
+
 f=Fun((x,y)->exp(x*cos(y)),K)
 @test_approx_eq f(0.1,0.2) ((x,y)->exp(x*cos(y)))(0.1,0.2)
 @test_approx_eq Fun(f,KoornwinderTriangle(1,0,0))(0.1,0.2) ((x,y)->exp(x*cos(y)))(0.1,0.2)
@@ -20,12 +32,7 @@ f=Fun((x,y)->exp(x*cos(y)),K)
 
 
 
-f=Fun([1.],K)
-@test_approx_eq Fun(f,KoornwinderTriangle(0,0,1))(0.1,0.2) f(0.1,0.2)
-f=Fun([0.,1.],K)
-@test_approx_eq Fun(f,KoornwinderTriangle(0,0,1))(0.1,0.2) f(0.1,0.2)
-f=Fun([0.,0.,1.],K)
-@test_approx_eq Fun(f,KoornwinderTriangle(0,0,1))(0.1,0.2) f(0.1,0.2)
+
 
 
 
