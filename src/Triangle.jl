@@ -87,19 +87,26 @@ function clenshaw2D(Jx,Jy,cfs,x,y)
     bk1=zeros(n+1)
     bk2=zeros(n+2)
 
-    A1=Jx[n+2,n+1]
-    A2=Jy[n+2,n+1]
+    A=[Jx[n+2,n+1] Jy[n+2,n+1]]
+
+    Abk1=A\bk2
+
+    Abk1x=Abk1[1:n+1]
+    Abk1y=Abk1[n+2:end]
+
 
     for n=length(cfs):-1:1
-        A1,Ap1=Jx[n+1,n],A1
-        A2,Ap2=Jy[n+1,n],A2
-        B1=Jx[n,n]
-        B2=Jy[n,n]
-        C1=Jx[n,n+1]
-        C2=Jy[n,n+1]
+        A,Ap=[sparse(Jx[n+1,n]) sparse(Jy[n+1,n])],A
+        Bx,By=Jx[n,n],Jy[n,n]
+        Cx,Cy=Jx[n,n+1],Jy[n,n+1]
 
-        bk1,bk2=cfs[n] + ([diagm(fill(x,n)) diagm(fill(y,n))]-[B1 B2])*([A1 A2]\bk1) -
-            [C1 C2]*([Ap1 Ap2]\bk2),bk1
+        Abk1=A\bk1
+
+        Abk1x,Abk2x=Abk1[1:n],Abk1x
+        Abk1y,Abk2y=Abk1[n+1:end],Abk1y
+
+        bk1,bk2=cfs[n] + x*Abk1x + y*Abk1y - Bx*Abk1x - By*Abk1y -
+            Cx*Abk2x - Cy*Abk2y,bk1
     end
     bk1[1]
 end
