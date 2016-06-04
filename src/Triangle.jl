@@ -82,6 +82,33 @@ evaluate(f::AbstractVector,K::KoornwinderTriangle,x...) =
     evaluate(coefficients(f,K,ProductTriangle(K)),ProductTriangle(K),x...)
 
 
+function clenshaw2D(Jx,Jy,cfs,x,y)
+    n=length(cfs)
+    bk1=zeros(n+1)
+    bk2=zeros(n+2)
+
+    A1=Jx[n+2,n+1]
+    A2=Jy[n+2,n+1]
+
+    for n=length(cfs):-1:1
+        A1,Ap1=Jx[n+1,n],A1
+        A2,Ap2=Jy[n+1,n],A2
+        B1=Jx[n,n]
+        B2=Jy[n,n]
+        C1=Jx[n,n+1]
+        C2=Jy[n,n+1]
+
+        bk1,bk2=cfs[n] + ([diagm(fill(x,n)) diagm(fill(y,n))]-[B1 B2])*([A1 A2]\bk1) -
+            [C1 C2]*([Ap1 Ap2]\bk2),bk1
+    end
+    bk1[1]
+end
+
+clenshaw(f::Fun{KoornwinderTriangle},x,y) =
+    clenshaw2D(Recurrence(1,space(f)),Recurrence(2,space(f))↦space(f),
+                    totree(f.coefficients),x,y)
+
+
 # Operators
 
 

@@ -35,7 +35,7 @@ import ApproxFun: PolynomialSpace,ConstantSpace,
 # Multivariate import
 import ApproxFun: BivariateDomain,DirectSumSpace,TupleSpace, AbstractProductSpace,
                     BivariateFun,  ProductFun, LowRankFun, lap, columnspace, diagop, isproductop, discretize,
-                    schurfact, kronfact, isdiagop, blockbandinds, fromtensor, totensor
+                    schurfact, kronfact, isdiagop, blockbandinds, fromtensor, totensor, totree
 
 
 # Jacobi import
