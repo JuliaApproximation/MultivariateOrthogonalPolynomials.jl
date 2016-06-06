@@ -1,6 +1,16 @@
 export Triangle,KoornwinderTriangle
 
 
+function BandedMatrices.bzeros{BM<:BandedMatrix}(S::ApproxFun.SubBandedMatrix{BM})
+    kr,jr=parentindexes(S)
+    ret=BandedMatrix(eltype(S),length(kr),length(jr),bandwidth(S,1),bandwidth(S,2))
+    for (k,j) in BandedMatrices.eachbandedindex(ret)
+        ret[k,j]=bzeros(eltype(eltype(S)),kr[k],jr[j],0,0)
+    end
+    ret
+end
+
+
 
 ## Triangle Def
 # currently right trianglel
@@ -19,7 +29,8 @@ checkpoints(d::Triangle)=[fromcanonical(d,(.1,.2243));fromcanonical(d,(-.212423,
 # P_{n-k}^{2k+β+γ+1,α}(2x-1)*(1-x)^k*P_k^{γ,β}(2y/(1-x)-1)
 
 
-immutable ProductTriangle <: AbstractProductSpace{Tuple{WeightedJacobi{Interval{Float64}},Jacobi{Float64,Interval{Float64}}},Float64,2}
+immutable ProductTriangle <: AbstractProductSpace{Tuple{WeightedJacobi{Float64,Interval{Float64}},
+                                                        Jacobi{Float64,Interval{Float64}}},Float64,2}
     α::Float64
     β::Float64
     γ::Float64
@@ -85,7 +96,7 @@ function clenshaw2D(Jx,Jy,cfs,x,y)
     bk1=zeros(n+1)
     bk2=zeros(n+2)
 
-    A=[Jx[n+2,n+1] Jy[n+2,n+1]]
+    A=[sparse(Jx[n+2,n+1]) sparse(Jy[n+2,n+1])]
 
     Abk1x=zeros(n+1)
     Abk1y=zeros(n+1)

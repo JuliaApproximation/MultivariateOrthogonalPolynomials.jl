@@ -16,7 +16,7 @@ f=Fun([1.],Interval()^2)
 f=Fun([1.],Disk())
 @test_approx_eq f(0.1,0.2) 1.
 
-f=ProductFun(Fun([0.,1.]+0.im,Disk()))
+f=ProductFun(Fun([0.,1.]+0.0im,Disk()))
 x,y=0.1,0.2
 r,θ=sqrt(x^2+y^2),atan2(y,x)
 @test_approx_eq exp(-im*θ)*r f(x,y)
