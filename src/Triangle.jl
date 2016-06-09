@@ -129,10 +129,10 @@ clenshaw(f::Fun{KoornwinderTriangle},x,y) = clenshaw(f.coefficients,f.space,x,y)
 #     evaluate(coefficients(f,K,ProductTriangle(K)),ProductTriangle(K),x...)
 
 evaluate(f::AbstractVector,K::KoornwinderTriangle,x,y) =
-    clenshaw(f.coefficients,f.space,x,y)
+    clenshaw(f,K,x,y)
 
 evaluate(f::AbstractVector,K::KoornwinderTriangle,x) =
-    clenshaw(f.coefficients,f.space,x...)
+    clenshaw(f,K,x...)
 
 # Operators
 
