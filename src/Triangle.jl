@@ -23,6 +23,8 @@ fromcanonical(::Triangle,s,t)=s,(1-s)*t
 tocanonical(::Triangle,x,y)=x,y/(1-x)
 checkpoints(d::Triangle)=[fromcanonical(d,(.1,.2243));fromcanonical(d,(-.212423,-.3))]
 
+∂(d::Triangle) = PiecewiseInterval([(0.,0.),(1.,0.),(0.,1.),(0.,0.)])
+
 # expansion in OPs orthogonal to
 # x^α*y^β*(1-x-y)^γ
 # defined as

@@ -57,7 +57,7 @@ evaluate(f::AbstractVector,sp::WeightedSquare,x)=x.^sp.m.*evaluate(f,sp.space,x.
 
 # Override JacobiWeight default
 function Multiplication{DD}(f::Fun{JacobiWeight{Chebyshev{DD},DD}},ds::WeightedSquare)
-    @assert length(f)==1
+    @assert ncoefficients(f)==1
     @assert f.space.α ==0.
     @assert isinteger(f.space.β)
     rs=WeightedSquare(ds.m+round(Int,f.space.β),ds.space)
