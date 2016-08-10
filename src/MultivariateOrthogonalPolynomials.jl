@@ -25,7 +25,7 @@ import ApproxFun:    bandinds,SpaceOperator, ConversionWrapper, DerivativeWrappe
 # Spaces import
 import ApproxFun: PolynomialSpace,ConstantSpace,
                     SumSpace,PiecewiseSpace, ArraySpace,RealBasis,ComplexBasis,AnyBasis,
-                    UnsetSpace, AnySpace, canonicalspace, domain, evaluate,
+                    UnsetSpace, canonicalspace, domain, evaluate,
                     AnyDomain, plan_transform,plan_itransform,
                     transform,itransform,transform!,itransform!,
                     isambiguous, fromcanonical, tocanonical, checkpoints, ∂, spacescompatible,
