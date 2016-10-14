@@ -1,9 +1,31 @@
-using FixedSizeArrays,Plots,BandedMatrices,ApproxFun,MultivariateOrthogonalPolynomials, Base.Test
+using FixedSizeArrays,Plots,BandedMatrices,
+    ApproxFun,MultivariateOrthogonalPolynomials, Base.Test
 
 import MultivariateOrthogonalPolynomials: Recurrence, ProductTriangle, clenshaw
 
+pf=ProductFun((x,y)->exp(x*cos(y)),ProductTriangle(1,1,1))
+@test_approx_eq pf(0.1,0.2) exp(0.1*cos(0.2))
+
 f=Fun((x,y)->exp(x*cos(y)),KoornwinderTriangle(1,1,1))
 @test_approx_eq f(0.1,0.2) ((x,y)->exp(x*cos(y)))(0.1,0.2)
+
+ApproxFun.block(ApproxFun.tensorizer(KoornwinderTriangle(1,1,1)),length(f.coefficients))
+ApproxFun.blockrange(ApproxFun.tensorizer(KoornwinderTriangle(1,1,1)),120)
+
+full(ApproxFun.RaggedMatrix(pad(f.coefficients,sum(1:15)),Int[1;1+cumsum(1:15)],15))
+
+cumsum(1:1)
+
+Fun(pf)(0.1,0.2)
+
+ApproxFun.tensorizer(ProductTriangle(1,1,1))
+
+
+import ApproxFun: ∞
+it=ApproxFun.TensorIterator((∞,∞))
+
+C=rand(10,10)
+ApproxFun.fromtensor(it,(C.'))
 
 
 @profile clenshaw(f,0.1,0.2)

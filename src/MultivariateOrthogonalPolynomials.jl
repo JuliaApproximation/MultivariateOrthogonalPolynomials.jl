@@ -10,7 +10,7 @@ importall ApproxFun
 # ApproxFun general import
 import ApproxFun: BandedMatrix,order,
                   linesum,complexlength,
-                  real, eps, isapproxinteger
+                  real, eps, isapproxinteger, ∞
 
 # Operator import
 import ApproxFun:    bandinds,SpaceOperator, ConversionWrapper, DerivativeWrapper,
@@ -35,7 +35,8 @@ import ApproxFun: PolynomialSpace,ConstantSpace,
 # Multivariate import
 import ApproxFun: BivariateDomain,DirectSumSpace,TupleSpace, AbstractProductSpace,
                     BivariateFun,  ProductFun, LowRankFun, lap, columnspace, diagop, isproductop, discretize,
-                    schurfact, kronfact, isdiagop, blockbandinds, fromtensor, totensor, totree
+                    schurfact, kronfact, isdiagop, blockbandinds, fromtensor, totensor, totree,
+                    TensorIterator, tensorizer
 
 
 # Jacobi import
@@ -43,10 +44,6 @@ import ApproxFun: jacobip, JacobiSD
 
 
 
-
-
-include("JacobiSquare.jl")
-include("DiskSpace.jl")
 include("Triangle.jl")
 
 include("plot.jl")

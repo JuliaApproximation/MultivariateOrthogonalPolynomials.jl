@@ -1,15 +1,6 @@
 export Triangle,KoornwinderTriangle
 
 
-function BandedMatrices.bzeros{BM<:BandedMatrix}(S::ApproxFun.SubBandedMatrix{BM})
-    kr,jr=parentindexes(S)
-    ret=BandedMatrix(eltype(S),length(kr),length(jr),bandwidth(S,1),bandwidth(S,2))
-    for (k,j) in BandedMatrices.eachbandedindex(ret)
-        ret[k,j]=bzeros(eltype(eltype(S)),kr[k],jr[j],0,0)
-    end
-    ret
-end
-
 
 
 ## Triangle Def
@@ -51,15 +42,19 @@ ProductTriangle(K::KoornwinderTriangle) = ProductTriangle(K.α,K.β,K.γ,K.domai
 
 for TYP in (:ProductTriangle,:KoornwinderTriangle)
     @eval begin
-        $TYP(α,β,γ)=$TYP(α,β,γ,Triangle())
-        $TYP(T::Triangle)=$TYP(0.,0.,0.,T)
-        spacescompatible(K1::$TYP,K2::$TYP)=K1.α==K2.α && K1.β==K2.β && K1.γ==K2.γ
+        $TYP(α,β,γ) = $TYP(α,β,γ,Triangle())
+        $TYP(T::Triangle) = $TYP(0.,0.,0.,T)
+        spacescompatible(K1::$TYP,K2::$TYP) =
+            K1.α==K2.α && K1.β==K2.β && K1.γ==K2.γ
     end
 end
 
 
 
-Space(T::Triangle)=KoornwinderTriangle(T)
+Space(T::Triangle) = KoornwinderTriangle(T)
+
+tensorizer(K::KoornwinderTriangle) = TensorIterator((∞,∞))
+tensorizer(K::ProductTriangle) = TensorIterator((∞,∞))
 
 
 
@@ -71,24 +66,25 @@ function space(T::ProductTriangle,k::Integer)
     Jacobi(T.γ,T.β,Interval(0.,1.))
 end
 
-columnspace(T::ProductTriangle,k::Integer)=JacobiWeight(0.,k-1.,Jacobi(2k-1+T.β+T.γ,T.α,Interval(0.,1.)))
+columnspace(T::ProductTriangle,k::Integer) =
+    JacobiWeight(0.,k-1.,Jacobi(2k-1+T.β+T.γ,T.α,Interval(0.,1.)))
 
 
 # convert coefficients
 
 Fun(f::Function,S::KoornwinderTriangle) =
-    Fun(Fun(f,ProductTriangle(S)),S)
+    Fun(Fun(ProductFun(f,ProductTriangle(S))),S)
 
 function coefficients(f::AbstractVector,K::KoornwinderTriangle,P::ProductTriangle)
-    C=totensor(f)
+    C=totensor(K,f)
     D=Float64[2.0^(-k) for k=0:size(C,1)-1]
-    fromtensor((C.')*diagm(D))
+    fromtensor(K,(C.')*diagm(D))
 end
 
 function coefficients(f::AbstractVector,K::ProductTriangle,P::KoornwinderTriangle)
-    C=totensor(f)
+    C=totensor(K,f)
     D=Float64[2.0^(k) for k=0:size(C,1)-1]
-    fromtensor((C*diagm(D)).')
+    fromtensor(P,(C*diagm(D)).')
 end
 
 
@@ -155,9 +151,13 @@ function Derivative(K::KoornwinderTriangle,order::Vector{Int})
 end
 
 
-rangespace(D::ConcreteDerivative{KoornwinderTriangle})=KoornwinderTriangle(D.space.α+D.order[1],D.space.β+D.order[2],D.space.γ+sum(D.order),domain(D))
-bandinds(D::ConcreteDerivative{KoornwinderTriangle})=0,sum(D.order)
-blockbandinds(D::ConcreteDerivative{KoornwinderTriangle},k::Integer)=k==0?0:sum(D.order)
+rangespace(D::ConcreteDerivative{KoornwinderTriangle}) =
+    KoornwinderTriangle(D.space.α+D.order[1],
+                        D.space.β+D.order[2],
+                        D.space.γ+sum(D.order),
+                        domain(D))
+bandinds(D::ConcreteDerivative{KoornwinderTriangle}) = 0,sum(D.order)
+blockbandinds(D::ConcreteDerivative{KoornwinderTriangle},k::Integer) = k==0 ? 0 : sum(D.order)
 
 function getindex(D::ConcreteDerivative{KoornwinderTriangle},n::Integer,j::Integer)
     K=domainspace(D)
@@ -292,12 +292,12 @@ end
 ## Jacobi Operators
 
 # x is 1, 2, ... for x, y, z,...
-immutable Recurrence{x,S,T} <: TridiagonalOperator{BandedMatrix{T}}
+immutable Recurrence{x,S,T} <: Operator{T}
     space::S
 end
 
 Recurrence(k::Integer,sp) = Recurrence{k,typeof(sp),promote_type(eltype(sp),eltype(domain(sp)))}(sp)
-Base.convert{x,T,S}(::Type{BandedOperator{BandedMatrix{T}}},J::Recurrence{x,S}) = Recurrence{x,S,T}(J.space)
+Base.convert{x,T,S}(::Type{Operator{T}},J::Recurrence{x,S}) = Recurrence{x,S,T}(J.space)
 
 
 domainspace(R::Recurrence) = R.space
