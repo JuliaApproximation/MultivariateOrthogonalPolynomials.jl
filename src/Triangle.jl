@@ -179,37 +179,43 @@ rangespace(D::ConcreteDerivative{KoornwinderTriangle}) =
                         D.space.β+D.order[2],
                         D.space.γ+sum(D.order),
                         domain(D))
-bandinds(D::ConcreteDerivative{KoornwinderTriangle}) = 0,sum(D.order)
-blockbandinds(D::ConcreteDerivative{KoornwinderTriangle},k::Integer) = k==0 ? 0 : sum(D.order)
 
-function getindex(D::ConcreteDerivative{KoornwinderTriangle},n::Integer,j::Integer)
-    K=domainspace(D)
-    α,β,γ = K.α,K.β,K.γ
+
+isbandedblockbanded(::ConcreteDerivative{KoornwinderTriangle}) = true
+
+domaintensorizer(R::ConcreteDerivative{KoornwinderTriangle}) = tensorizer(domainspace(R))
+rangetensorizer(R::ConcreteDerivative{KoornwinderTriangle}) = tensorizer(rangespace(R))
+
+blockbandinds(D::ConcreteDerivative{KoornwinderTriangle}) = 0,sum(D.order)
+subblockbandinds(D::ConcreteDerivative{KoornwinderTriangle}) = (0,sum(D.order))
+subblockbandinds(D::ConcreteDerivative{KoornwinderTriangle},k::Integer) = k==1 ? 0 : sum(D.order)
+
+function getindex(D::ConcreteDerivative{KoornwinderTriangle},k::Integer,j::Integer)
+    T=eltype(D)
+    S=domainspace(D)
+    α,β,γ = S.α,S.β,S.γ
+    K=block(rangespace(D),k)
+    J=block(S,j)
+    κ=k-blockstart(rangespace(D),K)+1
+    ξ=j-blockstart(S,J)+1
+
     if D.order==[0,1]
-        if j==n+1
-            ret=bzeros(n,j,0,1)
-
-            for k=1:size(ret,1)
-                ret[k,k+1]+=(1+k+β+γ)
-            end
+        if J==K+1 && κ+1 == ξ
+            T(1+κ+β+γ)
         else
-            ret=bzeros(n,j,0,0)
+            zero(T)
         end
     elseif D.order==[1,0]
-        if j==n+1
-            ret=bzeros(n,j,0,1)
-
-            for k=1:size(ret,1)
-                ret[k,k]+=(1+k+n+α+β+γ)*(k+γ+β)/(2k+γ+β-1)
-                ret[k,k+1]+=(k+β)*(k+n+γ+β+1)/(2k+γ+β+1)
-            end
+        if J == K+1 && κ == ξ
+            T((1+κ+K+α+β+γ)*(κ+γ+β)/(2κ+γ+β-1))
+        elseif J == K+1 && κ+1 == ξ
+            T((κ+β)*(κ+K+γ+β+1)/(2κ+γ+β+1))
         else
-            ret=bzeros(n,j,0,0)
+            zero(T)
         end
     else
         error("Not implemented")
     end
-    ret
 end
 
 

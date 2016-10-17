@@ -120,7 +120,7 @@ f=Fun((x,y)->exp(x*cos(y)),K)
 
 
 
-
+K=KoornwinderTriangle(0,0,0)
 f=Fun((x,y)->exp(x*cos(y)),K)
 D=Derivative(space(f),[1,0])
 @test_approx_eq_eps (D*f)(0.1,0.2) ((x,y)->cos(y)*exp(x*cos(y)))(0.1,0.2) 100000eps()
