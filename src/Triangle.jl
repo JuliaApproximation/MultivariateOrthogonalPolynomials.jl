@@ -1,8 +1,6 @@
 export Triangle,KoornwinderTriangle
 
 
-
-
 ## Triangle Def
 # currently right trianglel
 immutable Triangle <: BivariateDomain{Float64} end
@@ -37,6 +35,8 @@ immutable KoornwinderTriangle <: Space{RealBasis,Triangle,2}
     domain::Triangle
 end
 
+typealias TriangleSpace Union{ProductTriangle,KoornwinderTriangle}
+
 ProductTriangle(K::KoornwinderTriangle) = ProductTriangle(K.α,K.β,K.γ,K.domain)
 
 
@@ -53,10 +53,16 @@ end
 
 Space(T::Triangle) = KoornwinderTriangle(T)
 
-tensorizer(K::KoornwinderTriangle) = TensorIterator((∞,∞))
-tensorizer(K::ProductTriangle) = TensorIterator((∞,∞))
 
+# TODO: @tensorspace
+tensorizer(K::TriangleSpace) = TensorIterator((∞,∞))
 
+# we have each polynomial
+blocklengths(K::TriangleSpace) = 1:∞
+
+for OP in (:block,:blockstart,:blockstop)
+    @eval $OP(s::TriangleSpace,M) = $OP(tensorizer(s),M)
+end
 
 
 # support for ProductFun constructor
@@ -88,37 +94,54 @@ function coefficients(f::AbstractVector,K::ProductTriangle,P::KoornwinderTriangl
 end
 
 
-
+import ApproxFun:viewblock
 function clenshaw2D(Jx,Jy,cfs,x,y)
-    n=length(cfs)
-    bk1=zeros(n+1)
-    bk2=zeros(n+2)
+    N=length(cfs)
+    bk1=zeros(N+1)
+    bk2=zeros(N+2)
 
-    A=[sparse(Jx[n+2,n+1]) sparse(Jy[n+2,n+1])]
+    A=[sparse(viewblock(Jx,N+2,N+1)) sparse(viewblock(Jy,N+2,N+1))]
 
-    Abk1x=zeros(n+1)
-    Abk1y=zeros(n+1)
+    Abk1x=zeros(N+1)
+    Abk1y=zeros(N+1)
 
 
-    for n=length(cfs):-1:1
-        A,Ap=[sparse(Jx[n+1,n]) sparse(Jy[n+1,n])],A
-        Bx,By=Jx[n,n],Jy[n,n]
-        Cx,Cy=Jx[n,n+1],Jy[n,n+1]
+    for K=N:-1:1
+        A,Ap=[sparse(viewblock(Jx,K+1,K)) sparse(viewblock(Jy,K+1,K))],A
+        Bx,By=viewblock(Jx,K,K),viewblock(Jy,K,K)
+        Cx,Cy=viewblock(Jx,K,K+1),viewblock(Jy,K,K+1)
 
         Abk1=A\bk1
 
-        Abk1x,Abk2x=Abk1[1:n],Abk1x
-        Abk1y,Abk2y=Abk1[n+1:end],Abk1y
+        Abk1x,Abk2x=Abk1[1:K],Abk1x
+        Abk1y,Abk2y=Abk1[K+1:end],Abk1y
 
-        bk1,bk2=cfs[n] + x*Abk1x + y*Abk1y - Bx*Abk1x - By*Abk1y -
+        bk1,bk2=cfs[K] + x*Abk1x + y*Abk1y - Bx*Abk1x - By*Abk1y -
             Cx*Abk2x - Cy*Abk2y,bk1
     end
     bk1[1]
 end
 
-clenshaw(f::AbstractVector,K::KoornwinderTriangle,x,y) =
-    clenshaw2D(Recurrence(1,K),Recurrence(2,K)↦K,
-                    totree(f),x,y)
+# convert to vector of coefficients
+# TODO: replace with RaggedMatrix
+function totree(S,f::Vector)
+    N=block(S,length(f))
+    ret = Array(Vector{eltype(f)},N)
+    for K=1:N-1
+        ret[K]=f[blockrange(S,K)]
+    end
+    ret[N]=pad(f[blockstart(S,N):end],N)
+    ret
+end
+
+function clenshaw(f::AbstractVector,S::KoornwinderTriangle,x,y)
+    N = block(S,length(f))
+    n = blockstop(S,N+2)
+    m = blockstop(S,N+1)
+    clenshaw2D((Recurrence(1,S))[1:n,1:m],
+                (Recurrence(2,S)↦S)[1:n,1:m],
+                    totree(S,f),x,y)
+end
 
 clenshaw(f::Fun{KoornwinderTriangle},x,y) = clenshaw(f.coefficients,f.space,x,y)
 
@@ -220,71 +243,65 @@ function Conversion(K1::KoornwinderTriangle,K2::KoornwinderTriangle)
         error("There is a bug")
     end
 end
-bandinds(C::ConcreteConversion{KoornwinderTriangle,KoornwinderTriangle})=(0,1)
-blockbandinds(C::ConcreteConversion{KoornwinderTriangle,KoornwinderTriangle},k::Integer)=k==1?0:1
 
 
-function getindex(C::ConcreteConversion{KoornwinderTriangle,KoornwinderTriangle},n::Integer,j::Integer)
+isbandedblockbanded(::ConcreteConversion{KoornwinderTriangle,KoornwinderTriangle}) = true
+
+
+blockbandinds(C::ConcreteConversion{KoornwinderTriangle,KoornwinderTriangle}) = (0,1)
+
+subblockbandinds(C::ConcreteConversion{KoornwinderTriangle,KoornwinderTriangle}) = (0,1)
+subblockbandinds(C::ConcreteConversion{KoornwinderTriangle,KoornwinderTriangle},k::Integer) = k==1?0:1
+
+
+domaintensorizer(R::ConcreteConversion{KoornwinderTriangle,KoornwinderTriangle}) = tensorizer(domainspace(R))
+rangetensorizer(R::ConcreteConversion{KoornwinderTriangle,KoornwinderTriangle}) = tensorizer(rangespace(R))
+
+
+
+function getindex{T}(C::ConcreteConversion{KoornwinderTriangle,KoornwinderTriangle,T},k::Integer,j::Integer)
     K1=domainspace(C);K2=rangespace(C)
     α,β,γ = K1.α,K1.β,K1.γ
-    if K2.α==α+1 && K2.β==β && K2.γ==γ
-        ret=bzeros(n,j,0,0)
-        if n==j
-            for k=1:size(ret,1)
-                ret[k,k]=(n+k+α+β+γ)/(2n+α+β+γ)
-            end
-        elseif j==n+1
-            for k=1:size(ret,1)
-                ret[k,k]=(n+k+β+γ)/(2n+α+β+γ+2)
-            end
+    K=block(K2,k)
+    J=block(K1,j)
+    κ=k-blockstart(K2,K)+1
+    ξ=j-blockstart(K1,J)+1
+
+    if K2.α == α+1 && K2.β == β && K2.γ == γ
+        if     K == J    && κ == ξ
+            T((K+κ+α+β+γ)/(2K+α+β+γ))
+        elseif J == K+1  && κ == ξ
+            T((K+κ+β+γ)/(2K+α+β+γ+2))
+        else
+            zero(T)
         end
     elseif K2.α==α && K2.β==β+1 && K2.γ==γ
-        if j==n
-            ret=bzeros(n,j,0,1)
-
-            for k=1:size(ret,1)
-                ret[k,k]  += (n+k+α+β+γ)/(2n+α+β+γ)*(k+β+γ)/(2k+β+γ-1)
-                if k+1 ≤ size(ret,2)
-                    ret[k,k+1]-= (k+γ)/(2k+β+γ+1)*(n-k)/(2n+α+β+γ)
-                end
-            end
-        elseif j==n+1
-            ret=bzeros(n,j,0,1)
-            for k=1:size(ret,1)
-                ret[k,k]  -= (n-k+α+1)/(2n+α+β+γ+2)*(k+β+γ)/(2k+β+γ-1)
-                if k+1 ≤ size(ret,2)
-                    ret[k,k+1]+= (k+γ)/(2k+β+γ+1)*(n+k+β+γ+1)/(2n+α+β+γ+2)
-                end
-            end
+        if     J == K   && κ == ξ
+            T((K+κ+α+β+γ)/(2K+α+β+γ)*(κ+β+γ)/(2κ+β+γ-1))
+        elseif J == K   && κ+1 == ξ
+            T(-(κ+γ)/(2κ+β+γ+1)*(K-κ)/(2K+α+β+γ))
+        elseif J == K+1 && κ == ξ
+            T(-(K-κ+α+1)/(2K+α+β+γ+2)*(κ+β+γ)/(2κ+β+γ-1))
+        elseif J == K+1 && κ+1 == ξ
+            T((κ+γ)/(2κ+β+γ+1)*(K+κ+β+γ+1)/(2K+α+β+γ+2))
         else
-            ret=bzeros(n,j,0,0)
+            zero(T)
         end
     elseif K2.α==α && K2.β==β && K2.γ==γ+1
-        if n==j
-            ret=bzeros(n,j,0,1)
-
-            for k=1:size(ret,1)
-                ret[k,k]  = (n+k+α+β+γ)/(2n+α+β+γ)*(k+β+γ)/(2k+β+γ-1)
-            end
-            for k=1:size(ret,1)-1
-                ret[k,k+1]= (k+β)/(2k+β+γ+1)*(n-k)/(2n+α+β+γ)
-            end
-
-        elseif j==n+1
-            ret=bzeros(n,j,0,1)
-
-            for k=1:size(ret,1)
-                ret[k,k]  = -(n-k+α+1)/(2n+α+β+γ+2)*(k+β+γ)/(2k+β+γ-1)
-                ret[k,k+1]= -(k+β)/(2k+β+γ+1)*(n+k+β+γ+1)/(2n+α+β+γ+2)
-            end
+        if K == J && κ == ξ
+            T((K+κ+α+β+γ)/(2K+α+β+γ)*(κ+β+γ)/(2κ+β+γ-1))
+        elseif K == J && κ+1 == ξ
+            T((κ+β)/(2κ+β+γ+1)*(K-κ)/(2K+α+β+γ))
+        elseif J == K+1 && κ == ξ
+            T(-(K-κ+α+1)/(2K+α+β+γ+2)*(κ+β+γ)/(2κ+β+γ-1))
+        elseif J == K+1 && κ+1 == ξ
+            T(-(κ+β)/(2κ+β+γ+1)*(K+κ+β+γ+1)/(2K+α+β+γ+2))
         else
-            ret=bzeros(n,j,0,0)
+            zero(T)
         end
     else
         error("Not implemented")
     end
-
-    ret
 end
 
 
@@ -302,49 +319,65 @@ Base.convert{x,T,S}(::Type{Operator{T}},J::Recurrence{x,S}) = Recurrence{x,S,T}(
 
 domainspace(R::Recurrence) = R.space
 
+isbandedblockbanded(::Recurrence{1,KoornwinderTriangle}) = true
+isbandedblockbanded(::Recurrence{2,KoornwinderTriangle}) = true
+
+blockbandinds(::Recurrence{1,KoornwinderTriangle}) = (-1,1)
+blockbandinds(::Recurrence{2,KoornwinderTriangle}) = (-1,0)
+
+subblockbandinds(::Recurrence{1,KoornwinderTriangle}) = (0,0)
+subblockbandinds(::Recurrence{2,KoornwinderTriangle}) = (-1,0)
+
+subblockbandinds(::Recurrence{1,KoornwinderTriangle},k::Integer) = 0
+subblockbandinds(::Recurrence{2,KoornwinderTriangle},k::Integer) = k==1? -1 : 0
+
+
+domaintensorizer(R::Recurrence{1,KoornwinderTriangle}) = tensorizer(domainspace(R))
+rangetensorizer(R::Recurrence{1,KoornwinderTriangle}) = tensorizer(rangespace(R))
+
+domaintensorizer(R::Recurrence{2,KoornwinderTriangle}) = tensorizer(domainspace(R))
+rangetensorizer(R::Recurrence{2,KoornwinderTriangle}) = tensorizer(rangespace(R))
+
+
 rangespace(R::Recurrence{1,KoornwinderTriangle}) = R.space
 rangespace(R::Recurrence{2,KoornwinderTriangle}) =
     KoornwinderTriangle(R.space.α,R.space.β-1,R.space.γ)
 
-function getindex{T}(R::Recurrence{1,KoornwinderTriangle,T},n::Integer,j::Integer)
+function getindex{T}(R::Recurrence{1,KoornwinderTriangle,T},k::Integer,j::Integer)
     α,β,γ=R.space.α,R.space.β,R.space.γ
-    ret=bzeros(T,n,j,0,0)
-    if n==j
-        for k=1:n
-            ret[k,k]=(-2k^2 + 2n^2 - 2k*(-1 + β + γ) + (1 + α)*(-1 + α + β + γ) + 2n*(α + β + γ))/
-                    ((-1 + 2n + α + β + γ)*(1 + 2n + α + β + γ))
-        end
-    elseif n==j-1
-        for k=1:n
-            ret[k,k]=((1 - k + n + α)*(k + n + β + γ))/((1 + 2n + α + β + γ)*(2 + 2n + α + β + γ))
-        end
-    elseif n==j+1
-        for k=1:j
-            ret[k,k]=((1 + j - k)*(j + k + α + β + γ))/((2 + 2*(-1 + j) + α + β + γ)*(3 + 2*(-1 + j) + α + β + γ))
-        end
+    K=block(rangespace(R),k)
+    J=block(domainspace(R),j)
+    κ=k-blockstart(rangespace(R),K)+1
+    ξ=j-blockstart(domainspace(R),J)+1
+
+    if K == J && κ == ξ
+        T((-2κ^2 + 2K^2 - 2κ*(-1 + β + γ) + (1 + α)*(-1 + α + β + γ) + 2K*(α + β + γ))/
+                    ((-1 + 2K + α + β + γ)*(1 + 2K + α + β + γ)))
+    elseif K==J-1 && κ == ξ
+        T(((1 - κ + K + α)*(κ + K + β + γ))/((1 + 2K + α + β + γ)*(2 + 2K + α + β + γ)))
+    elseif K==J+1 && κ == ξ
+        T(((1 + J - κ)*(J + κ + α + β + γ))/((2 + 2*(-1 + J) + α + β + γ)*(3 + 2*(-1 + J) + α + β + γ)))
+    else
+        zero(T)
     end
-    ret
 end
 
-function getindex{T}(R::Recurrence{2,KoornwinderTriangle,T},n::Integer,j::Integer)
+function getindex{T}(R::Recurrence{2,KoornwinderTriangle,T},k::Integer,j::Integer)
     α,β,γ=R.space.α,R.space.β,R.space.γ
+    K=block(rangespace(R),k)
+    J=block(domainspace(R),j)
+    κ=k-blockstart(rangespace(R),K)+1
+    ξ=j-blockstart(domainspace(R),J)+1
 
-    if n==j
-        ret=BandedMatrix(T,n,j,1,0)
-        for k=1:n
-            ret[k,k]=(k-1+β)*(n+k+β+γ-1)/((2k-1+β+γ)*(2n+α+β+γ))
-        end
-        for k=1:n-1
-            ret[k+1,k]=-k*(n-k+α)/((2k-1+β+γ)*(2n+α+β+γ))
-        end
-    elseif n==j+1
-        ret=BandedMatrix(T,n,j,1,0)
-        for k=1:j
-            ret[k,k]=-(k-1+β)*(j-k+1)/((2k-1+β+γ)*(2j+α+β+γ))
-            ret[k+1,k]=k*(j+k+α+β+γ)/((2k-1+β+γ)*(2j+α+β+γ))
-        end
+    if K==J && κ == ξ
+        T((κ-1+β)*(K+κ+β+γ-1)/((2κ-1+β+γ)*(2K+α+β+γ)))
+    elseif K==J && κ == ξ+1
+        T(-ξ*(K-ξ+α)/((2ξ-1+β+γ)*(2K+α+β+γ)))
+    elseif K==J+1 && κ == ξ
+        T(-(κ-1+β)*(J-κ+1)/((2κ-1+β+γ)*(2J+α+β+γ)))
+    elseif K==J+1 && κ == ξ+1
+        T(ξ*(J+ξ+α+β+γ)/((2ξ-1+β+γ)*(2J+α+β+γ)))
     else
-        ret=bzeros(T,n,j,0,0)
+        zero(T)
     end
-    ret
 end

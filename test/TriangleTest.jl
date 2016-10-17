@@ -1,35 +1,97 @@
 using FixedSizeArrays,Plots,BandedMatrices,
     ApproxFun,MultivariateOrthogonalPolynomials, Base.Test
 
-import MultivariateOrthogonalPolynomials: Recurrence, ProductTriangle, clenshaw
+import MultivariateOrthogonalPolynomials: Recurrence, ProductTriangle, clenshaw, block
+import ApproxFun: bandedblockbandedoperatortest
 
 pf=ProductFun((x,y)->exp(x*cos(y)),ProductTriangle(1,1,1))
 @test_approx_eq pf(0.1,0.2) exp(0.1*cos(0.2))
 
 f=Fun((x,y)->exp(x*cos(y)),KoornwinderTriangle(1,1,1))
-@test_approx_eq f(0.1,0.2) ((x,y)->exp(x*cos(y)))(0.1,0.2)
+@test_approx_eq f(0.1,0.2) exp(0.1*cos(0.2))
 
-ApproxFun.block(ApproxFun.tensorizer(KoornwinderTriangle(1,1,1)),length(f.coefficients))
-ApproxFun.blockrange(ApproxFun.tensorizer(KoornwinderTriangle(1,1,1)),120)
+# Test recurrence operators
+Jx=MultivariateOrthogonalPolynomials.Recurrence(1,space(f))
 
-full(ApproxFun.RaggedMatrix(pad(f.coefficients,sum(1:15)),Int[1;1+cumsum(1:15)],15))
+#bandedblockbandedoperatortest(Jx)
 
-cumsum(1:1)
+# Jx[1:5,1:5]|>full
+#
+# Jx[2:5,1:5]|>full
+#
+# S=view(Jx,2:5,1:5)
+#
+# kr,jr=parentindexes(S)
+# KO=parent(S)
+# l,u=ApproxFun.blockbandinds(KO)
+# λ,μ=ApproxFun.subblockbandinds(KO)
+#
+# rt=ApproxFun.rangetensorizer(KO)
+# dt=ApproxFun.domaintensorizer(KO)
+# ret=ApproxFun.bbbzeros(S)
+#
+# Bs=ApproxFun.viewblock(ret,2,2)
+# K=J=2
+# kshft=kr[1]+ApproxFun.blockstart(rt,K)-2
+# j=1
+#
+#
+# for J=1:ApproxFun.blocksize(ret,2)
+#     jshft=jr[1]+ApproxFun.blockstart(dt,J)-2
+#     for K=ApproxFun.blockcolrange(ret,J)
+#         Bs=ApproxFun.viewblock(ret,K,J)
+#         kshft=kr[1]+ApproxFun.blockstart(rt,K)-2
+#         for j=1:size(Bs,2),k=ApproxFun.colrange(Bs,j)
+#             @show K,J,k,j,k+kshft,j+jshft
+#             Bs[k,j]=KO[k+kshft,j+jshft]
+#         end
+#     end
+# end
 
-Fun(pf)(0.1,0.2)
-
-ApproxFun.tensorizer(ProductTriangle(1,1,1))
-
-
-import ApproxFun: ∞
-it=ApproxFun.TensorIterator((∞,∞))
-
-C=rand(10,10)
-ApproxFun.fromtensor(it,(C.'))
+@test ApproxFun.colstop(Jx,1) == 2
+@test ApproxFun.colstop(Jx,2) == 4
+@test ApproxFun.colstop(Jx,3) == 5
+@test ApproxFun.colstop(Jx,4) == 7
 
 
-@profile clenshaw(f,0.1,0.2)
-Profile.print()
+@test norm((Jx*f-Fun((x,y)->x*exp(x*cos(y)),KoornwinderTriangle(1,1,1))).coefficients) < 1E-11
+
+
+Jy=MultivariateOrthogonalPolynomials.Recurrence(2,space(f))
+@test isa(Jy[1:10,1:10],ApproxFun.BandedBlockBandedMatrix)
+@test_approx_eq Jy[3,1] 1/3
+
+@test ApproxFun.colstop(Jy,1) == 3
+@test ApproxFun.colstop(Jy,2) == 5
+@test ApproxFun.colstop(Jy,3) == 6
+@test ApproxFun.colstop(Jy,4) == 8
+
+@test norm((Jy*f-Fun((x,y)->y*exp(x*cos(y)),KoornwinderTriangle(1,0,1))).coefficients) < 1E-11
+
+pyf=ProductFun((x,y)->y*exp(x*cos(y)),ProductTriangle(1,0,1))
+@test_approx_eq pyf(0.1,0.2) 0.2exp(0.1*cos(0.2))
+
+
+
+
+
+C=ApproxFun.ConcreteConversion(KoornwinderTriangle(1,0,1),KoornwinderTriangle(1,1,1))
+@test eltype(C)==Float64
+norm((C*Fun((x,y)->exp(x*cos(y)),KoornwinderTriangle(1,0,1))-f).coefficients) < 1E-11
+C=ApproxFun.ConcreteConversion(KoornwinderTriangle(1,1,0),KoornwinderTriangle(1,1,1))
+norm((C*Fun((x,y)->exp(x*cos(y)),KoornwinderTriangle(1,1,0))-f).coefficients) < 1E-11
+C=ApproxFun.ConcreteConversion(KoornwinderTriangle(0,1,1),KoornwinderTriangle(1,1,1))
+norm((C*Fun((x,y)->exp(x*cos(y)),KoornwinderTriangle(0,1,1))-f).coefficients) < 1E-11
+
+
+Jy=MultivariateOrthogonalPolynomials.Recurrence(2,space(f))↦space(f)
+@test isa(Jy[1:10,1:10],ApproxFun.BandedBlockBandedMatrix)
+
+@test norm((Jy*f-Fun((x,y)->y*exp(x*cos(y)),KoornwinderTriangle(1,1,1))).coefficients) < 1E-10
+
+
+
+
 K=KoornwinderTriangle(0,0,0)
 
 f=Fun([1.],K)
@@ -91,7 +153,6 @@ f=Fun((x,y)->exp(x*sin(y)),S)
 @test_approx_eq_eps (My*f)(0.1,0.2) 0.2*f(0.1,0.2) 1E-12
 @test_approx_eq_eps ((Mx+My)*f)(0.1,0.2) 0.3*f(0.1,0.2) 1E-12
 
-Fun([0.,1.],S)
 
 Jx=Mx
 Jy=My ↦ S
@@ -105,8 +166,8 @@ P0=[Fun([1.],S)(x,y)]
 P1=Float64[Fun([zeros(k);1.],S)(x,y) for k=1:2]
 P2=Float64[Fun([zeros(k);1.],S)(x,y) for k=3:5]
 
-@test_approx_eq Jx[1,1]*P0+Jx[2,1]'*P1 x*P0
-@test_approx_eq Jy[1,1]*P0+Jy[2,1]'*P1 y*P0
+@test_approx_eq Jx[1:1,1:1]*P0+Jx[2:3,1:1]'*P1 x*P0
+@test_approx_eq Jy[1:1,1:1]*P0+Jy[2:3,1:1]'*P1 y*P0
 
 k=2
 @test_approx_eq Jx[k-1,k]'*P0+Jx[k,k]'*P1+Jx[k+1,k]'*P2 x*P1
@@ -193,13 +254,6 @@ n=1
 
 
 
-bk1
-
-
-P2
-cfs
 
 mult = ([diag(x*ones(n+1,1));diag(y*ones(n+1,1))] - [B1(n);B2(n)])';
 bk = cfs(1:n+1,n+1) + mult*([A1(n);A2(n)]'\bkp1) - [C1(n+1);C2(n+1)]'*([A1(n+1);A2(n+1)]'\bkp2);
-
-This is cocdde

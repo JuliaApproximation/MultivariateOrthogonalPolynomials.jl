@@ -10,14 +10,14 @@ importall ApproxFun
 # ApproxFun general import
 import ApproxFun: BandedMatrix,order,
                   linesum,complexlength,
-                  real, eps, isapproxinteger, ∞
+                  real, eps, isapproxinteger, ∞, FiniteRange
 
 # Operator import
 import ApproxFun:    bandinds,SpaceOperator, ConversionWrapper, DerivativeWrapper,
-                  rangespace, domainspace, addentries!, BandedOperator,
+                  rangespace, domainspace,
                   promotedomainspace,  CalculusOperator, interlace, Multiplication,
-                  DiagonalArrayOperator, Recurrence, FiniteFunctional, choosedomainspace,
-                    Dirichlet, Neumann, Laplacian, ConstantTimesOperator, Conversion, isfunctional,
+                   choosedomainspace,
+                    Dirichlet, Neumann, Laplacian, ConstantTimesOperator, Conversion,
                     dirichlet, neumann, Derivative, ConcreteMultiplication, ConcreteConversion, ConcreteLaplacian,
                     ConcreteDerivative, TimesOperator, MultiplicationWrapper, TridiagonalOperator
 
@@ -34,9 +34,10 @@ import ApproxFun: PolynomialSpace,ConstantSpace,
 
 # Multivariate import
 import ApproxFun: BivariateDomain,DirectSumSpace,TupleSpace, AbstractProductSpace,
-                    BivariateFun,  ProductFun, LowRankFun, lap, columnspace, diagop, isproductop, discretize,
-                    schurfact, kronfact, isdiagop, blockbandinds, fromtensor, totensor, totree,
-                    TensorIterator, tensorizer
+                    BivariateFun,  ProductFun, LowRankFun, lap, columnspace,
+                    blockbandinds, subblockbandinds, fromtensor, totensor, isbandedblockbanded,
+                    TensorIterator, tensorizer, block, blockstart, blockstop, blocklengths,
+                    domaintensorizer, rangetensorizer, blockrange
 
 
 # Jacobi import
