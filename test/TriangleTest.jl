@@ -222,10 +222,10 @@ A'
 
 
 L*U-A'|>norm
-Recurrence(2,KoornwinderTriangle(1.23,1.0321,2.21))
+Jy=Recurrence(2,KoornwinderTriangle(1.23,1.0321,2.21))↦KoornwinderTriangle(1.23,1.0321,2.21)
+Recurrence(2,KoornwinderTriangle(1.23,1.0321,2.21))|>rangespace
 
-
-[Block(3),Block(3)]|>full
+Jy[Block(3),Block(4)]|>full
 Recurrence(1,KoornwinderTriangle(1.23,1.0321,2.21))[Block(11),Block(12)]|>full
 
 A*Ai
