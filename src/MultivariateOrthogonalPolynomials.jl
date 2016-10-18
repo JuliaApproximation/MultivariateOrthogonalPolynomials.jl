@@ -43,6 +43,9 @@ import ApproxFun: BivariateDomain,DirectSumSpace,TupleSpace, AbstractProductSpac
 # Jacobi import
 import ApproxFun: jacobip, JacobiSD
 
+# Singularities
+import ApproxFun: WeightSpace, weight
+
 
 
 include("Triangle.jl")

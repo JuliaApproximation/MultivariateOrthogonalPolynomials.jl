@@ -387,3 +387,87 @@ function getindex{T}(R::Recurrence{2,KoornwinderTriangle,T},k::Integer,j::Intege
         zero(T)
     end
 end
+
+
+
+### Weighted
+
+immutable TriangleWeight{S} <: WeightSpace{S,RealBasis,Triangle,2}
+    α::Float64
+    β::Float64
+    γ::Float64
+    space::S
+end
+
+weight(S::TriangleWeight,x,y) = x.^S.α.*y.^S.β.*(1-x-y).^S.γ
+weight(S::TriangleWeight,xy) = weight(S,xy...)
+
+function Derivative(S::TriangleWeight,order)
+    if S.α == S.β == S.γ == 0
+        D=Derivative(S.space,order)
+        SpaceOperator(D,S,rangespace(D))
+    elseif order[2] == 0 && S.α == 0 && S.γ == 0
+        Dx = Derivative(S.space,order)
+        DerivativeWrapper(
+            SpaceOperator(Dx,S,TriangleWeight(S.α,S.β,S.γ,rangespace(Dx))),
+            order)
+    elseif order[1] == 0 && S.β == 0 && S.γ == 0
+        Dy = Derivative(S.space,order)
+        DerivativeWrapper(
+            SpaceOperator(Dy,S,TriangleWeight(S.α,S.β,S.γ,rangespace(Dx))),
+            order)
+    elseif order == [1,0] && S.α == 0
+        Dx = Derivative(S.space,order)
+        Jx = Recurrence(1,S.space)
+        Jy = Recurrence(2,S.space)
+        A = -S.γ*I + (I-Jx-Jy)*Dx
+        DerivativeWrapper(
+            SpaceOperator(A,S,TriangleWeight(S.α,S.β,S.γ-1,rangespace(A))),
+            order)
+    elseif order == [1,0] && S.γ == 0
+        Dx = Derivative(S.space,order)
+        Jx = Recurrence(1,S.space)
+        A = S.α*I + Jx*Dx
+        DerivativeWrapper(
+            SpaceOperator(A,S,TriangleWeight(S.α-1,S.β,S.γ,rangespace(A))),
+            order)
+    elseif order == [1,0]
+        Dx = Derivative(S.space,order)
+        Jx = Recurrence(1,S.space)
+        Jy = Recurrence(2,S.space)
+        A = S.α*(I-Jx-Jy) - S.γ*Jx + Jx*(I-Jx-Jy)*Dx
+        DerivativeWrapper(
+            SpaceOperator(A,S,TriangleWeight(S.α-1,S.β,S.γ-1,rangespace(A))),
+            order)
+    elseif order == [0,1] && S.β == 0
+        Dy = Derivative(S.space,order)
+        Jx = Recurrence(1,S.space)
+        Jy = Recurrence(2,S.space)
+        A = -S.γ*I + (I-Jx-Jy)*Dy
+        DerivativeWrapper(
+            SpaceOperator(A,S,TriangleWeight(S.α,S.β,S.γ-1,rangespace(A))),
+            order)
+    elseif order == [0,1] && S.γ == 0
+        Dy = Derivative(S.space,order)
+        Jy = Recurrence(2,S.space)
+        A = S.β*I + Jy*Dy
+        DerivativeWrapper(
+            SpaceOperator(A,S,TriangleWeight(S.α,S.β-1,S.γ,rangespace(A))),
+            order)
+    elseif order == [0,1]
+        Dx = Derivative(S.space,order)
+        Jx = Recurrence(1,S.space)
+        Jy = Recurrence(2,S.space)
+        A = S.β*(I-Jx-Jy) - S.γ*Jy + Jy*(I-Jx-Jy)*Dx
+        DerivativeWrapper(
+            SpaceOperator(A,S,TriangleWeight(S.α,S.β-1,S.γ-1,rangespace(A))),
+            order)
+    elseif order[1] > 1
+        D=Derivative(S,[1,0])
+        DerivativeWrapper(TimesOperator(Derivative(rangespace(D),[order[1]-1,order[2]]),D),order)
+    else
+        @assert order[2] > 1
+        D=Derivative(S,[0,1])
+        DerivativeWrapper(TimesOperator(Derivative(rangespace(D),[order[1],order[2]-1]),D),order)
+    end
+end

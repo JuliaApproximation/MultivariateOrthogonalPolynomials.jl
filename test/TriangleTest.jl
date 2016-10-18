@@ -1,8 +1,8 @@
 using FixedSizeArrays,Plots,BandedMatrices,
     ApproxFun,MultivariateOrthogonalPolynomials, Base.Test
 
-import MultivariateOrthogonalPolynomials: Recurrence, ProductTriangle, clenshaw, block
-import ApproxFun: bandedblockbandedoperatortest
+import MultivariateOrthogonalPolynomials: Recurrence, ProductTriangle, clenshaw, block, TriangleWeight
+import ApproxFun: bandedblockbandedoperatortest, Block
 
 pf=ProductFun((x,y)->exp(x*cos(y)),ProductTriangle(1,1,1))
 @test_approx_eq pf(0.1,0.2) exp(0.1*cos(0.2))
@@ -13,40 +13,7 @@ f=Fun((x,y)->exp(x*cos(y)),KoornwinderTriangle(1,1,1))
 # Test recurrence operators
 Jx=MultivariateOrthogonalPolynomials.Recurrence(1,space(f))
 
-#bandedblockbandedoperatortest(Jx)
-
-# Jx[1:5,1:5]|>full
-#
-# Jx[2:5,1:5]|>full
-#
-# S=view(Jx,2:5,1:5)
-#
-# kr,jr=parentindexes(S)
-# KO=parent(S)
-# l,u=ApproxFun.blockbandinds(KO)
-# λ,μ=ApproxFun.subblockbandinds(KO)
-#
-# rt=ApproxFun.rangetensorizer(KO)
-# dt=ApproxFun.domaintensorizer(KO)
-# ret=ApproxFun.bbbzeros(S)
-#
-# Bs=ApproxFun.viewblock(ret,2,2)
-# K=J=2
-# kshft=kr[1]+ApproxFun.blockstart(rt,K)-2
-# j=1
-#
-#
-# for J=1:ApproxFun.blocksize(ret,2)
-#     jshft=jr[1]+ApproxFun.blockstart(dt,J)-2
-#     for K=ApproxFun.blockcolrange(ret,J)
-#         Bs=ApproxFun.viewblock(ret,K,J)
-#         kshft=kr[1]+ApproxFun.blockstart(rt,K)-2
-#         for j=1:size(Bs,2),k=ApproxFun.colrange(Bs,j)
-#             @show K,J,k,j,k+kshft,j+jshft
-#             Bs[k,j]=KO[k+kshft,j+jshft]
-#         end
-#     end
-# end
+bandedblockbandedoperatortest(Jx)
 
 @test ApproxFun.colstop(Jx,1) == 2
 @test ApproxFun.colstop(Jx,2) == 4
@@ -58,7 +25,9 @@ Jx=MultivariateOrthogonalPolynomials.Recurrence(1,space(f))
 
 
 Jy=MultivariateOrthogonalPolynomials.Recurrence(2,space(f))
-@test isa(Jy[1:10,1:10],ApproxFun.BandedBlockBandedMatrix)
+
+bandedblockbandedoperatortest(Jy)
+
 @test_approx_eq Jy[3,1] 1/3
 
 @test ApproxFun.colstop(Jy,1) == 3
@@ -76,16 +45,20 @@ pyf=ProductFun((x,y)->y*exp(x*cos(y)),ProductTriangle(1,0,1))
 
 
 C=ApproxFun.ConcreteConversion(KoornwinderTriangle(1,0,1),KoornwinderTriangle(1,1,1))
+bandedblockbandedoperatortest(C)
 @test eltype(C)==Float64
 norm((C*Fun((x,y)->exp(x*cos(y)),KoornwinderTriangle(1,0,1))-f).coefficients) < 1E-11
 C=ApproxFun.ConcreteConversion(KoornwinderTriangle(1,1,0),KoornwinderTriangle(1,1,1))
+bandedblockbandedoperatortest(C)
 norm((C*Fun((x,y)->exp(x*cos(y)),KoornwinderTriangle(1,1,0))-f).coefficients) < 1E-11
 C=ApproxFun.ConcreteConversion(KoornwinderTriangle(0,1,1),KoornwinderTriangle(1,1,1))
+bandedblockbandedoperatortest(C)
 norm((C*Fun((x,y)->exp(x*cos(y)),KoornwinderTriangle(0,1,1))-f).coefficients) < 1E-11
 
 
 Jy=MultivariateOrthogonalPolynomials.Recurrence(2,space(f))↦space(f)
-@test isa(Jy[1:10,1:10],ApproxFun.BandedBlockBandedMatrix)
+bandedblockbandedoperatortest(Jy)
+
 
 @test norm((Jy*f-Fun((x,y)->y*exp(x*cos(y)),KoornwinderTriangle(1,1,1))).coefficients) < 1E-10
 
@@ -117,9 +90,6 @@ f=Fun((x,y)->exp(x*cos(y)),K)
 
 
 
-
-
-
 K=KoornwinderTriangle(0,0,0)
 f=Fun((x,y)->exp(x*cos(y)),K)
 D=Derivative(space(f),[1,0])
@@ -136,6 +106,9 @@ D=Derivative(space(f),[0,2])
 
 D=Derivative(space(f),[2,0])
 @test_approx_eq_eps (D*f)(0.1,0.2) ((x,y)->cos(y)^2*exp(x*cos(y)))(0.1,0.2)  1000000eps()
+
+
+
 
 
 
@@ -157,7 +130,6 @@ f=Fun((x,y)->exp(x*sin(y)),S)
 Jx=Mx
 Jy=My ↦ S
 
-
 @test_approx_eq_eps (Jy*f)(0.1,0.2) 0.2*f(0.1,0.2) 1E-12
 
 x,y=0.1,0.2
@@ -166,15 +138,18 @@ P0=[Fun([1.],S)(x,y)]
 P1=Float64[Fun([zeros(k);1.],S)(x,y) for k=1:2]
 P2=Float64[Fun([zeros(k);1.],S)(x,y) for k=3:5]
 
-@test_approx_eq Jx[1:1,1:1]*P0+Jx[2:3,1:1]'*P1 x*P0
-@test_approx_eq Jy[1:1,1:1]*P0+Jy[2:3,1:1]'*P1 y*P0
 
-k=2
-@test_approx_eq Jx[k-1,k]'*P0+Jx[k,k]'*P1+Jx[k+1,k]'*P2 x*P1
-@test_approx_eq Jy[k-1,k]'*P0+Jy[k,k]'*P1+Jy[k+1,k]'*P2 y*P1
+K=Block(1)
+Jx[K,K]|>full
+@test_approx_eq Jx[K,K]*P0+Jx[K+1,K]'*P1 x*P0
+@test_approx_eq Jy[K,K]*P0+Jy[K+1,K]'*P1 y*P0
+
+K=Block(2)
+@test_approx_eq Jx[K-1,K]'*P0+Jx[K,K]'*P1+Jx[K+1,K]'*P2 x*P1
+@test_approx_eq Jy[K-1,K]'*P0+Jy[K,K]'*P1+Jy[K+1,K]'*P2 y*P1
 
 
-A,B,C=Jy[k+1,k]',Jy[k,k]',Jy[k-1,k]'
+A,B,C=Jy[K+1,K]',Jy[K,K]',Jy[K-1,K]'
 
 
 @test_approx_eq C*P0+B*P1+A*P2 y*P1
@@ -190,13 +165,13 @@ cfs=Vector{Float64}[]
 
 
 x,y=0.01,0.9
-
-@time clenshaw2D(Jx,Jy,cfs,x,y)
 @time Fun([cfs...;],S)(x,y)
 
 
+Block(3):-1:Block(1)|>collect
+
 f=Fun((x,y)->exp(x*cos(x*y)),KoornwinderTriangle(1,1,1))
-    cfs=ApproxFun.totree(f.coefficients)
+    cfs=ApproxFun.totree(f.coefficients)|
 
 clenshaw2D(Jx,Jy,cfs,x,y)-exp(x*cos(x*y))
 
@@ -205,20 +180,77 @@ f(x,y)-exp(x*cos(x*y))
 f.coefficients
 ## Derive
 
+using SO
+K=Block(3)
+    A=[Jx[K+1,K] Jy[K+1,K]]
+    Ai=A\eye(K.K+1)|>chopm
+
+Q,R=qr(A')
+
+R'*Q'-A|>norm
+
+Q*inv(R')-Ai|>norm
+
+At=[Jx[K+1,K]'; Jy[K+1,K]']
+
+L1=[At[4:end,1:3]*inv(At[1:3,1:3]) zeros(3,3); zeros(3,3) eye(3)]
+    L2=[eye(3) eye(3); -eye(3) eye(3)]
+    At2=L2*L1*At
+    L3=[inv(At2[1:3,1:3]) zeros(3,3); zeros(3,3) eye(3)]
+    P=eye(6)[[1:3;6;4:5],:]
+    R2=P*L3*L2*L1*At
+
+    inv(L1)*inv(L2)*inv(L3)*P'*R2-At|>norm
+
+
+At
+
+At2
+
+
+Ati2=(R2\eye(6))*P*L3*L2*L1*eye(6)
+Ati=At\eye(6)
+
+
+Ati*At
+Ati2*At
+
+norm((inv(L1)*inv(L2)*inv(L3)*P'*R2)\eye(6)-At\eye(6))
+norm((inv(L2)*inv(L3)*P'*R2)\(L1*eye(6))-At\eye(6))
+
+A'
+
+
+L*U-A'|>norm
+Recurrence(2,KoornwinderTriangle(1.23,1.0321,2.21))
+
+
+[Block(3),Block(3)]|>full
+Recurrence(1,KoornwinderTriangle(1.23,1.0321,2.21))[Block(11),Block(12)]|>full
+
+A*Ai
+R
+
+A\[1.,2.,3.]
+
+
+Ai*[1.,2.,3.]
+[Ap1' Ap2']
+
 bk1=zeros(length(cfs)+1)
     bk2=zeros(length(cfs)+2)
 
-    for n=3:-1:1
-        Ap1=Jx[n+2,n+1]'
-        Ap2=Jy[n+2,n+1]'
-        A1=Jx[n+1,n]'
-        A2=Jy[n+1,n]'
-        B1=Jx[n,n]'
-        B2=Jy[n,n]'
-        C1=Jx[n,n+1]'
-        C2=Jy[n,n+1]'
+    for N=Block(3):-1:Block(1)
+        Ap1=Jx[N+2,N+1]'
+        Ap2=Jy[N+2,N+1]'
+        A1=Jx[N+1,N]'
+        A2=Jy[N+1,N]'
+        B1=Jx[N,N]'
+        B2=Jy[N,N]'
+        C1=Jx[N,N+1]'
+        C2=Jy[N,N+1]'
 
-        bk1,bk2=cfs[n] + ([diagm(fill(x,n)) diagm(fill(y,n))]-[B1' B2'])*([A1' A2']\bk1) -
+        bk1,bk2=cfs[N.K] + ([diagm(fill(x,N.K)) diagm(fill(y,N.K))]-[B1' B2'])*([A1' A2']\bk1) -
             [C1' C2']*([Ap1' Ap2']\bk2),bk1
     end
     bk1
@@ -257,3 +289,9 @@ n=1
 
 mult = ([diag(x*ones(n+1,1));diag(y*ones(n+1,1))] - [B1(n);B2(n)])';
 bk = cfs(1:n+1,n+1) + mult*([A1(n);A2(n)]'\bkp1) - [C1(n+1);C2(n+1)]'*([A1(n+1);A2(n+1)]'\bkp2);
+
+
+
+
+
+## Weighted
