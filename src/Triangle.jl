@@ -8,9 +8,9 @@ immutable Triangle <: BivariateDomain{Float64} end
 
 #canonical is rectangle [0,1]^2
 # with the map (x,y)=(s,(1-s)*t)
-fromcanonical(::Triangle,s,t)=s,(1-s)*t
-tocanonical(::Triangle,x,y)=x,y/(1-x)
-checkpoints(d::Triangle)=[fromcanonical(d,(.1,.2243));fromcanonical(d,(-.212423,-.3))]
+fromcanonical(::Triangle,s,t) = s,(1-s)*t
+tocanonical(::Triangle,x,y) = x,y/(1-x)
+checkpoints(d::Triangle) = [fromcanonical(d,(.1,.2243));fromcanonical(d,(-.212423,-.3))]
 
 ∂(d::Triangle) = PiecewiseInterval([(0.,0.),(1.,0.),(0.,1.),(0.,0.)])
 
@@ -183,8 +183,6 @@ rangespace(D::ConcreteDerivative{KoornwinderTriangle}) =
 
 isbandedblockbanded(::ConcreteDerivative{KoornwinderTriangle}) = true
 
-domaintensorizer(R::ConcreteDerivative{KoornwinderTriangle}) = tensorizer(domainspace(R))
-rangetensorizer(R::ConcreteDerivative{KoornwinderTriangle}) = tensorizer(rangespace(R))
 
 blockbandinds(D::ConcreteDerivative{KoornwinderTriangle}) = 0,sum(D.order)
 subblockbandinds(D::ConcreteDerivative{KoornwinderTriangle}) = (0,sum(D.order))
@@ -232,7 +230,9 @@ function Conversion(K1::KoornwinderTriangle,K2::KoornwinderTriangle)
         isapproxinteger(K1.α-K2.α) && isapproxinteger(K1.β-K2.β) &&
         isapproxinteger(K1.γ-K2.γ)
 
-    if (K1.α+1==K2.α && K1.β==K2.β && K1.γ==K2.γ) ||
+    if (K1.α==K2.α && K1.β==K2.β && K1.γ==K2.γ)
+        ConversionWrapper(eye(K1))
+    elseif (K1.α+1==K2.α && K1.β==K2.β && K1.γ==K2.γ) ||
             (K1.α==K2.α && K1.β+1==K2.β && K1.γ==K2.γ) ||
             (K1.α==K2.α && K1.β==K2.β && K1.γ+1==K2.γ)
         ConcreteConversion(K1,K2)
@@ -246,7 +246,7 @@ function Conversion(K1::KoornwinderTriangle,K2::KoornwinderTriangle)
         # increment γ
         Conversion(K1,KoornwinderTriangle(K1.α,K1.β,K1.γ+1),K2)
     else
-        error("There is a bug")
+        error("There is a bug: cannot convert $K1 to $K2")
     end
 end
 
@@ -258,10 +258,6 @@ blockbandinds(C::ConcreteConversion{KoornwinderTriangle,KoornwinderTriangle}) = 
 
 subblockbandinds(C::ConcreteConversion{KoornwinderTriangle,KoornwinderTriangle}) = (0,1)
 subblockbandinds(C::ConcreteConversion{KoornwinderTriangle,KoornwinderTriangle},k::Integer) = k==1?0:1
-
-
-domaintensorizer(R::ConcreteConversion{KoornwinderTriangle,KoornwinderTriangle}) = tensorizer(domainspace(R))
-rangetensorizer(R::ConcreteConversion{KoornwinderTriangle,KoornwinderTriangle}) = tensorizer(rangespace(R))
 
 
 
@@ -338,13 +334,6 @@ subblockbandinds(::Recurrence{1,KoornwinderTriangle},k::Integer) = 0
 subblockbandinds(::Recurrence{2,KoornwinderTriangle},k::Integer) = k==1? -1 : 0
 
 
-domaintensorizer(R::Recurrence{1,KoornwinderTriangle}) = tensorizer(domainspace(R))
-rangetensorizer(R::Recurrence{1,KoornwinderTriangle}) = tensorizer(rangespace(R))
-
-domaintensorizer(R::Recurrence{2,KoornwinderTriangle}) = tensorizer(domainspace(R))
-rangetensorizer(R::Recurrence{2,KoornwinderTriangle}) = tensorizer(rangespace(R))
-
-
 rangespace(R::Recurrence{1,KoornwinderTriangle}) = R.space
 rangespace(R::Recurrence{2,KoornwinderTriangle}) =
     KoornwinderTriangle(R.space.α,R.space.β-1,R.space.γ)
@@ -402,6 +391,84 @@ end
 weight(S::TriangleWeight,x,y) = x.^S.α.*y.^S.β.*(1-x-y).^S.γ
 weight(S::TriangleWeight,xy) = weight(S,xy...)
 
+#TODO: Move to Singulariaties.jl
+for func in (:blocklengths,:tensorizer)
+    @eval $func(S::TriangleWeight) = $func(S.space)
+end
+
+for OP in (:block,:blockstart,:blockstop)
+    @eval $OP(s::TriangleWeight,M) = $OP(s.space,M)
+end
+
+
+spacescompatible(A::TriangleWeight,B::TriangleWeight) = A.α ≈ B.α && A.β ≈ B.β && A.γ ≈ B.γ &&
+                                                        spacescompatible(A.space,B.space)
+
+
+
+
+function conversion_rule(A::TriangleWeight,B::TriangleWeight)
+    if isapproxinteger(A.α-B.α) && isapproxinteger(A.β-B.β) && isapproxinteger(A.γ-B.γ)
+        ct=conversion_type(A.space,B.space)
+        ct==NoSpace()?NoSpace():TriangleWeight(max(A.α,B.α),max(A.β,B.β),max(A.γ,B.γ),ct)
+    else
+        NoSpace()
+    end
+end
+
+function maxspace_rule(A::TriangleWeight,B::TriangleWeight)
+    if isapproxinteger(A.α-B.α) && isapproxinteger(A.β-B.β) && isapproxinteger(A.γ-B.γ)
+        ms=maxspace(A.space,B.space)
+        if min(A.α,B.α)==0.0 && min(A.β,B.β) == 0.0 && min(A.γ,B.γ) == 0.0
+            return ms
+        else
+            return TriangleWeight(min(A.α,B.α),min(A.β,B.β),min(A.γ,B.γ),ms)
+        end
+    end
+    NoSpace()
+end
+
+maxspace_rule(A::TriangleWeight,B::KoornwinderTriangle) = maxspace(A,TriangleWeight(0.,0.,0.,B))
+
+conversion_rule(A::TriangleWeight,B::KoornwinderTriangle) = conversion_type(A,TriangleWeight(0.,0.,0.,B))
+
+function Conversion(A::TriangleWeight,B::TriangleWeight)
+    @assert isapproxinteger(A.α-B.α) && isapproxinteger(A.β-B.β) && isapproxinteger(A.γ-B.γ)
+    @assert A.α≥B.α && A.β≥B.β && A.γ≥B.γ
+
+    if A.α ≈ B.α && A.β ≈ B.β && A.γ ≈ B.γ
+        ConversionWrapper(SpaceOperator(Conversion(A.space,B.space),A,B))
+    elseif A.α ≈ B.α+1 && A.β ≈ B.β && A.γ ≈ B.γ
+        Jx = Recurrence(1,A.space)
+        C = Conversion(rangespace(Jx),B.space)
+        ConversionWrapper(SpaceOperator(C*Jx,A,B))
+    elseif A.α ≈ B.α && A.β ≈ B.β+1 && A.γ ≈ B.γ
+        Jy = Recurrence(2,A.space)
+        C = Conversion(rangespace(Jy),B.space)
+        ConversionWrapper(SpaceOperator(C*Jy,A,B))
+    elseif A.α ≈ B.α && A.β ≈ B.β && A.γ ≈ B.γ+1
+        Jx = Recurrence(1,A.space)
+        Jy = Recurrence(2,A.space)
+        W=I-Jx-Jy
+        C = Conversion(rangespace(W),B.space)
+        ConversionWrapper(SpaceOperator(C*W,A,B))
+    elseif A.α ≥ B.α+1
+        Conversion(A,TriangleWeight(A.α-1,A.β,A.γ,A.space),B)
+    elseif A.β ≥ B.β+1
+        Conversion(A,TriangleWeight(A.α,A.β-1,A.γ,A.space),B)
+    elseif A.γ ≥ B.γ+1
+        Conversion(A,TriangleWeight(A.α,A.β,A.γ-1,A.space),B)
+    else
+        error("Somethings gone wrong!")
+    end
+end
+
+Conversion(A::TriangleWeight,B::KoornwinderTriangle) =
+    ConversionWrapper(SpaceOperator(
+        Conversion(A,TriangleWeight(0.,0.,0.,B)),
+        A,B))
+
+
 function Derivative(S::TriangleWeight,order)
     if S.α == S.β == S.γ == 0
         D=Derivative(S.space,order)
@@ -414,51 +481,51 @@ function Derivative(S::TriangleWeight,order)
     elseif order[1] == 0 && S.β == 0 && S.γ == 0
         Dy = Derivative(S.space,order)
         DerivativeWrapper(
-            SpaceOperator(Dy,S,TriangleWeight(S.α,S.β,S.γ,rangespace(Dx))),
+            SpaceOperator(Dy,S,TriangleWeight(S.α,S.β,S.γ,rangespace(Dy))),
             order)
     elseif order == [1,0] && S.α == 0
         Dx = Derivative(S.space,order)
-        Jx = Recurrence(1,S.space)
-        Jy = Recurrence(2,S.space)
+        Jx = Recurrence(1,rangespace(Dx))
+        Jy = Recurrence(2,rangespace(Dx))
         A = -S.γ*I + (I-Jx-Jy)*Dx
         DerivativeWrapper(
             SpaceOperator(A,S,TriangleWeight(S.α,S.β,S.γ-1,rangespace(A))),
             order)
     elseif order == [1,0] && S.γ == 0
         Dx = Derivative(S.space,order)
-        Jx = Recurrence(1,S.space)
+        Jx = Recurrence(1,rangespace(Dx))
         A = S.α*I + Jx*Dx
         DerivativeWrapper(
             SpaceOperator(A,S,TriangleWeight(S.α-1,S.β,S.γ,rangespace(A))),
             order)
     elseif order == [1,0]
         Dx = Derivative(S.space,order)
-        Jx = Recurrence(1,S.space)
-        Jy = Recurrence(2,S.space)
+        Jx = Recurrence(1,rangespace(Dx))
+        Jy = Recurrence(2,rangespace(Dx))
         A = S.α*(I-Jx-Jy) - S.γ*Jx + Jx*(I-Jx-Jy)*Dx
         DerivativeWrapper(
             SpaceOperator(A,S,TriangleWeight(S.α-1,S.β,S.γ-1,rangespace(A))),
             order)
     elseif order == [0,1] && S.β == 0
         Dy = Derivative(S.space,order)
-        Jx = Recurrence(1,S.space)
-        Jy = Recurrence(2,S.space)
+        Jx = Recurrence(1,rangespace(Dy))
+        Jy = Recurrence(2,rangespace(Dy))
         A = -S.γ*I + (I-Jx-Jy)*Dy
         DerivativeWrapper(
             SpaceOperator(A,S,TriangleWeight(S.α,S.β,S.γ-1,rangespace(A))),
             order)
     elseif order == [0,1] && S.γ == 0
         Dy = Derivative(S.space,order)
-        Jy = Recurrence(2,S.space)
+        Jy = Recurrence(2,rangespace(Dy))
         A = S.β*I + Jy*Dy
         DerivativeWrapper(
             SpaceOperator(A,S,TriangleWeight(S.α,S.β-1,S.γ,rangespace(A))),
             order)
     elseif order == [0,1]
-        Dx = Derivative(S.space,order)
-        Jx = Recurrence(1,S.space)
-        Jy = Recurrence(2,S.space)
-        A = S.β*(I-Jx-Jy) - S.γ*Jy + Jy*(I-Jx-Jy)*Dx
+        Dy = Derivative(S.space,order)
+        Jx = Recurrence(1,rangespace(Dy))
+        Jy = Recurrence(2,rangespace(Dy))
+        A = S.β*(I-Jx-Jy) - S.γ*Jy + Jy*(I-Jx-Jy)*Dy
         DerivativeWrapper(
             SpaceOperator(A,S,TriangleWeight(S.α,S.β-1,S.γ-1,rangespace(A))),
             order)

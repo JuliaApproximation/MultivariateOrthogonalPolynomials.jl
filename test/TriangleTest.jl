@@ -1,8 +1,7 @@
 using FixedSizeArrays,Plots,BandedMatrices,
-    ApproxFun,MultivariateOrthogonalPolynomials, Base.Test
-
-import MultivariateOrthogonalPolynomials: Recurrence, ProductTriangle, clenshaw, block, TriangleWeight
-import ApproxFun: bandedblockbandedoperatortest, Block
+        ApproxFun,MultivariateOrthogonalPolynomials, Base.Test
+    import MultivariateOrthogonalPolynomials: Recurrence, ProductTriangle, clenshaw, block, TriangleWeight
+    import ApproxFun: bandedblockbandedoperatortest, Block
 
 pf=ProductFun((x,y)->exp(x*cos(y)),ProductTriangle(1,1,1))
 @test_approx_eq pf(0.1,0.2) exp(0.1*cos(0.2))
@@ -295,3 +294,53 @@ bk = cfs(1:n+1,n+1) + mult*([A1(n);A2(n)]'\bkp1) - [C1(n+1);C2(n+1)]'*([A1(n+1);
 
 
 ## Weighted
+
+
+S=TriangleWeight(1.,1.,1.,KoornwinderTriangle(1,1,1))
+
+@test_approx_eq (Derivative(S,[1,0])*Fun([1.],S))(0.1,0.2) ((x,y)->y*(1-x-y)-x*y)(0.1,0.2)
+
+@test_approx_eq (Laplacian(S)*Fun([1.],S))(0.1,0.2) -2*0.1-2*0.2
+
+
+Δ=Laplacian(S)
+
+f=Fun(rand(3),S)
+QR=qrfact(Δ)
+@time u=linsolve(QR,f;tolerance=1E-7)
+
+x=y=linspace(0.,1.,10)
+
+X=[ApproxFun.fromcanonical(domain(f),xy)[1] for xy in tuple.(x,y')]
+Y=[ApproxFun.fromcanonical(domain(f),xy)[2] for xy in tuple.(x,y')]
+
+
+pyplot()
+surface(X,Y,u.(X,Y))
+
+
+S=TriangleWeight(1.,1.,1.,KoornwinderTriangle(1,1,1))
+Δ=Laplacian(S)
+
+h=0.0001
+
+f=Fun([1.,2.,3.],S)
+QR=qrfact(I-h*Δ)
+
+u=Array(typeof(f),200)
+u[1]=f
+
+for k=1:length(u)-1
+    @time u[k+1]=chop(linsolve(QR,u[k];tolerance=1E-7),1E-7)
+end
+
+x=y=linspace(0.,1.,10)
+
+X=[ApproxFun.fromcanonical(domain(f),xy)[1] for xy in tuple.(x,y')]
+Y=[ApproxFun.fromcanonical(domain(f),xy)[2] for xy in tuple.(x,y')]
+
+
+pyplot()
+@gif for k=1:5
+    surface(X,Y,u[k].(X,Y);zlims=(-0.1,0.1))
+end
