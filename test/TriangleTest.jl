@@ -318,29 +318,60 @@ Y=[ApproxFun.fromcanonical(domain(f),xy)[2] for xy in tuple.(x,y')]
 pyplot()
 surface(X,Y,u.(X,Y))
 
+# Jacobi weighte
+#  (1-x)^α*(1+x)^β
 
+(1-x^2)^(λ-0.5)
+
+Derivative(KoornwinderTriangle(1,1,1),[0,1])[1:10,1:10]|>full
+
+
+# w(x,y) = x^α*y^β*(1-x-y)^γ
 S=TriangleWeight(1.,1.,1.,KoornwinderTriangle(1,1,1))
+
+S=Chebyshev()^2
+
 Δ=Laplacian(S)
+import ApproxFun:Block
+K=Block(10)
+    Δ[K,K+2]|>full
 
-h=0.0001
 
-f=Fun([1.,2.,3.],S)
+
+h=0.01
+
+f=Fun(rand(N),S)
+    @time QR\f
+
 QR=qrfact(I-h*Δ)
+    @time QR\f
 
-u=Array(typeof(f),200)
+
+
+
+
+u=Array(typeof(f),20)
 u[1]=f
 
 for k=1:length(u)-1
     @time u[k+1]=chop(linsolve(QR,u[k];tolerance=1E-7),1E-7)
 end
-
 x=y=linspace(0.,1.,10)
 
 X=[ApproxFun.fromcanonical(domain(f),xy)[1] for xy in tuple.(x,y')]
 Y=[ApproxFun.fromcanonical(domain(f),xy)[2] for xy in tuple.(x,y')]
 
+surface!(X,Y,u[1].(X,Y);zlims=(-0.1,0.1))
 
-pyplot()
-@gif for k=1:5
-    surface(X,Y,u[k].(X,Y);zlims=(-0.1,0.1))
+for k=1:length(u)
+    surface!(X,Y,u[k].(X,Y);zlims=(-0.1,0.1))
 end
+
+
+
+using Plots
+glvisualize()
+
+plot(1:10)
+
+2
