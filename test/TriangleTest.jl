@@ -1,7 +1,7 @@
 using FixedSizeArrays,Plots,BandedMatrices,
         ApproxFun,MultivariateOrthogonalPolynomials, Base.Test
     import MultivariateOrthogonalPolynomials: Recurrence, ProductTriangle, clenshaw, block, TriangleWeight
-    import ApproxFun: bandedblockbandedoperatortest, Block
+    import ApproxFun: testbandedblockbandedoperator, Block
 
 pf=ProductFun((x,y)->exp(x*cos(y)),ProductTriangle(1,1,1))
 @test_approx_eq pf(0.1,0.2) exp(0.1*cos(0.2))
@@ -12,7 +12,7 @@ f=Fun((x,y)->exp(x*cos(y)),KoornwinderTriangle(1,1,1))
 # Test recurrence operators
 Jx=MultivariateOrthogonalPolynomials.Recurrence(1,space(f))
 
-bandedblockbandedoperatortest(Jx)
+testbandedblockbandedoperator(Jx)
 
 @test ApproxFun.colstop(Jx,1) == 2
 @test ApproxFun.colstop(Jx,2) == 4
@@ -25,7 +25,7 @@ bandedblockbandedoperatortest(Jx)
 
 Jy=MultivariateOrthogonalPolynomials.Recurrence(2,space(f))
 
-bandedblockbandedoperatortest(Jy)
+testbandedblockbandedoperator(Jy)
 
 @test_approx_eq Jy[3,1] 1/3
 
@@ -44,19 +44,19 @@ pyf=ProductFun((x,y)->y*exp(x*cos(y)),ProductTriangle(1,0,1))
 
 
 C=ApproxFun.ConcreteConversion(KoornwinderTriangle(1,0,1),KoornwinderTriangle(1,1,1))
-bandedblockbandedoperatortest(C)
+testbandedblockbandedoperator(C)
 @test eltype(C)==Float64
 norm((C*Fun((x,y)->exp(x*cos(y)),KoornwinderTriangle(1,0,1))-f).coefficients) < 1E-11
 C=ApproxFun.ConcreteConversion(KoornwinderTriangle(1,1,0),KoornwinderTriangle(1,1,1))
-bandedblockbandedoperatortest(C)
+testbandedblockbandedoperator(C)
 norm((C*Fun((x,y)->exp(x*cos(y)),KoornwinderTriangle(1,1,0))-f).coefficients) < 1E-11
 C=ApproxFun.ConcreteConversion(KoornwinderTriangle(0,1,1),KoornwinderTriangle(1,1,1))
-bandedblockbandedoperatortest(C)
+testbandedblockbandedoperator(C)
 norm((C*Fun((x,y)->exp(x*cos(y)),KoornwinderTriangle(0,1,1))-f).coefficients) < 1E-11
 
 
 Jy=MultivariateOrthogonalPolynomials.Recurrence(2,space(f))↦space(f)
-bandedblockbandedoperatortest(Jy)
+testbandedblockbandedoperator(Jy)
 
 
 @test norm((Jy*f-Fun((x,y)->y*exp(x*cos(y)),KoornwinderTriangle(1,1,1))).coefficients) < 1E-10
