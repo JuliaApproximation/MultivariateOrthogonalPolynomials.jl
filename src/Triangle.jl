@@ -21,12 +21,13 @@ checkpoints(d::Triangle) = [fromcanonical(d,(.1,.2243));fromcanonical(d,(-.21242
 
 
 immutable ProductTriangle <: AbstractProductSpace{Tuple{WeightedJacobi{Float64,Interval{Float64}},
-                                                        Jacobi{Float64,Interval{Float64}}},Float64,2}
+                                                        Jacobi{Float64,Interval{Float64}}},Float64,Triangle,2}
     α::Float64
     β::Float64
     γ::Float64
     domain::Triangle
 end
+
 
 immutable KoornwinderTriangle <: Space{RealBasis,Triangle,2}
     α::Float64
@@ -55,7 +56,7 @@ Space(T::Triangle) = KoornwinderTriangle(T)
 
 
 # TODO: @tensorspace
-tensorizer(K::TriangleSpace) = TensorIterator((∞,∞))
+tensorizer(K::TriangleSpace) = Tensorizer((ApproxFun.repeated(true),ApproxFun.repeated(true)))
 
 # we have each polynomial
 blocklengths(K::TriangleSpace) = 1:∞

@@ -23,7 +23,7 @@ import ApproxFun:    bandinds,SpaceOperator, ConversionWrapper, DerivativeWrappe
 
 
 # Spaces import
-import ApproxFun: PolynomialSpace, ConstantSpace, NoSpace, 
+import ApproxFun: PolynomialSpace, ConstantSpace, NoSpace,
                     SumSpace,PiecewiseSpace, ArraySpace,RealBasis,ComplexBasis,AnyBasis,
                     UnsetSpace, canonicalspace, domain, evaluate,
                     AnyDomain, plan_transform,plan_itransform,
@@ -36,7 +36,7 @@ import ApproxFun: PolynomialSpace, ConstantSpace, NoSpace,
 import ApproxFun: BivariateDomain,DirectSumSpace,TupleSpace, AbstractProductSpace,
                     BivariateFun,  ProductFun, LowRankFun, lap, columnspace,
                     blockbandinds, subblockbandinds, fromtensor, totensor, isbandedblockbanded,
-                    TensorIterator, tensorizer, block, blockstart, blockstop, blocklengths,
+                    Tensorizer, tensorizer, block, blockstart, blockstop, blocklengths,
                     domaintensorizer, rangetensorizer, blockrange
 
 

@@ -3,11 +3,14 @@ using FixedSizeArrays,Plots,BandedMatrices,
     import MultivariateOrthogonalPolynomials: Recurrence, ProductTriangle, clenshaw, block, TriangleWeight
     import ApproxFun: testbandedblockbandedoperator, Block
 
+
 pf=ProductFun((x,y)->exp(x*cos(y)),ProductTriangle(1,1,1))
 @test_approx_eq pf(0.1,0.2) exp(0.1*cos(0.2))
 
 f=Fun((x,y)->exp(x*cos(y)),KoornwinderTriangle(1,1,1))
 @test_approx_eq f(0.1,0.2) exp(0.1*cos(0.2))
+
+MultivariateOrthogonalPolynomials.tensorizer(KoornwinderTriangle(1,1,1))
 
 # Test recurrence operators
 Jx=MultivariateOrthogonalPolynomials.Recurrence(1,space(f))
@@ -170,7 +173,7 @@ x,y=0.01,0.9
 Block(3):-1:Block(1)|>collect
 
 f=Fun((x,y)->exp(x*cos(x*y)),KoornwinderTriangle(1,1,1))
-    cfs=ApproxFun.totree(f.coefficients)|
+    cfs=ApproxFun.totree(f.coefficients)
 
 clenshaw2D(Jx,Jy,cfs,x,y)-exp(x*cos(x*y))
 
@@ -231,6 +234,140 @@ A*Ai
 R
 
 A\[1.,2.,3.]
+
+n,m=10,11
+    [inv(A1[1:n,1:n]) zeros(n,n); zeros(n,n) eye(n)]*[A1; A2]
+
+
+[A1; A2]
+
+N=Block(4)
+    A1=BandedMatrix(Jx[N+1,N])
+    A2=BandedMatrix(Jy[N+1,N])
+
+    n=4
+    R=BandedMatrix(T,4,4,0,2)
+    c=Array(T,(n-1)*3+2)
+    s=Array(T,(n-1)*3+2)
+
+    a,b=A1[1,1],A2[1,1]
+    nrm=sqrt(a^2+b^2)
+    c[1],s[1]=a/nrm,b/nrm
+    R[1,1]=nrm
+    A2[1,1]=0
+    R[1,2]=s[1]*A2[1,2]
+    A2[1,2]=-s[1]*A2[1,2]
+
+
+qr(A2)
+
+A1
+A2
+
+qr([A1; A2])
+
+
+[c s; -s c]*[A1[1,1];A2[1,1]]
+
+
+
+A1
+
+
+A1
+
+M'
+
+R=
+
+
+[A1 ; A2]
+
+A1.cols
+isdiag(A1)
+T=promote_type(eltype(A1),eltype(A2))
+
+R=BandedMatrix(T
+
+@which ApproxFun.defaultgetindex(Jy,N+1,N)
+
+BB=Jy[1:100,1:100]
+
+BB[N,N]
+
+
+
+
+pinv([A1; A2])
+
+
+
+[A1' A2']*pinv([A1' A2'])
+b=collect(1:size(M,1))
+v=[A1' A2']\b
+
+
+A1'[1:n,1:n]\b[1:n]
+b
+
+[A1' A2']*v
+
+A1'[1:n+1,1:n]
+using SO
+
+M=[A1' A2']
+v=M\b
+
+
+
+
+
+Q,R=qr(M')
+A1[1:5,1:5]M
+M\b
+
+(R'*Q')\b
+
+
+Q*(R'\b)
+lu(M')
+
+M'
+
+M
+A1'
+
+
+
+
+
+
+A2'
+
+
+
+
+
+
+
+
+
+
+
+R
+
+
+Q
+
+
+b[end]/M[end,end]
+
+M
+
+
+A1[1:n,1:n]\collect(1:10)
+
+[A1' A2']
 
 
 Ai*[1.,2.,3.]
