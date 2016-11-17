@@ -9,9 +9,32 @@ pf=ProductFun((x,y)->exp(x*cos(y)),ProductTriangle(1,1,1))
 
 f=Fun((x,y)->exp(x*cos(y)),KoornwinderTriangle(1,1,1))
 @test_approx_eq f(0.1,0.2) exp(0.1*cos(0.2))
+pts=Vec{2,Float64}[Vec(0,0);points(space(f),100);Vec(1,0);Vec(0,1)]
 
-MultivariateOrthogonalPolynomials.tensorizer(KoornwinderTriangle(1,1,1))
+x,y=(v->v[1]).(pts),(v->v[2]).(pts)
+surface(x,y,pf.(x,y))
+scatter(x,y,zeros(x))
 
+pf(1,0)
+K=space(f)
+n=10
+
+@which evaluate(pf,1.,0.)
+
+tocanonical(domain(space(pf)),Vec(1.,0.))
+
+f(x[1],y[1])
+
+points(ProductTriangle(K),round(Int,sqrt(n)),round(Int,sqrt(n)))
+map(Vec,map(vec,points(ProductTriangle(K),round(Int,sqrt(n)),round(Int,sqrt(n))))...)
+pts=map(Vec,map(vec,points(ProductTriangle(1,1,1),10,10))...)
+
+reshape(reinterpret(Float64,pts),(2,length(pts)))
+
+
+
+ApproxFun.fromcanonical(Triangle(),points(Chebyshev([0,1])^2,20))
+@which eltype(Triangle())
 # Test recurrence operators
 Jx=MultivariateOrthogonalPolynomials.Recurrence(1,space(f))
 
@@ -260,6 +283,10 @@ N=Block(4)
 
 
 qr(A2)
+
+
+[I; R]
+
 
 A1
 A2

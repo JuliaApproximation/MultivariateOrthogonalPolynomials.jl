@@ -1,5 +1,5 @@
 module MultivariateOrthogonalPolynomials
-    using Base, Compat, Plots, ApproxFun, BandedMatrices, FastGaussQuadrature
+    using Base, Compat, Plots, ApproxFun, BandedMatrices, FastGaussQuadrature, FixedSizeArrays
 
 # package code goes here
 import Base: values,getindex,setindex!,*,.*,+,.+,-,.-,==,<,<=,>,
@@ -8,7 +8,7 @@ import Base: values,getindex,setindex!,*,.*,+,.+,-,.-,==,<,<=,>,
 importall ApproxFun
 
 # ApproxFun general import
-import ApproxFun: BandedMatrix,order,
+import ApproxFun: BandedMatrix, order,
                   linesum,complexlength,
                   real, eps, isapproxinteger, ∞, FiniteRange
 
@@ -25,7 +25,7 @@ import ApproxFun:    bandinds,SpaceOperator, ConversionWrapper, DerivativeWrappe
 # Spaces import
 import ApproxFun: PolynomialSpace, ConstantSpace, NoSpace,
                     SumSpace,PiecewiseSpace, ArraySpace,RealBasis,ComplexBasis,AnyBasis,
-                    UnsetSpace, canonicalspace, domain, evaluate,
+                    UnsetSpace, canonicalspace, canonicaldomain, domain, evaluate,
                     AnyDomain, plan_transform,plan_itransform,
                     transform,itransform,transform!,itransform!,
                     isambiguous, fromcanonical, tocanonical, checkpoints, ∂, spacescompatible,

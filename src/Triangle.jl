@@ -1,16 +1,17 @@
-export Triangle,KoornwinderTriangle
+export Triangle, KoornwinderTriangle, TriangleWeight
 
 
 ## Triangle Def
 # currently right trianglel
-immutable Triangle <: BivariateDomain{Float64} end
+immutable Triangle <: BivariateDomain{Vec{2,Float64}} end
 
 
 #canonical is rectangle [0,1]^2
 # with the map (x,y)=(s,(1-s)*t)
-fromcanonical(::Triangle,s,t) = s,(1-s)*t
-tocanonical(::Triangle,x,y) = x,y/(1-x)
-checkpoints(d::Triangle) = [fromcanonical(d,(.1,.2243));fromcanonical(d,(-.212423,-.3))]
+canonicaldomain(::Triangle) = Interval(0,1)^2
+fromcanonical(::Triangle,st::Vec) = Vec(st[1],(1-st[1])*st[2])
+tocanonical(::Triangle,xy::Vec) = Vec(xy[1],xy[1]==1 ? zero(eltype(xy)) : xy[2]/(1-xy[1]))
+checkpoints(d::Triangle) = [fromcanonical(d,Vec(.1,.2243));fromcanonical(d,Vec(-.212423,-.3))]
 
 ∂(d::Triangle) = PiecewiseInterval([(0.,0.),(1.,0.),(0.,1.),(0.,0.)])
 
@@ -35,6 +36,9 @@ immutable KoornwinderTriangle <: Space{RealBasis,Triangle,2}
     γ::Float64
     domain::Triangle
 end
+
+points(K::KoornwinderTriangle,n::Integer) =
+    map(Vec,map(vec,points(ProductTriangle(K),round(Int,sqrt(n)),round(Int,sqrt(n))))...)
 
 typealias TriangleSpace Union{ProductTriangle,KoornwinderTriangle}
 
@@ -316,7 +320,7 @@ immutable Recurrence{x,S,T} <: Operator{T}
     space::S
 end
 
-Recurrence(k::Integer,sp) = Recurrence{k,typeof(sp),promote_type(eltype(sp),eltype(domain(sp)))}(sp)
+Recurrence(k::Integer,sp) = Recurrence{k,typeof(sp),promote_type(eltype(sp),eltype(eltype(domain(sp))))}(sp)
 Base.convert{x,T,S}(::Type{Operator{T}},J::Recurrence{x,S}) = Recurrence{x,S,T}(J.space)
 
 
@@ -387,7 +391,13 @@ immutable TriangleWeight{S} <: WeightSpace{S,RealBasis,Triangle,2}
     β::Float64
     γ::Float64
     space::S
+
+    TriangleWeight(α::Number,β::Number,γ::Number,sp::S) =
+        new(Float64(α),Float64(β),Float64(γ),sp)
 end
+
+TriangleWeight(α::Number,β::Number,γ::Number,sp::Space) =
+    TriangleWeight{typeof(sp)}(α,β,γ,sp)
 
 weight(S::TriangleWeight,x,y) = x.^S.α.*y.^S.β.*(1-x-y).^S.γ
 weight(S::TriangleWeight,xy) = weight(S,xy...)
