@@ -40,7 +40,8 @@ columnspace{M,a,b,SS}(D::DiskSpace{M,a,b,SS},k)=(m=div(k,2);JacobiSquare(M+m+0.,
 #transform(S::DiskSpace,V::Matrix)=transform([columnspace(S,k) for k=1:size(V,2)],S.spacet,V)
 
 
-evaluate(f::AbstractVector,sp::DiskSpace,x...)=evaluate(ProductFun(Fun(f,sp)),x...)
+evaluate(f::AbstractVector,sp::DiskSpace,x...) =
+    evaluate(ProductFun(Fun(sp,f)),x...)
 
 
 
@@ -77,7 +78,7 @@ conversion_rule{m,a,b,m2,a2,b2,JS,FS}(A::DiskSpace{m,a,b,JS,FS},
 function coefficients{m,a,b,m2,a2,b2,JS,FS}(cfs::Vector,
                                             A::DiskSpace{m,a,b,JS,FS},
                                           B::DiskSpace{m2,a2,b2,JS,FS})
-    g=ProductFun(Fun(cfs,A))
+    g=ProductFun(Fun(A,cfs))
     rcfs=Fun{typeof(columnspace(B,1)),eltype(cfs)}[Fun(g.coefficients[k],columnspace(B,k)) for k=1:length(g.coefficients)]
     Fun(ProductFun(rcfs,B)).coefficients
 end
