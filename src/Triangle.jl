@@ -77,11 +77,11 @@ end
 
 function space(T::ProductTriangle,k::Integer)
     @assert k==2
-    Jacobi(T.γ,T.β,Interval(0.,1.))
+    Jacobi(T.β,T.γ,Interval(0.,1.))
 end
 
 columnspace(T::ProductTriangle,k::Integer) =
-    JacobiWeight(0.,k-1.,Jacobi(2k-1+T.β+T.γ,T.α,Interval(0.,1.)))
+    JacobiWeight(0.,k-1.,Jacobi(T.α,2k-1+T.β+T.γ,Interval(0.,1.)))
 
 
 # convert coefficients
@@ -103,7 +103,8 @@ end
 
 
 import ApproxFun:viewblock
-function clenshaw2D(Jx,Jy,cfs,x,y)
+import BandedMatrices:αA_mul_B_plus_βC!
+function clenshaw2D{T}(Jx,Jy,cfs::Vector{Vector{T}},x,y)
     N=length(cfs)
     bk1=zeros(N+1)
     bk2=zeros(N+2)
@@ -119,8 +120,8 @@ function clenshaw2D(Jx,Jy,cfs,x,y)
         Cx,Cy=viewblock(Jx,K,K+1),viewblock(Jy,K,K+1)
         JxK=viewblock(Jx,K+1,K)
         JyK=viewblock(Jy,K+1,K)
-        for k=1:K
-            bk1[k] /= JxK[k,k]
+        @inbounds for k=1:K
+            bk1[k] /= JxK.data[k]
         end
 
         bk1[K-1] -= JyK[K-1,end]/(JxK[K-1,K-1]*JyK[end,end])*bk1[K+1]
@@ -136,8 +137,15 @@ function clenshaw2D(Jx,Jy,cfs,x,y)
         Abk1x,Abk2x=Abk2x,Abk1x
         Abk1y,Abk2y=Abk2y,Abk1y
 
-        bk1,bk2=cfs[K] + x*Abk1x + y*Abk1y - Bx*Abk1x - By*Abk1y -
-            Cx*Abk2x - Cy*Abk2y,bk1
+        bk2 = bk1
+
+        bk1=x*Abk1x
+        Base.axpy!(y,Abk1y,bk1)
+        αA_mul_B_plus_βC!(-one(T),Bx,Abk1x,one(T),bk1)
+        αA_mul_B_plus_βC!(-one(T),By,Abk1y,one(T),bk1)
+        αA_mul_B_plus_βC!(-one(T),Cx,Abk2x,one(T),bk1)
+        αA_mul_B_plus_βC!(-one(T),Cy,Abk2y,one(T),bk1)
+        Base.axpy!(one(T),cfs[K],bk1)
     end
 
     K =1
@@ -167,26 +175,30 @@ function totree(S,f::Vector)
     ret
 end
 
-function clenshaw(f::AbstractVector,S::KoornwinderTriangle,x,y)
-    N = block(S,length(f))
-    n = blockstop(S,N+2)
-    m = blockstop(S,N+1)
-    clenshaw2D((Recurrence(1,S))[1:n,1:m],
-                (Recurrence(2,S)→S)[1:n,1:m],
-                    totree(S,f),x,y)
+immutable TriangleEvaluatePlan{S,RX,RY,T}
+    space::S
+    coefficients::Vector{Vector{T}}
+    Jx::RX
+    Jy::RY
 end
 
-clenshaw(f::Fun{KoornwinderTriangle},x,y) = clenshaw(f.coefficients,f.space,x,y)
+function plan_evaluate(f::Fun{KoornwinderTriangle},x...)
+    N = nblocks(f)
+    S = space(f)
+    TriangleEvaluatePlan(S,
+                totree(S,f.coefficients),
+                (Recurrence(1,S))[Block(1):Block(N+2),Block(1):Block(N+1)],
+                (Recurrence(2,S)→S)[Block(1):Block(N+2),Block(1):Block(N+1)])
+end
 
+(P::TriangleEvaluatePlan)(x,y) = clenshaw2D(P.Jx,P.Jy,P.coefficients,x,y)
+
+(P::TriangleEvaluatePlan)(pt) = P(pt...)
 
 # evaluate(f::AbstractVector,K::KoornwinderTriangle,x...) =
 #     evaluate(coefficients(f,K,ProductTriangle(K)),ProductTriangle(K),x...)
 
-evaluate(f::AbstractVector,K::KoornwinderTriangle,x,y) =
-    clenshaw(f,K,x,y)
-
-evaluate(f::AbstractVector,K::KoornwinderTriangle,x) =
-    clenshaw(f,K,x...)
+evaluate(f::AbstractVector,K::KoornwinderTriangle,x...) = plan_evaluate(Fun(K,f))(x...)
 
 # Operators
 

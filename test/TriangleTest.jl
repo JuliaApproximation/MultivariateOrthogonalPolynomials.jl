@@ -1,15 +1,35 @@
 using FixedSizeArrays,Plots,BandedMatrices,
         ApproxFun,MultivariateOrthogonalPolynomials, Base.Test
-    import MultivariateOrthogonalPolynomials: Recurrence, ProductTriangle, clenshaw, block, TriangleWeight
+    import MultivariateOrthogonalPolynomials: Recurrence, ProductTriangle, clenshaw, block, TriangleWeight,plan_evaluate
     import ApproxFun: testbandedblockbandedoperator, Block
 
-
-pf=ProductFun((x,y)->exp(x*cos(y)),ProductTriangle(1,1,1))
+pf=ProductFun((x,y)->exp(x*cos(y)),ProductTriangle(1,1,1),40,40)
 @test_approx_eq pf(0.1,0.2) exp(0.1*cos(0.2))
+
 
 f=Fun((x,y)->exp(x*cos(y)),KoornwinderTriangle(1,1,1))
 @test_approx_eq f(0.1,0.2) exp(0.1*cos(0.2))
+
+p=points(space(f),2500)
+P=plan_evaluate(f)
+@profile P.(p)
+Profile.print()
+Profile.clear()
+@time values(pad(pf,50,50))
+
+f(0.1,0.2)
+
+@time P.(p)
+
+@time P.(f,p)
+Profile.print()
+
+P=MultivariateOrthogonalPolynomials.plan_evaluate(f,0.1,0.2)
+
+
 pts=Vec{2,Float64}[Vec(0,0);points(space(f),100);Vec(1,0);Vec(0,1)]
+
+P(f,0.1,0.2)
 
 x,y=(v->v[1]).(pts),(v->v[2]).(pts)
 surface(x,y,pf.(x,y))
