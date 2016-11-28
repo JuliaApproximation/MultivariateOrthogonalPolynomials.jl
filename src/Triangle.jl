@@ -66,7 +66,10 @@ tensorizer(K::TriangleSpace) = Tensorizer((ApproxFun.repeated(true),ApproxFun.re
 blocklengths(K::TriangleSpace) = 1:∞
 
 for OP in (:block,:blockstart,:blockstop)
-    @eval $OP(s::TriangleSpace,M) = $OP(tensorizer(s),M)
+    @eval begin
+        $OP(s::TriangleSpace,M::Block) = $OP(tensorizer(s),M)
+        $OP(s::TriangleSpace,M) = $OP(tensorizer(s),M)
+    end
 end
 
 
@@ -105,26 +108,51 @@ function clenshaw2D(Jx,Jy,cfs,x,y)
     bk1=zeros(N+1)
     bk2=zeros(N+2)
 
-    A=[sparse(viewblock(Jx,N+2,N+1)) sparse(viewblock(Jy,N+2,N+1))]
-
     Abk1x=zeros(N+1)
     Abk1y=zeros(N+1)
+    Abk2x=zeros(N+1)
+    Abk2y=zeros(N+1)
 
 
-    for K=N:-1:1
-        A,Ap=[sparse(viewblock(Jx,K+1,K)) sparse(viewblock(Jy,K+1,K))],A
+    @inbounds for K=N:-1:2
         Bx,By=viewblock(Jx,K,K),viewblock(Jy,K,K)
         Cx,Cy=viewblock(Jx,K,K+1),viewblock(Jy,K,K+1)
+        JxK=viewblock(Jx,K+1,K)
+        JyK=viewblock(Jy,K+1,K)
+        for k=1:K
+            bk1[k] /= JxK[k,k]
+        end
 
-        Abk1=A\bk1
+        bk1[K-1] -= JyK[K-1,end]/(JxK[K-1,K-1]*JyK[end,end])*bk1[K+1]
+        bk1[K]   -= JyK[K,end]/(JxK[K,K]*JyK[end,end])*bk1[K+1]
+        bk1[K+1] /= JyK[K+1,end]
 
-        Abk1x,Abk2x=Abk1[1:K],Abk1x
-        Abk1y,Abk2y=Abk1[K+1:end],Abk1y
+        resize!(Abk2x,K)
+        BLAS.blascopy!(K,bk1,1,Abk2x,1)
+        resize!(Abk2y,K)
+        Abk2y[1:K-1]=0
+        Abk2y[end]=bk1[K+1]
+
+        Abk1x,Abk2x=Abk2x,Abk1x
+        Abk1y,Abk2y=Abk2y,Abk1y
 
         bk1,bk2=cfs[K] + x*Abk1x + y*Abk1y - Bx*Abk1x - By*Abk1y -
             Cx*Abk2x - Cy*Abk2y,bk1
     end
-    bk1[1]
+
+    K =1
+    Bx,By=viewblock(Jx,K,K),viewblock(Jy,K,K)
+    Cx,Cy=viewblock(Jx,K,K+1),viewblock(Jy,K,K+1)
+    JxK=viewblock(Jx,K+1,K)
+    JyK=viewblock(Jy,K+1,K)
+
+    bk1[1] /= JxK[1,1]
+    bk1[1]   -= JyK[1,end]/(JxK[1,1]*JyK[2,end])*bk1[2]
+    bk1[2] /= JyK[2,end]
+
+    Abk1x,Abk2x=bk1[1:1],Abk1x
+    Abk1y,Abk2y=[bk1[2]],Abk1y
+    (cfs[1] + x*Abk1x + y*Abk1y - Bx*Abk1x - By*Abk1y - Cx*Abk2x - Cy*Abk2y)[1]
 end
 
 # convert to vector of coefficients
@@ -144,7 +172,7 @@ function clenshaw(f::AbstractVector,S::KoornwinderTriangle,x,y)
     n = blockstop(S,N+2)
     m = blockstop(S,N+1)
     clenshaw2D((Recurrence(1,S))[1:n,1:m],
-                (Recurrence(2,S)↦S)[1:n,1:m],
+                (Recurrence(2,S)→S)[1:n,1:m],
                     totree(S,f),x,y)
 end
 

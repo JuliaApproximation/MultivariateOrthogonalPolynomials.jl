@@ -37,7 +37,7 @@ import ApproxFun: BivariateDomain,DirectSumSpace,TupleSpace, AbstractProductSpac
                     BivariateFun,  ProductFun, LowRankFun, lap, columnspace,
                     blockbandinds, subblockbandinds, fromtensor, totensor, isbandedblockbanded,
                     Tensorizer, tensorizer, block, blockstart, blockstop, blocklengths,
-                    domaintensorizer, rangetensorizer, blockrange
+                    domaintensorizer, rangetensorizer, blockrange, Block
 
 
 # Jacobi import
