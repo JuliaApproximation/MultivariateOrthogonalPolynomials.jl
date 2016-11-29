@@ -35,7 +35,7 @@ Base.getindex(D::DiskSpace,k::Integer)=space(D,k)
 Space(D::Disk)=DiskSpace(D)
 
 
-columnspace{M,a,b,SS}(D::DiskSpace{M,a,b,SS},k)=(m=div(k,2);JacobiSquare(M+m+0.,a+m+0.,b+0.,Interval(D.domain.radius,0.)))
+columnspace{M,a,b,SS}(D::DiskSpace{M,a,b,SS},k)=(m=div(k,2);JacobiSquare(M+m+0.,a+m+0.,b+0.,Segment(D.domain.radius,0.)))
 
 #transform(S::DiskSpace,V::Matrix)=transform([columnspace(S,k) for k=1:size(V,2)],S.spacet,V)
 

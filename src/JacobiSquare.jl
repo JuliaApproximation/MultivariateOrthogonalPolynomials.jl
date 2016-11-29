@@ -3,9 +3,9 @@ export WeightedSquare, JacobiSquare
 
 # represents function of the form r^m g(r^2)T
 # as r^m P_k^{a,b}(1-2r^2)
-# when domain is Interval(1,0)
+# when domain is Segment(1,0)
 
-immutable WeightedSquare{S} <: RealUnivariateSpace{Interval{Float64}}
+immutable WeightedSquare{S} <: RealUnivariateSpace{Segment{Float64}}
     m::Float64
     space::S
 end
@@ -14,13 +14,13 @@ WeightedSquare(m::Number,S)=WeightedSquare{typeof(S)}(m,S)
 Base.promote_rule{S1,S2}(::Type{WeightedSquare{S1}},::Type{WeightedSquare{S2}})=WeightedSquare{promote_type(S1,S2)}
 Base.convert{S1}(::Type{WeightedSquare{S1}},W::WeightedSquare)=WeightedSquare{S1}(W.m,W.space)
 
-typealias JacobiSquare WeightedSquare{Jacobi{Float64,Interval{Float64}}}
+typealias JacobiSquare WeightedSquare{Jacobi{Float64,Segment{Float64}}}
 
 
 JacobiSquare(m,d::Domain)=WeightedSquare(m,Jacobi(m,0,d))
 JacobiSquare(m,a::Number,b::Number,d::Domain)=WeightedSquare(m,Jacobi(a,b,d))
-JacobiSquare(m,a::Number,b::Number)=WeightedSquare(m,Jacobi(a,b,Interval(1.,0.)))
-JacobiSquare(m)=JacobiSquare(m,Interval(1.,0.))
+JacobiSquare(m,a::Number,b::Number)=WeightedSquare(m,Jacobi(a,b,Segment(1.,0.)))
+JacobiSquare(m)=JacobiSquare(m,Segment(1.,0.))
 
 
 domain(A::WeightedSquare)=domain(A.space)
@@ -68,7 +68,7 @@ end
 function Derivative(S::WeightedSquare)
      m=S.m
      d=domain(S)
-     @assert d==Interval(1.,0.)
+     @assert d==Segment(1.,0.)
 
      JS=S.space
      D=Derivative(JS)
@@ -139,7 +139,7 @@ end
 # D^+ = (D -m/r)/sqrt(2)
 function DDp(S)
     m=S.m
-    D=Derivative(setdomain(S.space,Interval()))
+    D=Derivative(setdomain(S.space,Segment()))
     rs=JacobiSquare(m+1,S.space.a+1,S.space.b+1)
     SpaceOperator(-4/sqrt(2)*D,S,rs)
 end
@@ -149,7 +149,7 @@ end
 function DDm(S)
     m=S.m
     @assert S.space.a==m
-    SD=JacobiSD(true,setdomain(S.space,Interval()))
+    SD=JacobiSD(true,setdomain(S.space,Segment()))
     rs=JacobiSquare(m-1,S.space.a-1,S.space.b+1)
     SpaceOperator(2/sqrt(2)*SD,S,rs)
 end

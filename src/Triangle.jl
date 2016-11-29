@@ -8,7 +8,7 @@ immutable Triangle <: BivariateDomain{Vec{2,Float64}} end
 
 #canonical is rectangle [0,1]^2
 # with the map (x,y)=(s,(1-s)*t)
-canonicaldomain(::Triangle) = Interval(0,1)^2
+canonicaldomain(::Triangle) = Segment(0,1)^2
 fromcanonical(::Triangle,st::Vec) = Vec(st[1],(1-st[1])*st[2])
 tocanonical(::Triangle,xy::Vec) = Vec(xy[1],xy[1]==1 ? zero(eltype(xy)) : xy[2]/(1-xy[1]))
 checkpoints(d::Triangle) = [fromcanonical(d,Vec(.1,.2243));fromcanonical(d,Vec(-.212423,-.3))]
@@ -21,8 +21,8 @@ checkpoints(d::Triangle) = [fromcanonical(d,Vec(.1,.2243));fromcanonical(d,Vec(-
 # P_{n-k}^{2k+β+γ+1,α}(2x-1)*(1-x)^k*P_k^{γ,β}(2y/(1-x)-1)
 
 
-immutable ProductTriangle <: AbstractProductSpace{Tuple{WeightedJacobi{Float64,Interval{Float64}},
-                                                        Jacobi{Float64,Interval{Float64}}},Float64,Triangle,2}
+immutable ProductTriangle <: AbstractProductSpace{Tuple{WeightedJacobi{Float64,Segment{Float64}},
+                                                        Jacobi{Float64,Segment{Float64}}},Float64,Triangle,2}
     α::Float64
     β::Float64
     γ::Float64
@@ -77,11 +77,11 @@ end
 
 function space(T::ProductTriangle,k::Integer)
     @assert k==2
-    Jacobi(T.β,T.γ,Interval(0.,1.))
+    Jacobi(T.β,T.γ,Segment(0.,1.))
 end
 
 columnspace(T::ProductTriangle,k::Integer) =
-    JacobiWeight(0.,k-1.,Jacobi(T.α,2k-1+T.β+T.γ,Interval(0.,1.)))
+    JacobiWeight(0.,k-1.,Jacobi(T.α,2k-1+T.β+T.γ,Segment(0.,1.)))
 
 
 # convert coefficients
@@ -588,4 +588,76 @@ function Derivative(S::TriangleWeight,order)
         D=Derivative(S,[0,1])
         DerivativeWrapper(TimesOperator(Derivative(rangespace(D),[order[1],order[2]-1]),D),order)
     end
+end
+
+
+
+## Multiplication Operators
+function operator_clenshaw2D{T}(Jx,Jy,cfs::Vector{Vector{T}},x,y)
+    N=length(cfs)
+    S = domainspace(x)
+    Z=ZeroOperator(S,S)
+    bk1=Array(Operator{T},N+1);bk1[:]=Z
+    bk2=Array(Operator{T},N+2);bk2[:]=Z
+
+    Abk1x=Array(Operator{T},N+1);Abk1x[:]=Z
+    Abk1y=Array(Operator{T},N+1);Abk1y[:]=Z
+    Abk2x=Array(Operator{T},N+1);Abk2x[:]=Z
+    Abk2y=Array(Operator{T},N+1);Abk2y[:]=Z
+
+    for K=N:-1:2
+        Bx,By=viewblock(Jx,K,K),viewblock(Jy,K,K)
+        Cx,Cy=viewblock(Jx,K,K+1),viewblock(Jy,K,K+1)
+        JxK=viewblock(Jx,K+1,K)
+        JyK=viewblock(Jy,K+1,K)
+        @inbounds for k=1:K
+            bk1[k] /= JxK.data[k]
+        end
+
+        bk1[K-1] -= JyK[K-1,end]/(JxK[K-1,K-1]*JyK[end,end])*bk1[K+1]
+        bk1[K]   -= JyK[K,end]/(JxK[K,K]*JyK[end,end])*bk1[K+1]
+        bk1[K+1] /= JyK[K+1,end]
+
+        resize!(Abk2x,K)
+        Abk2x[:]=bk1[1:K]
+        resize!(Abk2y,K)
+        Abk2y[1:K-1]=Z
+        Abk2y[end]=bk1[K+1]
+
+        Abk1x,Abk2x=Abk2x,Abk1x
+        Abk1y,Abk2y=Abk2y,Abk1y
+
+
+        bk1,bk2 = bk2,bk1
+        resize!(bk1,K)
+        bk1[:]=map((opx,opy)->x*opx+y*opy,Abk1x,Abk1y)
+        bk1[:]-=full(Bx)*Abk1x+full(By)*Abk1y
+        bk1[:]-=full(Cx)*Abk2x+full(Cy)*Abk2y
+        for k=1:length(bk1)
+            bk1[k]+=cfs[K][k]*I
+        end
+    end
+
+
+    K =1
+    Bx,By=viewblock(Jx,K,K),viewblock(Jy,K,K)
+    Cx,Cy=viewblock(Jx,K,K+1),viewblock(Jy,K,K+1)
+    JxK=viewblock(Jx,K+1,K)
+    JyK=viewblock(Jy,K+1,K)
+
+    bk1[1] /= JxK[1,1]
+    bk1[1]   -= JyK[1,end]/(JxK[1,1]*JyK[2,end])*bk1[2]
+    bk1[2] /= JyK[2,end]
+
+    Abk1x,Abk2x=bk1[1:1],Abk1x
+    Abk1y,Abk2y=[bk1[2]],Abk1y
+    cfs[1][1]*I + x*Abk1x[1] + y*Abk1y[1] -
+        Bx[1]*Abk1x[1] - By[1]*Abk1y[1] -
+        (full(Cx)*Abk2x)[1] - (full(Cy)*Abk2y)[1]
+end
+
+
+function Multiplication(f::Fun{KoornwinderTriangle},S::KoornwinderTriangle)
+    op=operator_clenshaw2D(P.Jx,P.Jy,P.coefficients,Recurrence(1,S),Recurrence(2,S)→S)
+    MultiplicationWrapper(f,op)
 end

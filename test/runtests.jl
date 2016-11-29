@@ -9,7 +9,7 @@ for k=0:10
 end
 
 
-f=Fun([1.],Interval()^2)
+f=Fun([1.],Segment()^2)
     f(0.1,0.2)
 
 
