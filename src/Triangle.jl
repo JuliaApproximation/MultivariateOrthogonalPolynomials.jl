@@ -102,76 +102,74 @@ function coefficients(f::AbstractVector,K::ProductTriangle,P::KoornwinderTriangl
 end
 
 
-import ApproxFun:viewblock
-import BandedMatrices:αA_mul_B_plus_βC!
 function clenshaw2D{T}(Jx,Jy,cfs::Vector{Vector{T}},x,y)
     N=length(cfs)
-    bk1=zeros(N+1)
-    bk2=zeros(N+2)
+    bk1=zeros(T,N+1)
+    bk2=zeros(T,N+2)
 
-    Abk1x=zeros(N+1)
-    Abk1y=zeros(N+1)
-    Abk2x=zeros(N+1)
-    Abk2y=zeros(N+1)
+    Abk1x=zeros(T,N+1)
+    Abk1y=zeros(T,N+1)
+    Abk2x=zeros(T,N+1)
+    Abk2y=zeros(T,N+1)
 
 
-    @inbounds for K=N:-1:2
-        Bx,By=viewblock(Jx,K,K),viewblock(Jy,K,K)
-        Cx,Cy=viewblock(Jx,K,K+1),viewblock(Jy,K,K+1)
-        JxK=viewblock(Jx,K+1,K)
-        JyK=viewblock(Jy,K+1,K)
-        @inbounds for k=1:K
-            bk1[k] /= JxK.data[k]
+    @inbounds for K=Block(N):-1:Block(2)
+        Bx,By=view(Jx,K,K),view(Jy,K,K)
+        Cx,Cy=view(Jx,K,K+1),view(Jy,K,K+1)
+        JxK=view(Jx,K+1,K)
+        JyK=view(Jy,K+1,K)
+        @inbounds for k=1:K.K
+            bk1[k] /= inbands_getindex(JxK,k,k)
         end
 
-        bk1[K-1] -= JyK[K-1,end]/(JxK[K-1,K-1]*JyK[end,end])*bk1[K+1]
-        bk1[K]   -= JyK[K,end]/(JxK[K,K]*JyK[end,end])*bk1[K+1]
-        bk1[K+1] /= JyK[K+1,end]
+        bk1[K.K-1] -= JyK[K.K-1,end]/(JxK[K.K-1,K.K-1]*JyK[end,end])*bk1[K.K+1]
+        bk1[K.K]   -= JyK[K.K,end]/(JxK[K.K,K.K]*JyK[end,end])*bk1[K.K+1]
+        bk1[K.K+1] /= JyK[K.K+1,end]
 
-        resize!(Abk2x,K)
-        BLAS.blascopy!(K,bk1,1,Abk2x,1)
-        resize!(Abk2y,K)
-        Abk2y[1:K-1]=0
-        Abk2y[end]=bk1[K+1]
+        resize!(Abk2x,K.K)
+        BLAS.blascopy!(K.K,bk1,1,Abk2x,1)
+        resize!(Abk2y,K.K)
+        Abk2y[1:K.K-1]=0
+        Abk2y[end]=bk1[K.K+1]
 
         Abk1x,Abk2x=Abk2x,Abk1x
         Abk1y,Abk2y=Abk2y,Abk1y
 
-        bk2 = bk1
+        bk2 = bk1  ::Vector{T}
 
-        bk1=x*Abk1x
+        bk1 = (x*Abk1x) ::Vector{T}
         Base.axpy!(y,Abk1y,bk1)
         αA_mul_B_plus_βC!(-one(T),Bx,Abk1x,one(T),bk1)
         αA_mul_B_plus_βC!(-one(T),By,Abk1y,one(T),bk1)
         αA_mul_B_plus_βC!(-one(T),Cx,Abk2x,one(T),bk1)
         αA_mul_B_plus_βC!(-one(T),Cy,Abk2y,one(T),bk1)
-        Base.axpy!(one(T),cfs[K],bk1)
+        Base.axpy!(one(T),cfs[K.K],bk1)
     end
 
-    K =1
-    Bx,By=viewblock(Jx,K,K),viewblock(Jy,K,K)
-    Cx,Cy=viewblock(Jx,K,K+1),viewblock(Jy,K,K+1)
-    JxK=viewblock(Jx,K+1,K)
-    JyK=viewblock(Jy,K+1,K)
+    K = Block(1)
+    Bx,By=view(Jx,K,K),view(Jy,K,K)
+    Cx,Cy=view(Jx,K,K+1),view(Jy,K,K+1)
+    JxK=view(Jx,K+1,K)
+    JyK=view(Jy,K+1,K)
 
     bk1[1] /= JxK[1,1]
-    bk1[1]   -= JyK[1,end]/(JxK[1,1]*JyK[2,end])*bk1[2]
+    bk1[1] -= JyK[1,end]/(JxK[1,1]*JyK[2,end])*bk1[2]
     bk1[2] /= JyK[2,end]
 
     Abk1x,Abk2x=bk1[1:1],Abk1x
     Abk1y,Abk2y=[bk1[2]],Abk1y
-    (cfs[1] + x*Abk1x + y*Abk1y - Bx*Abk1x - By*Abk1y - Cx*Abk2x - Cy*Abk2y)[1]
+    (cfs[1] + x*Abk1x + y*Abk1y - Bx*Abk1x - By*Abk1y - Cx*Abk2x - Cy*Abk2y)[1]::T
 end
 
 # convert to vector of coefficients
 # TODO: replace with RaggedMatrix
-function totree(S,f::Vector)
-    N=block(S,length(f))
-    ret = Array(Vector{eltype(f)},N)
-    for K=1:N-1
-        ret[K]=f[blockrange(S,K)]
+function totree(S,f::Fun)
+    N=block(S,ncoefficients(f))
+    ret = Array(Vector{eltype(f)},N.K)
+    for K=Block(1):N
+        ret[K.K]=coefficient(f,K)
     end
-    ret[N]=pad(f[blockstart(S,N):end],N)
+
     ret
 end
 
@@ -186,7 +184,7 @@ function plan_evaluate(f::Fun{KoornwinderTriangle},x...)
     N = nblocks(f)
     S = space(f)
     TriangleEvaluatePlan(S,
-                totree(S,f.coefficients),
+                totree(S,f),
                 (Recurrence(1,S))[Block(1):Block(N+2),Block(1):Block(N+1)],
                 (Recurrence(2,S)→S)[Block(1):Block(N+2),Block(1):Block(N+1)])
 end
@@ -237,8 +235,8 @@ function getindex(D::ConcreteDerivative{KoornwinderTriangle},k::Integer,j::Integ
     T=eltype(D)
     S=domainspace(D)
     α,β,γ = S.α,S.β,S.γ
-    K=block(rangespace(D),k)
-    J=block(S,j)
+    K=block(rangespace(D),k).K
+    J=block(S,j).K
     κ=k-blockstart(rangespace(D),K)+1
     ξ=j-blockstart(S,J)+1
 
@@ -309,8 +307,8 @@ subblockbandinds(C::ConcreteConversion{KoornwinderTriangle,KoornwinderTriangle},
 function getindex{T}(C::ConcreteConversion{KoornwinderTriangle,KoornwinderTriangle,T},k::Integer,j::Integer)
     K1=domainspace(C);K2=rangespace(C)
     α,β,γ = K1.α,K1.β,K1.γ
-    K=block(K2,k)
-    J=block(K1,j)
+    K=block(K2,k).K
+    J=block(K1,j).K
     κ=k-blockstart(K2,K)+1
     ξ=j-blockstart(K1,J)+1
 
@@ -385,8 +383,8 @@ rangespace(R::Recurrence{2,KoornwinderTriangle}) =
 
 function getindex{T}(R::Recurrence{1,KoornwinderTriangle,T},k::Integer,j::Integer)
     α,β,γ=R.space.α,R.space.β,R.space.γ
-    K=block(rangespace(R),k)
-    J=block(domainspace(R),j)
+    K=block(rangespace(R),k).K
+    J=block(domainspace(R),j).K
     κ=k-blockstart(rangespace(R),K)+1
     ξ=j-blockstart(domainspace(R),J)+1
 
@@ -404,8 +402,8 @@ end
 
 function getindex{T}(R::Recurrence{2,KoornwinderTriangle,T},k::Integer,j::Integer)
     α,β,γ=R.space.α,R.space.β,R.space.γ
-    K=block(rangespace(R),k)
-    J=block(domainspace(R),j)
+    K=block(rangespace(R),k).K
+    J=block(domainspace(R),j).K
     κ=k-blockstart(rangespace(R),K)+1
     ξ=j-blockstart(domainspace(R),J)+1
 
@@ -448,7 +446,7 @@ for func in (:blocklengths,:tensorizer)
 end
 
 for OP in (:block,:blockstart,:blockstop)
-    @eval $OP(s::TriangleWeight,M) = $OP(s.space,M)
+    @eval $OP(s::TriangleWeight,M::Integer) = $OP(s.space,M)
 end
 
 
@@ -605,11 +603,11 @@ function operator_clenshaw2D{T}(Jx,Jy,cfs::Vector{Vector{T}},x,y)
     Abk2x=Array(Operator{T},N+1);Abk2x[:]=Z
     Abk2y=Array(Operator{T},N+1);Abk2y[:]=Z
 
-    for K=N:-1:2
-        Bx,By=viewblock(Jx,K,K),viewblock(Jy,K,K)
-        Cx,Cy=viewblock(Jx,K,K+1),viewblock(Jy,K,K+1)
-        JxK=viewblock(Jx,K+1,K)
-        JyK=viewblock(Jy,K+1,K)
+    for K=Block(N):-1:Block(2)
+        Bx,By=view(Jx,K,K),view(Jy,K,K)
+        Cx,Cy=view(Jx,K,K+1),view(Jy,K,K+1)
+        JxK=view(Jx,K+1,K)
+        JyK=view(Jy,K+1,K)
         @inbounds for k=1:K
             bk1[k] /= JxK.data[k]
         end
@@ -639,11 +637,11 @@ function operator_clenshaw2D{T}(Jx,Jy,cfs::Vector{Vector{T}},x,y)
     end
 
 
-    K =1
-    Bx,By=viewblock(Jx,K,K),viewblock(Jy,K,K)
-    Cx,Cy=viewblock(Jx,K,K+1),viewblock(Jy,K,K+1)
-    JxK=viewblock(Jx,K+1,K)
-    JyK=viewblock(Jy,K+1,K)
+    K =Block(1)
+    Bx,By=view(Jx,K,K),view(Jy,K,K)
+    Cx,Cy=view(Jx,K,K+1),view(Jy,K,K+1)
+    JxK=view(Jx,K+1,K)
+    JyK=view(Jy,K+1,K)
 
     bk1[1] /= JxK[1,1]
     bk1[1]   -= JyK[1,end]/(JxK[1,1]*JyK[2,end])*bk1[2]

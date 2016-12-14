@@ -5,6 +5,9 @@ module MultivariateOrthogonalPolynomials
 import Base: values,getindex,setindex!,*,.*,+,.+,-,.-,==,<,<=,>,
                 >=,./,/,.^,^,\,∪,transpose
 
+
+import BandedMatrices: αA_mul_B_plus_βC!, inbands_getindex, inbands_setindex!
+
 importall ApproxFun
 
 # ApproxFun general import
