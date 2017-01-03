@@ -1,7 +1,7 @@
 using FixedSizeArrays,Plots,BandedMatrices,
         ApproxFun,MultivariateOrthogonalPolynomials, Base.Test
     import MultivariateOrthogonalPolynomials: Recurrence, ProductTriangle, clenshaw, block, TriangleWeight,plan_evaluate
-    import ApproxFun: testbandedblockbandedoperator, Block
+    import ApproxFun: testbandedblockbandedoperator, Block, BandedBlockBandedMatrix, bbbzeros, blockcolrange, blocksize
 
 
 
@@ -28,6 +28,8 @@ testbandedblockbandedoperator(Jx)
 
 
 Jy=MultivariateOrthogonalPolynomials.Recurrence(2,space(f))
+
+
 
 testbandedblockbandedoperator(Jy)
 
@@ -91,7 +93,7 @@ f=Fun((x,y)->exp(x*cos(y)),K)
 
 
 
-Derivative(KoornwinderTriangle(0,0,0),[1,0])
+
 
 K=KoornwinderTriangle(0,0,0)
 f=Fun((x,y)->exp(x*cos(y)),K)
@@ -111,7 +113,8 @@ D=Derivative(space(f),[2,0])
 @test_approx_eq_eps (D*f)(0.1,0.2) ((x,y)->cos(y)^2*exp(x*cos(y)))(0.1,0.2)  1000000eps()
 
 
-# x^α*y^β*(1-x-y)^γ
+
+
 
 
 ## Recurrence
@@ -169,32 +172,14 @@ S=TriangleWeight(1.,1.,1.,KoornwinderTriangle(1,1,1))
 
 Δ=Laplacian(S)
 
-f=Fun(S,rand(1000))
+f=Fun(S,rand(3))
 h=0.01
-
-Dx=Derivative(S,[1,0])
-QR=qrfact(I-h*(0.001Δ+Dx))
+QR=qrfact(I-h*Δ)
 @time u=\(QR,f;tolerance=1E-7)
 
 @time g=Fun(f,rangespace(QR))
 @time \(QR,g;tolerance=1E-7)
 x=y=linspace(0.,1.,10)
-
-u=u0=f
-C= cache(I : domainspace(QR) → rangespace(QR))
-
-@time \(QR,u;tolerance=1E-7)
-
-@time g=Fun(u,rangespace(QR))
-
-@time \(QR,g;tolerance=1E-7)
-
-@time for k=1:10
-        @show ncoefficients(u)
-        u=\(QR,C*u;tolerance=1E-7)
-        u=chop!(u,1E-7)
-    end
-
 
 X=[ApproxFun.fromcanonical(domain(f),xy)[1] for xy in tuple.(x,y')]
 Y=[ApproxFun.fromcanonical(domain(f),xy)[2] for xy in tuple.(x,y')]
@@ -206,27 +191,12 @@ plotly()
 
 surface(X,Y,u.(X,Y))
 
-using ApproxFun
-d=(-1..1)^2
-    B=Dirichlet(d)
-        f=Fun((x,y)->exp(x*cos(y)),domainspace(B))
-        g=B*f
-        g(0.1,1.)
+a=rangespace(Evaluation(Ultraspherical(9),-1))
+@which ApproxFun.conversion_type(a,Chebyshev())
 
+@which maxspace(a,Chebyshev())
 
-f(0.1,1.0)
-
-Ai = ApproxFun.interlace([B;Laplacian()])
-domainspace(Ai)
-rangespace(Ai)
-Ai|>ApproxFun.blockbandwidths
-Ai[Block.(1:3),Block.(1:5)]  |>chopm
-import ApproxFun: Block
-using SO
-
-QR = qrfact(Ai)
-
-u = \(QR,Fun(rangespace(QR),[0.0,0.0,0.0,0.0,1.0]); tolerance=1E-8,maxlength=4000)
-    u(0.1,0.2)
-
-Laplacian(domainspace(Ai))
+S=Ultraspherical(1)
+B=Evaluation(S,-1)
+C=Conversion(rangespace(B),S)
+(I-C*B)*Integral(S)

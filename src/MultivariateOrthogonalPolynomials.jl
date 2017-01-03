@@ -11,15 +11,15 @@ import BandedMatrices: αA_mul_B_plus_βC!, inbands_getindex, inbands_setindex!
 importall ApproxFun
 
 # ApproxFun general import
-import ApproxFun: BandedMatrix, order,
-                  linesum,complexlength,
+import ApproxFun: BandedMatrix, order, blocksize,
+                  linesum,complexlength, BandedBlockBandedMatrix, bbbzeros,
                   real, eps, isapproxinteger, ∞, FiniteRange
 
 # Operator import
 import ApproxFun:    bandinds,SpaceOperator, ConversionWrapper, DerivativeWrapper,
                   rangespace, domainspace,
                   promotedomainspace,  CalculusOperator, interlace, Multiplication,
-                   choosedomainspace,
+                   choosedomainspace, SubOperator,
                     Dirichlet, Neumann, Laplacian, ConstantTimesOperator, Conversion,
                     dirichlet, neumann, Derivative, ConcreteMultiplication, ConcreteConversion, ConcreteLaplacian,
                     ConcreteDerivative, TimesOperator, MultiplicationWrapper, TridiagonalOperator

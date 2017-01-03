@@ -259,6 +259,42 @@ function getindex(D::ConcreteDerivative{KoornwinderTriangle},k::Integer,j::Integ
     end
 end
 
+function Base.convert{T}(::Type{BandedBlockBandedMatrix},S::SubOperator{T,ConcreteDerivative{KoornwinderTriangle,Vector{Int},Float64},
+                                                                        Tuple{UnitRange{Block},UnitRange{Block}}})
+    ret = bbbzeros(S)
+    sp=domainspace(parent(S))
+    α,β,γ = sp.α,sp.β,sp.γ
+    K_sh = first(parentindexes(S)[1])-1
+    J_sh = first(parentindexes(S)[2])-1
+    N,M=blocksize(ret)::Tuple{Int,Int}
+
+    if D.order == [1,0]
+        for K=Block.(1:N)
+            J = K+K_sh-J_sh+1
+            if J ≤ M
+                bl = view(ret,K,J)
+                KK = size(bl,1)
+                @inbounds for κ=1:KK
+                    bl[κ,κ] = (1+κ+KK+α+β+γ)*(κ+γ+β)/(2κ+γ+β-1)
+                    bl[κ,κ+1] = (κ+β)*(κ+KK+γ+β+1)/(2κ+γ+β+1)
+                end
+            end
+        end
+    elseif D.order == [0,1]
+        for K=Block.(1:N)
+            J = K+K_sh-J_sh+1
+            if J ≤ M
+                bl = view(ret,K,J)
+                KK = size(bl,1)
+                @inbounds for κ=1:KK
+                    bl[κ,κ+1] = 1+κ+β+γ
+                end
+            end
+        end
+    end
+    ret
+end
+
 
 
 ## Conversion
