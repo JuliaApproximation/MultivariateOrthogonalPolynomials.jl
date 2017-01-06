@@ -566,7 +566,7 @@ function Base.convert{T}(::Type{BandedBlockBandedMatrix},S::SubOperator{T,Recurr
             bl = view(ret,KK,JJ)
             K = size(bl,1)
             @inbounds for κ=1:K
-                bl[κ,κ] = ((1 - κ + K + α)*(κ + K + β + γ))/((1 + 2K + α + β + γ)*(2 + 2K + α + β + γ)))
+                bl[κ,κ] = ((1 - κ + K + α)*(κ + K + β + γ))/((1 + 2K + α + β + γ)*(2 + 2K + α + β + γ))
             end
         end
     end
@@ -589,8 +589,8 @@ function Base.convert{T}(::Type{BandedBlockBandedMatrix},S::SubOperator{T,Recurr
             bl = view(ret,KK,JJ)
             J = size(bl,2)
             @inbounds for ξ=1:J
-                bl[ξ,ξ] = -(ξ-1+β)*(J-ξ+1)/((2ξ-1+β+γ)*(2J+α+β+γ)))
-                bl[ξ+1,ξ] = ξ*(J+ξ+α+β+γ)/((2ξ-1+β+γ)*(2J+α+β+γ)))
+                bl[ξ,ξ] = -(ξ-1+β)*(J-ξ+1)/((2ξ-1+β+γ)*(2J+α+β+γ))
+                bl[ξ+1,ξ] = ξ*(J+ξ+α+β+γ)/((2ξ-1+β+γ)*(2J+α+β+γ))
             end
         end
         JJ = KK+K_sh-J_sh  # diagonal
@@ -598,8 +598,8 @@ function Base.convert{T}(::Type{BandedBlockBandedMatrix},S::SubOperator{T,Recurr
             bl = view(ret,KK,JJ)
             J = size(bl,2)
             @inbounds for ξ=1:J
-                bl[ξ,ξ] = (ξ-1+β)*(K+ξ+β+γ-1)/((2ξ-1+β+γ)*(2K+α+β+γ))
-                bl[ξ+1,ξ] = -ξ*(K-ξ+α)/((2ξ-1+β+γ)*(2K+α+β+γ))
+                bl[ξ,ξ] = (ξ-1+β)*(J+ξ+β+γ-1)/((2ξ-1+β+γ)*(2J+α+β+γ))
+                bl[ξ+1,ξ] = -ξ*(J-ξ+α)/((2ξ-1+β+γ)*(2J+α+β+γ))
             end
         end
     end
