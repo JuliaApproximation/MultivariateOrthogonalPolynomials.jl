@@ -259,10 +259,11 @@ function getindex(D::ConcreteDerivative{KoornwinderTriangle},k::Integer,j::Integ
     end
 end
 
-function Base.convert{T}(::Type{BandedBlockBandedMatrix},S::SubOperator{T,ConcreteDerivative{KoornwinderTriangle,Vector{Int},Float64},
+function Base.convert{T}(::Type{BandedBlockBandedMatrix},S::SubOperator{T,ConcreteDerivative{KoornwinderTriangle,Vector{Int},T},
                                                                         Tuple{UnitRange{Block},UnitRange{Block}}})
     ret = bbbzeros(S)
-    sp=domainspace(parent(S))
+    D = parent(S)
+    sp=domainspace(D)
     α,β,γ = sp.α,sp.β,sp.γ
     K_sh = first(parentindexes(S)[1])-1
     J_sh = first(parentindexes(S)[2])-1
@@ -383,6 +384,82 @@ function getindex{T}(C::ConcreteConversion{KoornwinderTriangle,KoornwinderTriang
     else
         error("Not implemented")
     end
+end
+
+
+function Base.convert{T}(::Type{BandedBlockBandedMatrix},S::SubOperator{T,ConcreteConversion{KoornwinderTriangle,KoornwinderTriangle,T},
+                                                                        Tuple{UnitRange{Block},UnitRange{Block}}})
+    ret = bbbzeros(S)
+    K1=domainspace(parent(S))
+    K2=rangespace(parent(S))
+    α,β,γ = K1.α,K1.β,K1.γ
+    K_sh = first(parentindexes(S)[1])-1
+    J_sh = first(parentindexes(S)[2])-1
+    N,M=blocksize(ret)::Tuple{Int,Int}
+
+    if K2.α == α+1 && K2.β == β && K2.γ == γ
+        for KK=Block.(1:N)
+            J = KK+K_sh-J_sh  # diagonal
+            if J ≤ M
+                bl = view(ret,KK,J)
+                K = size(bl,1)
+                @inbounds for κ=1:K
+                    bl[κ,κ] = (K+κ+α+β+γ)/(2K+α+β+γ)
+                end
+            end
+            J = KK+K_sh-J_sh+1  # super-diagonal
+            if J ≤ M
+                bl = view(ret,KK,J)
+                K = size(bl,1)
+                @inbounds for κ=1:K
+                    bl[κ,κ] = (K+κ+β+γ)/(2K+α+β+γ+2)
+                end
+            end
+        end
+    elseif K2.α==α && K2.β==β+1 && K2.γ==γ
+        for KK=Block.(1:N)
+            J = KK+K_sh-J_sh  # diagonal
+            if J ≤ M
+                bl = view(ret,KK,J)
+                K = size(bl,1)
+                @inbounds for κ=1:K
+                    bl[κ,κ] = (K+κ+α+β+γ)/(2K+α+β+γ)*(κ+β+γ)/(2κ+β+γ-1)
+                    bl[κ,κ+1] = -(κ+γ)/(2κ+β+γ+1)*(K-κ)/(2K+α+β+γ)
+                end
+            end
+            J = KK+K_sh-J_sh+1  # super-diagonal
+            if J ≤ M
+                bl = view(ret,KK,J)
+                K = size(bl,1)
+                @inbounds for κ=1:K
+                    bl[κ,κ] = -(K-κ+α+1)/(2K+α+β+γ+2)*(κ+β+γ)/(2κ+β+γ-1)
+                    bl[κ,κ+1] = (κ+γ)/(2κ+β+γ+1)*(K+κ+β+γ+1)/(2K+α+β+γ+2)
+                end
+            end
+        end
+    elseif K2.α==α && K2.β==β && K2.γ==γ+1
+        for KK=Block.(1:N)
+            J = KK+K_sh-J_sh  # diagonal
+            if J ≤ M
+                bl = view(ret,KK,J)
+                K = size(bl,1)
+                @inbounds for κ=1:K
+                    bl[κ,κ] = (K+κ+α+β+γ)/(2K+α+β+γ)*(κ+β+γ)/(2κ+β+γ-1)
+                    bl[κ,κ+1] = (κ+β)/(2κ+β+γ+1)*(K-κ)/(2K+α+β+γ)
+                end
+            end
+            J = KK+K_sh-J_sh+1  # super-diagonal
+            if J ≤ M
+                bl = view(ret,KK,J)
+                K = size(bl,1)
+                @inbounds for κ=1:K
+                    bl[κ,κ] = -(K-κ+α+1)/(2K+α+β+γ+2)*(κ+β+γ)/(2κ+β+γ-1)
+                    bl[κ,κ+1] = -(κ+β)/(2κ+β+γ+1)*(K+κ+β+γ+1)/(2K+α+β+γ+2)
+                end
+            end
+        end
+    end
+    ret
 end
 
 

@@ -14,6 +14,24 @@ pf=ProductFun((x,y)->exp(x*cos(y)),ProductTriangle(1,1,1),40,40)
 f=Fun((x,y)->exp(x*cos(y)),KoornwinderTriangle(1,1,1))
 @test_approx_eq f(0.1,0.2) exp(0.1*cos(0.2))
 
+
+# Test conversion
+C=Conversion(KoornwinderTriangle(0,0,0),KoornwinderTriangle(1,0,0))
+testbandedblockbandedoperator(C)
+
+C=Conversion(KoornwinderTriangle(0,0,0),KoornwinderTriangle(0,1,0))
+testbandedblockbandedoperator(C)
+
+C=Conversion(KoornwinderTriangle(0,0,0),KoornwinderTriangle(0,0,1))
+testbandedblockbandedoperator(C)
+
+
+C=Conversion(KoornwinderTriangle(0,0,0),KoornwinderTriangle(1,1,1))
+testbandedblockbandedoperator(C)
+
+Δ = Laplacian(space(f))
+testbandedblockbandedoperator(Δ)
+
 # Test recurrence operators
 Jx=MultivariateOrthogonalPolynomials.Recurrence(1,space(f))
 testbandedblockbandedoperator(Jx)
