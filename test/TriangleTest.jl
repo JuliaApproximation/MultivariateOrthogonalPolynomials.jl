@@ -192,27 +192,5 @@ f=Fun(S,rand(3))
 h=0.01
 QR=qrfact(I-h*Δ)
 @time u=\(QR,f;tolerance=1E-7)
-
 @time g=Fun(f,rangespace(QR))
 @time \(QR,g;tolerance=1E-7)
-x=y=linspace(0.,1.,10)
-
-X=[ApproxFun.fromcanonical(domain(f),xy)[1] for xy in tuple.(x,y')]
-Y=[ApproxFun.fromcanonical(domain(f),xy)[2] for xy in tuple.(x,y')]
-
-
-using Plots
-plotly()
-
-
-surface(X,Y,u.(X,Y))
-
-a=rangespace(Evaluation(Ultraspherical(9),-1))
-@which ApproxFun.conversion_type(a,Chebyshev())
-
-@which maxspace(a,Chebyshev())
-
-S=Ultraspherical(1)
-B=Evaluation(S,-1)
-C=Conversion(rangespace(B),S)
-(I-C*B)*Integral(S)

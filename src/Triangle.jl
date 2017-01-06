@@ -272,7 +272,7 @@ function Base.convert{T}(::Type{BandedBlockBandedMatrix},S::SubOperator{T,Concre
     if D.order == [1,0]
         for K=Block.(1:N)
             J = K+K_sh-J_sh+1
-            if J ≤ M
+            if 1 ≤ J ≤ M
                 bl = view(ret,K,J)
                 KK = size(bl,1)
                 @inbounds for κ=1:KK
@@ -284,7 +284,7 @@ function Base.convert{T}(::Type{BandedBlockBandedMatrix},S::SubOperator{T,Concre
     elseif D.order == [0,1]
         for K=Block.(1:N)
             J = K+K_sh-J_sh+1
-            if J ≤ M
+            if 1 ≤ J ≤ M
                 bl = view(ret,K,J)
                 KK = size(bl,1)
                 @inbounds for κ=1:KK
@@ -400,7 +400,7 @@ function Base.convert{T}(::Type{BandedBlockBandedMatrix},S::SubOperator{T,Concre
     if K2.α == α+1 && K2.β == β && K2.γ == γ
         for KK=Block.(1:N)
             J = KK+K_sh-J_sh  # diagonal
-            if J ≤ M
+            if 1 ≤ J ≤ M
                 bl = view(ret,KK,J)
                 K = size(bl,1)
                 @inbounds for κ=1:K
@@ -408,7 +408,7 @@ function Base.convert{T}(::Type{BandedBlockBandedMatrix},S::SubOperator{T,Concre
                 end
             end
             J = KK+K_sh-J_sh+1  # super-diagonal
-            if J ≤ M
+            if 1 ≤ J ≤ M
                 bl = view(ret,KK,J)
                 K = size(bl,1)
                 @inbounds for κ=1:K
@@ -419,16 +419,18 @@ function Base.convert{T}(::Type{BandedBlockBandedMatrix},S::SubOperator{T,Concre
     elseif K2.α==α && K2.β==β+1 && K2.γ==γ
         for KK=Block.(1:N)
             J = KK+K_sh-J_sh  # diagonal
-            if J ≤ M
+            if 1 ≤ J ≤ M
                 bl = view(ret,KK,J)
                 K = size(bl,1)
                 @inbounds for κ=1:K
                     bl[κ,κ] = (K+κ+α+β+γ)/(2K+α+β+γ)*(κ+β+γ)/(2κ+β+γ-1)
+                end
+                @inbounds for κ=1:K-1
                     bl[κ,κ+1] = -(κ+γ)/(2κ+β+γ+1)*(K-κ)/(2K+α+β+γ)
                 end
             end
             J = KK+K_sh-J_sh+1  # super-diagonal
-            if J ≤ M
+            if 1 ≤ J ≤ M
                 bl = view(ret,KK,J)
                 K = size(bl,1)
                 @inbounds for κ=1:K
@@ -440,16 +442,18 @@ function Base.convert{T}(::Type{BandedBlockBandedMatrix},S::SubOperator{T,Concre
     elseif K2.α==α && K2.β==β && K2.γ==γ+1
         for KK=Block.(1:N)
             J = KK+K_sh-J_sh  # diagonal
-            if J ≤ M
+            if 1 ≤ J ≤ M
                 bl = view(ret,KK,J)
                 K = size(bl,1)
                 @inbounds for κ=1:K
                     bl[κ,κ] = (K+κ+α+β+γ)/(2K+α+β+γ)*(κ+β+γ)/(2κ+β+γ-1)
-                    bl[κ,κ+1] = (κ+β)/(2κ+β+γ+1)*(K-κ)/(2K+α+β+γ)
                 end
+                @inbounds for κ=1:K-1
+                   bl[κ,κ+1] = (κ+β)/(2κ+β+γ+1)*(K-κ)/(2K+α+β+γ)
+               end
             end
             J = KK+K_sh-J_sh+1  # super-diagonal
-            if J ≤ M
+            if 1 ≤ J ≤ M
                 bl = view(ret,KK,J)
                 K = size(bl,1)
                 @inbounds for κ=1:K
