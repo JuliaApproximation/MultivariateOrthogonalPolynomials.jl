@@ -504,9 +504,9 @@ function getindex{T}(R::Recurrence{1,KoornwinderTriangle,T},k::Integer,j::Intege
     if K == J && κ == ξ
         T((-2κ^2 + 2K^2 - 2κ*(-1 + β + γ) + (1 + α)*(-1 + α + β + γ) + 2K*(α + β + γ))/
                     ((-1 + 2K + α + β + γ)*(1 + 2K + α + β + γ)))
-    elseif K==J-1 && κ == ξ
+    elseif K+1==J && κ == ξ # super-diagonal
         T(((1 - κ + K + α)*(κ + K + β + γ))/((1 + 2K + α + β + γ)*(2 + 2K + α + β + γ)))
-    elseif K==J+1 && κ == ξ
+    elseif K-1==J && κ == ξ # sub-diagonal
         T(((1 + J - κ)*(J + κ + α + β + γ))/((2 + 2*(-1 + J) + α + β + γ)*(3 + 2*(-1 + J) + α + β + γ)))
     else
         zero(T)
@@ -531,6 +531,79 @@ function getindex{T}(R::Recurrence{2,KoornwinderTriangle,T},k::Integer,j::Intege
     else
         zero(T)
     end
+end
+
+function Base.convert{T}(::Type{BandedBlockBandedMatrix},S::SubOperator{T,Recurrence{1,KoornwinderTriangle,T},
+                                                                        Tuple{UnitRange{Block},UnitRange{Block}}})
+    ret = bbbzeros(S)
+    R = parent(S)
+    α,β,γ=R.space.α,R.space.β,R.space.γ
+    K_sh = first(parentindexes(S)[1])-1
+    J_sh = first(parentindexes(S)[2])-1
+    N,M=blocksize(ret)::Tuple{Int,Int}
+
+
+    for KK=Block.(1:N)
+        JJ = KK+K_sh-J_sh-1  # sub-diagonal
+        if 1 ≤ JJ ≤ M
+            bl = view(ret,KK,JJ)
+            J = size(bl,2)
+            @inbounds for κ=1:J
+                bl[κ,κ] = ((1 + J - κ)*(J + κ + α + β + γ))/((2 + 2*(-1 + J) + α + β + γ)*(3 + 2*(-1 + J) + α + β + γ))
+            end
+        end
+        JJ = KK+K_sh-J_sh  # diagonal
+        if 1 ≤ JJ ≤ M
+            bl = view(ret,KK,JJ)
+            K = size(bl,1)
+            @inbounds for κ=1:K
+                bl[κ,κ] = (-2κ^2 + 2K^2 - 2κ*(-1 + β + γ) + (1 + α)*(-1 + α + β + γ) + 2K*(α + β + γ))/
+                            ((-1 + 2K + α + β + γ)*(1 + 2K + α + β + γ))
+            end
+        end
+        JJ = KK+K_sh-J_sh+1  # super-diagonal
+        if 1 ≤ JJ ≤ M
+            bl = view(ret,KK,JJ)
+            K = size(bl,1)
+            @inbounds for κ=1:K
+                bl[κ,κ] = ((1 - κ + K + α)*(κ + K + β + γ))/((1 + 2K + α + β + γ)*(2 + 2K + α + β + γ)))
+            end
+        end
+    end
+    ret
+end
+
+function Base.convert{T}(::Type{BandedBlockBandedMatrix},S::SubOperator{T,Recurrence{2,KoornwinderTriangle,T},
+                                                                        Tuple{UnitRange{Block},UnitRange{Block}}})
+    ret = bbbzeros(S)
+    R = parent(S)
+    α,β,γ=R.space.α,R.space.β,R.space.γ
+    K_sh = first(parentindexes(S)[1])-1
+    J_sh = first(parentindexes(S)[2])-1
+    N,M=blocksize(ret)::Tuple{Int,Int}
+
+
+    for KK=Block.(1:N)
+        JJ = KK+K_sh-J_sh-1  # super-diagonal
+        if 1 ≤ JJ ≤ M
+            bl = view(ret,KK,JJ)
+            J = size(bl,2)
+            @inbounds for ξ=1:J
+                bl[ξ,ξ] = -(ξ-1+β)*(J-ξ+1)/((2ξ-1+β+γ)*(2J+α+β+γ)))
+                bl[ξ+1,ξ] = ξ*(J+ξ+α+β+γ)/((2ξ-1+β+γ)*(2J+α+β+γ)))
+            end
+        end
+        JJ = KK+K_sh-J_sh  # diagonal
+        if 1 ≤ JJ ≤ M
+            bl = view(ret,KK,JJ)
+            J = size(bl,2)
+            @inbounds for ξ=1:J
+                bl[ξ,ξ] = (ξ-1+β)*(K+ξ+β+γ-1)/((2ξ-1+β+γ)*(2K+α+β+γ))
+                bl[ξ+1,ξ] = -ξ*(K-ξ+α)/((2ξ-1+β+γ)*(2K+α+β+γ))
+            end
+        end
+    end
+    ret
 end
 
 

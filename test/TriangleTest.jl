@@ -46,9 +46,6 @@ testbandedblockbandedoperator(Jx)
 
 
 Jy=MultivariateOrthogonalPolynomials.Recurrence(2,space(f))
-
-
-
 testbandedblockbandedoperator(Jy)
 
 @test_approx_eq Jy[3,1] 1/3
