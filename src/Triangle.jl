@@ -89,6 +89,9 @@ columnspace(T::ProductTriangle,k::Integer) =
 Fun(f::Function,S::KoornwinderTriangle) =
     Fun(Fun(ProductFun(f,ProductTriangle(S))),S)
 
+itransform(S::KoornwinderTriangle,cfs::Vector) =
+    plan_evaluate(Fun(S,cfs)).(points(S,length(cfs)))
+
 function coefficients(f::AbstractVector,K::KoornwinderTriangle,P::ProductTriangle)
     C=totensor(K,f)
     D=Float64[2.0^(-k) for k=0:size(C,1)-1]
@@ -191,7 +194,7 @@ end
 
 (P::TriangleEvaluatePlan)(x,y) = clenshaw2D(P.Jx,P.Jy,P.coefficients,x,y)
 
-(P::TriangleEvaluatePlan)(pt) = P(pt...)
+(P::TriangleEvaluatePlan)(pt::Vec) = P(pt...)
 
 # evaluate(f::AbstractVector,K::KoornwinderTriangle,x...) =
 #     evaluate(coefficients(f,K,ProductTriangle(K)),ProductTriangle(K),x...)
@@ -628,7 +631,23 @@ TriangleWeight(α::Number,β::Number,γ::Number,sp::Space) =
     TriangleWeight{typeof(sp)}(α,β,γ,sp)
 
 weight(S::TriangleWeight,x,y) = x.^S.α.*y.^S.β.*(1-x-y).^S.γ
-weight(S::TriangleWeight,xy) = weight(S,xy...)
+weight(S::TriangleWeight,xy::Vec) = weight(S,xy...)
+
+immutable TriangleWeightEvaluatePlan{S,PP}
+    space::S
+    plan::PP
+end
+
+plan_evaluate{SS}(f::Fun{TriangleWeight{SS}},xy...) =
+    TriangleWeightEvaluatePlan(space(f),
+        plan_evaluate(Fun(space(f).space,coefficients(f)),xy...))
+
+(P::TriangleWeightEvaluatePlan)(xy...) =
+    weight(P.space,xy...)*P.plan(xy...)
+
+
+itransform(S::TriangleWeight,cfs::Vector) =
+    plan_evaluate(Fun(S,cfs)).(points(S,length(cfs)))
 
 #TODO: Move to Singulariaties.jl
 for func in (:blocklengths,:tensorizer)

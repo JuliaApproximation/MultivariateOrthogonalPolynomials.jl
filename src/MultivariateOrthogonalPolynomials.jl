@@ -1,3 +1,5 @@
+__precompile__()
+
 module MultivariateOrthogonalPolynomials
     using Base, Compat, Plots, ApproxFun, BandedMatrices, FastGaussQuadrature, FixedSizeArrays
 
