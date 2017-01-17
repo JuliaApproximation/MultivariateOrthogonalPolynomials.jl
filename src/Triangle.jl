@@ -1,4 +1,4 @@
-export Triangle, KoornwinderTriangle, TriangleWeight
+export Triangle, KoornwinderTriangle, ProductTriangle, TriangleWeight
 
 
 ## Triangle Def
