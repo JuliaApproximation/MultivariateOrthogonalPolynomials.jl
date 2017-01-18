@@ -1,7 +1,7 @@
 __precompile__()
 
 module MultivariateOrthogonalPolynomials
-    using Base, Compat, Plots, ApproxFun, BandedMatrices, FastGaussQuadrature, FixedSizeArrays
+    using Base, Compat, RecipesBase, ApproxFun, BandedMatrices, FastGaussQuadrature, FixedSizeArrays
 
 # package code goes here
 import Base: values,getindex,setindex!,*,.*,+,.+,-,.-,==,<,<=,>,
