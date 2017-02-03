@@ -38,7 +38,7 @@ import ApproxFun: PolynomialSpace, ConstantSpace, NoSpace,
                    coefficients, RealUnivariateSpace
 
 # Multivariate import
-import ApproxFun: BivariateDomain,DirectSumSpace,TupleSpace, AbstractProductSpace,
+import ApproxFun: BivariateDomain,DirectSumSpace, AbstractProductSpace,
                     BivariateFun,  ProductFun, LowRankFun, lap, columnspace,
                     blockbandinds, subblockbandinds, fromtensor, totensor, isbandedblockbanded,
                     Tensorizer, tensorizer, block, blockstart, blockstop, blocklengths,

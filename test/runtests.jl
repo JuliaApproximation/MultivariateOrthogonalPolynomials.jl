@@ -5,7 +5,7 @@ using ApproxFun,MultivariateOrthogonalPolynomials,Base.Test
 ##  bessel
 
 for k=0:10
-    @test_approx_eq Fun(r->besselj(k,r),JacobiSquare(k))(0.9) besselj(k,0.9)
+    @test Fun(r->besselj(k,r),JacobiSquare(k))(0.9) ≈ besselj(k,0.9)
 end
 
 
@@ -14,12 +14,12 @@ f=Fun([1.],Segment()^2)
 
 
 f=Fun([1.],Disk())
-@test_approx_eq f(0.1,0.2) 1.
+@test f(0.1,0.2) ≈ 1.
 
 f=ProductFun(Fun([0.,1.]+0.0im,Disk()))
 x,y=0.1,0.2
 r,θ=sqrt(x^2+y^2),atan2(y,x)
-@test_approx_eq exp(-im*θ)*r f(x,y)
+@test exp(-im*θ)*r ≈ f(x,y)
 
 
 ## Disk
@@ -29,7 +29,7 @@ r,θ=sqrt(x^2+y^2),atan2(y,x)
 
 f=(x,y)->exp(x.*sin(y))
 u=ProductFun(f,Disk(),50,51)
-@test_approx_eq u(.1,.1) f(.1,.1)
+@test u(.1,.1) ≈ f(.1,.1)
 
 
 
@@ -38,7 +38,7 @@ u=ProductFun(f,Disk(),50,51)
 # Laplace
 d=Disk()
 u=[dirichlet(d),lap(d)]\Fun(z->real(exp(z)),Circle())
-@test_approx_eq u(.1,.2) real(exp(.1+.2im))
+@test u(.1,.2) ≈ real(exp(.1+.2im))
 
 
 
@@ -49,7 +49,7 @@ u=[dirichlet(d),lap(d)]\Fun(z->real(exp(z)),Circle())
 # Poisson
 f=Fun((x,y)->exp(-10(x+.2).^2-20(y-.1).^2),d)
 u=[dirichlet(d),lap(d)]\[0.,f]
-@test_approx_eq u(.1,.2) -0.039860694987858845
+@test u(.1,.2) ≈ -0.039860694987858845
 
 #Helmholtz
 u=[dirichlet(d),lap(d)+100I]\1.0

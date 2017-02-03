@@ -8,11 +8,11 @@ using FixedSizeArrays,Plots,BandedMatrices,
 
 
 pf=ProductFun((x,y)->exp(x*cos(y)),ProductTriangle(1,1,1),40,40)
-@test_approx_eq pf(0.1,0.2) exp(0.1*cos(0.2))
+@test pf(0.1,0.2) ≈ exp(0.1*cos(0.2))
 
 
 f=Fun((x,y)->exp(x*cos(y)),KoornwinderTriangle(1,1,1))
-@test_approx_eq f(0.1,0.2) exp(0.1*cos(0.2))
+@test f(0.1,0.2) ≈ exp(0.1*cos(0.2))
 
 
 # Test conversion
@@ -49,7 +49,7 @@ Jy=MultivariateOrthogonalPolynomials.Recurrence(2,space(f))
 
 testbandedblockbandedoperator(Jy)
 
-@test_approx_eq Jy[3,1] 1/3
+@test Jy[3,1] ≈ 1/3
 
 @test ApproxFun.colstop(Jy,1) == 3
 @test ApproxFun.colstop(Jy,2) == 5
@@ -59,7 +59,7 @@ testbandedblockbandedoperator(Jy)
 @test norm((Jy*f-Fun((x,y)->y*exp(x*cos(y)),KoornwinderTriangle(1,0,1))).coefficients) < 1E-11
 
 pyf=ProductFun((x,y)->y*exp(x*cos(y)),ProductTriangle(1,0,1))
-@test_approx_eq pyf(0.1,0.2) 0.2exp(0.1*cos(0.2))
+@test pyf(0.1,0.2) ≈ 0.2exp(0.1*cos(0.2))
 
 
 
@@ -89,23 +89,23 @@ testbandedblockbandedoperator(Jy)
 K=KoornwinderTriangle(1,1,1)
 
 f=Fun(K,[1.])
-@test_approx_eq Fun(f,KoornwinderTriangle(1,1,2))(0.1,0.2) f(0.1,0.2)
+@test Fun(f,KoornwinderTriangle(1,1,2))(0.1,0.2) ≈ f(0.1,0.2)
 f=Fun(K,[0.,1.])
-@test_approx_eq Fun(f,KoornwinderTriangle(1,1,2))(0.1,0.2) f(0.1,0.2)
+@test Fun(f,KoornwinderTriangle(1,1,2))(0.1,0.2) ≈ f(0.1,0.2)
 f=Fun(K,[0.,0.,1.])
-@test_approx_eq Fun(f,KoornwinderTriangle(1,1,2))(0.1,0.2) f(0.1,0.2)
+@test Fun(f,KoornwinderTriangle(1,1,2))(0.1,0.2) ≈ f(0.1,0.2)
 f=Fun(K,[0.,0.,0.,1.])
-@test_approx_eq Fun(f,KoornwinderTriangle(1,1,2))(0.1,0.2) f(0.1,0.2)
+@test Fun(f,KoornwinderTriangle(1,1,2))(0.1,0.2) ≈ f(0.1,0.2)
 f=Fun(K,[0.,0.,0.,0.,1.])
-@test_approx_eq Fun(f,KoornwinderTriangle(1,1,2))(0.1,0.2) f(0.1,0.2)
+@test Fun(f,KoornwinderTriangle(1,1,2))(0.1,0.2) ≈ f(0.1,0.2)
 
 
 f=Fun((x,y)->exp(x*cos(y)),K)
-@test_approx_eq f(0.1,0.2) ((x,y)->exp(x*cos(y)))(0.1,0.2)
-@test_approx_eq Fun(f,KoornwinderTriangle(2,1,1))(0.1,0.2) ((x,y)->exp(x*cos(y)))(0.1,0.2)
-@test_approx_eq Fun(f,KoornwinderTriangle(2,2,1))(0.1,0.2) ((x,y)->exp(x*cos(y)))(0.1,0.2)
-@test_approx_eq Fun(f,KoornwinderTriangle(2,2,2))(0.1,0.2) ((x,y)->exp(x*cos(y)))(0.1,0.2)
-@test_approx_eq Fun(f,KoornwinderTriangle(1,1,2))(0.1,0.2) ((x,y)->exp(x*cos(y)))(0.1,0.2)
+@test f(0.1,0.2) ≈ ((x,y)->exp(x*cos(y)))(0.1,0.2)
+@test Fun(f,KoornwinderTriangle(2,1,1))(0.1,0.2) ≈ ((x,y)->exp(x*cos(y)))(0.1,0.2)
+@test Fun(f,KoornwinderTriangle(2,2,1))(0.1,0.2) ≈ ((x,y)->exp(x*cos(y)))(0.1,0.2)
+@test Fun(f,KoornwinderTriangle(2,2,2))(0.1,0.2) ≈ ((x,y)->exp(x*cos(y)))(0.1,0.2)
+@test Fun(f,KoornwinderTriangle(1,1,2))(0.1,0.2) ≈ ((x,y)->exp(x*cos(y)))(0.1,0.2)
 
 
 
@@ -143,7 +143,7 @@ Mx=Recurrence(1,S)
 My=Recurrence(2,S)
 f=Fun((x,y)->exp(x*sin(y)),S)
 
-@test_approx_eq (Mx*f)(0.1,0.2) 0.1*f(0.1,0.2)
+@test (Mx*f)(0.1,0.2) ≈ 0.1*f(0.1,0.2)
 @test_approx_eq_eps (My*f)(0.1,0.2) 0.2*f(0.1,0.2) 1E-12
 @test_approx_eq_eps ((Mx+My)*f)(0.1,0.2) 0.3*f(0.1,0.2) 1E-12
 
@@ -161,18 +161,18 @@ P2=Float64[Fun(S,[zeros(k);1.])(x,y) for k=3:5]
 
 
 K=Block(1)
-@test_approx_eq Matrix(Jx[K,K])*P0+Matrix(Jx[K+1,K])'*P1 x*P0
-@test_approx_eq Matrix(Jy[K,K])*P0+Matrix(Jy[K+1,K])'*P1 y*P0
+@test Matrix(Jx[K,K])*P0+Matrix(Jx[K+1,K])'*P1 ≈ x*P0
+@test Matrix(Jy[K,K])*P0+Matrix(Jy[K+1,K])'*P1 ≈ y*P0
 
 K=Block(2)
-@test_approx_eq Matrix(Jx[K-1,K])'*P0+Matrix(Jx[K,K])'*P1+Matrix(Jx[K+1,K])'*P2 x*P1
-@test_approx_eq Matrix(Jy[K-1,K])'*P0+Matrix(Jy[K,K])'*P1+Matrix(Jy[K+1,K])'*P2 y*P1
+@test Matrix(Jx[K-1,K])'*P0+Matrix(Jx[K,K])'*P1+Matrix(Jx[K+1,K])'*P2 ≈ x*P1
+@test Matrix(Jy[K-1,K])'*P0+Matrix(Jy[K,K])'*P1+Matrix(Jy[K+1,K])'*P2 ≈ y*P1
 
 
 A,B,C=Matrix(Jy[K+1,K])',Matrix(Jy[K,K])',Matrix(Jy[K-1,K])'
 
 
-@test_approx_eq C*P0+B*P1+A*P2 y*P1
+@test C*P0+B*P1+A*P2 ≈ y*P1
 
 
 ## Weighted
@@ -180,9 +180,9 @@ A,B,C=Matrix(Jy[K+1,K])',Matrix(Jy[K,K])',Matrix(Jy[K-1,K])'
 
 S=TriangleWeight(1.,1.,1.,KoornwinderTriangle(1,1,1))
 
-@test_approx_eq (Derivative(S,[1,0])*Fun(S,[1.]))(0.1,0.2) ((x,y)->y*(1-x-y)-x*y)(0.1,0.2)
+@test (Derivative(S,[1,0])*Fun(S,[1.]))(0.1,0.2) ≈ ((x,y)->y*(1-x-y)-x*y)(0.1,0.2)
 
-@test_approx_eq (Laplacian(S)*Fun(S,[1.]))(0.1,0.2) -2*0.1-2*0.2
+@test (Laplacian(S)*Fun(S,[1.]))(0.1,0.2) ≈ -2*0.1-2*0.2
 
 
 
