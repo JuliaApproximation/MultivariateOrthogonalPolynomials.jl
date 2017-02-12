@@ -188,8 +188,8 @@ function plan_evaluate(f::Fun{KoornwinderTriangle},x...)
     S = space(f)
     TriangleEvaluatePlan(S,
                 totree(S,f),
-                (Recurrence(1,S))[Block(1):Block(N+2),Block(1):Block(N+1)],
-                (Recurrence(2,S)→S)[Block(1):Block(N+2),Block(1):Block(N+1)])
+                (Lowering{1}(S)→S)[Block(1):Block(N+2),Block(1):Block(N+1)],
+                (Lowering{2}(S)→S)[Block(1):Block(N+2),Block(1):Block(N+1)])
 end
 
 (P::TriangleEvaluatePlan)(x,y) = clenshaw2D(P.Jx,P.Jy,P.coefficients,x,y)
@@ -473,35 +473,38 @@ end
 
 ## Jacobi Operators
 
-# x is 1, 2, ... for x, y, z,...
-immutable Recurrence{x,S,T} <: Operator{T}
+# k is 1, 2, ... for x, y, z,...
+immutable Lowering{k,S,T} <: Operator{T}
     space::S
 end
 
-Recurrence(k::Integer,sp) = Recurrence{k,typeof(sp),promote_type(eltype(sp),eltype(eltype(domain(sp))))}(sp)
-Base.convert{x,T,S}(::Type{Operator{T}},J::Recurrence{x,S}) = Recurrence{x,S,T}(J.space)
+Base.convert{k}(::Type{Lowering{k}},sp) = Lowering{k,typeof(sp),promote_type(eltype(sp),eltype(eltype(domain(sp))))}(sp)
+Base.convert{x,T,S}(::Type{Operator{T}},J::Lowering{x,S}) = Lowering{x,S,T}(J.space)
 
 
-domainspace(R::Recurrence) = R.space
+domainspace(R::Lowering) = R.space
 
-isbandedblockbanded(::Recurrence{1,KoornwinderTriangle}) = true
-isbandedblockbanded(::Recurrence{2,KoornwinderTriangle}) = true
+isbandedblockbanded(::Lowering) = true
 
-blockbandinds(::Recurrence{1,KoornwinderTriangle}) = (-1,1)
-blockbandinds(::Recurrence{2,KoornwinderTriangle}) = (-1,0)
+blockbandinds(::Lowering) = (-1,0)
 
-subblockbandinds(::Recurrence{1,KoornwinderTriangle}) = (0,0)
-subblockbandinds(::Recurrence{2,KoornwinderTriangle}) = (-1,0)
+subblockbandinds(::Lowering{1,KoornwinderTriangle}) = (0,0)
+subblockbandinds(::Lowering{2,KoornwinderTriangle}) = (-1,0)
+subblockbandinds(::Lowering{3,KoornwinderTriangle}) = (-1,0)
 
-subblockbandinds(::Recurrence{1,KoornwinderTriangle},k::Integer) = 0
-subblockbandinds(::Recurrence{2,KoornwinderTriangle},k::Integer) = k==1? -1 : 0
+subblockbandinds(::Lowering{1,KoornwinderTriangle},k::Integer) = 0
+subblockbandinds(::Lowering{2,KoornwinderTriangle},k::Integer) = k==1? -1 : 0
+subblockbandinds(::Lowering{3,KoornwinderTriangle},k::Integer) = k==1? -1 : 0
 
 
-rangespace(R::Recurrence{1,KoornwinderTriangle}) = R.space
-rangespace(R::Recurrence{2,KoornwinderTriangle}) =
+rangespace(R::Lowering{1,KoornwinderTriangle}) =
+    KoornwinderTriangle(R.space.α-1,R.space.β,R.space.γ)
+rangespace(R::Lowering{2,KoornwinderTriangle}) =
     KoornwinderTriangle(R.space.α,R.space.β-1,R.space.γ)
+rangespace(R::Lowering{3,KoornwinderTriangle}) =
+    KoornwinderTriangle(R.space.α,R.space.β,R.space.γ-1)
 
-function getindex{T}(R::Recurrence{1,KoornwinderTriangle,T},k::Integer,j::Integer)
+function getindex{T}(R::Lowering{1,KoornwinderTriangle,T},k::Integer,j::Integer)
     α,β,γ=R.space.α,R.space.β,R.space.γ
     K=block(rangespace(R),k).K
     J=block(domainspace(R),j).K
@@ -520,7 +523,7 @@ function getindex{T}(R::Recurrence{1,KoornwinderTriangle,T},k::Integer,j::Intege
     end
 end
 
-function getindex{T}(R::Recurrence{2,KoornwinderTriangle,T},k::Integer,j::Integer)
+function getindex{T}(R::Lowering{2,KoornwinderTriangle,T},k::Integer,j::Integer)
     α,β,γ=R.space.α,R.space.β,R.space.γ
     K=block(rangespace(R),k).K
     J=block(domainspace(R),j).K
@@ -540,7 +543,7 @@ function getindex{T}(R::Recurrence{2,KoornwinderTriangle,T},k::Integer,j::Intege
     end
 end
 
-function Base.convert{T}(::Type{BandedBlockBandedMatrix},S::SubOperator{T,Recurrence{1,KoornwinderTriangle,T},
+function Base.convert{T}(::Type{BandedBlockBandedMatrix},S::SubOperator{T,Lowering{1,KoornwinderTriangle,T},
                                                                         Tuple{UnitRange{Block},UnitRange{Block}}})
     ret = bbbzeros(S)
     R = parent(S)
@@ -580,7 +583,7 @@ function Base.convert{T}(::Type{BandedBlockBandedMatrix},S::SubOperator{T,Recurr
     ret
 end
 
-function Base.convert{T}(::Type{BandedBlockBandedMatrix},S::SubOperator{T,Recurrence{2,KoornwinderTriangle,T},
+function Base.convert{T}(::Type{BandedBlockBandedMatrix},S::SubOperator{T,Lowering{2,KoornwinderTriangle,T},
                                                                         Tuple{UnitRange{Block},UnitRange{Block}}})
     ret = bbbzeros(S)
     R = parent(S)
@@ -696,17 +699,26 @@ function Conversion(A::TriangleWeight,B::TriangleWeight)
 
     if A.α ≈ B.α && A.β ≈ B.β && A.γ ≈ B.γ
         ConversionWrapper(SpaceOperator(Conversion(A.space,B.space),A,B))
+    elseif A.α ≈ B.α+1 && A.β ≈ B.β && A.γ ≈ B.γ &&
+           A.space.α ≈ B.space.α+1 && A.space.β ≈ B.space.β && A.space.γ ≈ B.space.γ
+        ConcreteConversion(A,B)
+    elseif A.α ≈ B.α && A.β ≈ B.β+1 && A.γ ≈ B.γ &&
+           A.space.α ≈ B.space.α && A.space.β ≈ B.space.β+1 && A.space.γ ≈ B.space.γ
+        ConcreteConversion(A,B)
+    elseif A.α ≈ B.α && A.β ≈ B.β && A.γ ≈ B.γ+1 &&
+           A.space.α ≈ B.space.α && A.space.β ≈ B.space.β && A.space.γ ≈ B.space.γ+1
+        ConcreteConversion(A,B)
     elseif A.α ≈ B.α+1 && A.β ≈ B.β && A.γ ≈ B.γ
-        Jx = Recurrence(1,A.space)
+        Jx = Lowering(1,A.space)
         C = Conversion(rangespace(Jx),B.space)
         ConversionWrapper(SpaceOperator(C*Jx,A,B))
     elseif A.α ≈ B.α && A.β ≈ B.β+1 && A.γ ≈ B.γ
-        Jy = Recurrence(2,A.space)
+        Jy = Lowering(2,A.space)
         C = Conversion(rangespace(Jy),B.space)
         ConversionWrapper(SpaceOperator(C*Jy,A,B))
     elseif A.α ≈ B.α && A.β ≈ B.β && A.γ ≈ B.γ+1
-        Jx = Recurrence(1,A.space)
-        Jy = Recurrence(2,A.space)
+        Jx = Lowering(1,A.space)
+        Jy = Lowering(2,A.space)
         W=I-Jx-Jy
         C = Conversion(rangespace(W),B.space)
         ConversionWrapper(SpaceOperator(C*W,A,B))
@@ -743,46 +755,46 @@ function Derivative(S::TriangleWeight,order)
             order)
     elseif order == [1,0] && S.α == 0
         Dx = Derivative(S.space,order)
-        Jx = Recurrence(1,rangespace(Dx))
-        Jy = Recurrence(2,rangespace(Dx))
+        Jx = Lowering(1,rangespace(Dx))
+        Jy = Lowering(2,rangespace(Dx))
         A = -S.γ*I + (I-Jx-Jy)*Dx
         DerivativeWrapper(
             SpaceOperator(A,S,TriangleWeight(S.α,S.β,S.γ-1,rangespace(A))),
             order)
     elseif order == [1,0] && S.γ == 0
         Dx = Derivative(S.space,order)
-        Jx = Recurrence(1,rangespace(Dx))
+        Jx = Lowering(1,rangespace(Dx))
         A = S.α*I + Jx*Dx
         DerivativeWrapper(
             SpaceOperator(A,S,TriangleWeight(S.α-1,S.β,S.γ,rangespace(A))),
             order)
     elseif order == [1,0]
         Dx = Derivative(S.space,order)
-        Jx = Recurrence(1,rangespace(Dx))
-        Jy = Recurrence(2,rangespace(Dx))
+        Jx = Lowering(1,rangespace(Dx))
+        Jy = Lowering(2,rangespace(Dx))
         A = S.α*(I-Jx-Jy) - S.γ*Jx + Jx*(I-Jx-Jy)*Dx
         DerivativeWrapper(
             SpaceOperator(A,S,TriangleWeight(S.α-1,S.β,S.γ-1,rangespace(A))),
             order)
     elseif order == [0,1] && S.β == 0
         Dy = Derivative(S.space,order)
-        Jx = Recurrence(1,rangespace(Dy))
-        Jy = Recurrence(2,rangespace(Dy))
+        Jx = Lowering(1,rangespace(Dy))
+        Jy = Lowering(2,rangespace(Dy))
         A = -S.γ*I + (I-Jx-Jy)*Dy
         DerivativeWrapper(
             SpaceOperator(A,S,TriangleWeight(S.α,S.β,S.γ-1,rangespace(A))),
             order)
     elseif order == [0,1] && S.γ == 0
         Dy = Derivative(S.space,order)
-        Jy = Recurrence(2,rangespace(Dy))
+        Jy = Lowering(2,rangespace(Dy))
         A = S.β*I + Jy*Dy
         DerivativeWrapper(
             SpaceOperator(A,S,TriangleWeight(S.α,S.β-1,S.γ,rangespace(A))),
             order)
     elseif order == [0,1]
         Dy = Derivative(S.space,order)
-        Jx = Recurrence(1,rangespace(Dy))
-        Jy = Recurrence(2,rangespace(Dy))
+        Jx = Lowering(1,rangespace(Dy))
+        Jy = Lowering(2,rangespace(Dy))
         A = S.β*(I-Jx-Jy) - S.γ*Jy + Jy*(I-Jx-Jy)*Dy
         DerivativeWrapper(
             SpaceOperator(A,S,TriangleWeight(S.α,S.β-1,S.γ-1,rangespace(A))),
@@ -865,6 +877,6 @@ end
 
 
 function Multiplication(f::Fun{KoornwinderTriangle},S::KoornwinderTriangle)
-    op=operator_clenshaw2D(P.Jx,P.Jy,P.coefficients,Recurrence(1,S),Recurrence(2,S)→S)
+    op=operator_clenshaw2D(P.Jx,P.Jy,P.coefficients,Lowering(1,S)→S,Lowering(2,S)→S)
     MultiplicationWrapper(f,op)
 end
