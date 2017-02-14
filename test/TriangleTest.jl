@@ -1,8 +1,7 @@
 using FixedSizeArrays,Plots,BandedMatrices,
         ApproxFun,MultivariateOrthogonalPolynomials, Base.Test
-    import MultivariateOrthogonalPolynomials: Recurrence, ProductTriangle, clenshaw, block, TriangleWeight,plan_evaluate
+    import MultivariateOrthogonalPolynomials: Lowering, ProductTriangle, clenshaw, block, TriangleWeight,plan_evaluate
     import ApproxFun: testbandedblockbandedoperator, Block, BandedBlockBandedMatrix, bbbzeros, blockcolrange, blocksize
-
 
 
 
@@ -12,6 +11,30 @@ pf=ProductFun((x,y)->exp(x*cos(y)),ProductTriangle(1,1,1),40,40)
 
 
 f=Fun((x,y)->exp(x*cos(y)),KoornwinderTriangle(1,1,1))
+@test Fun(f,ProductTriangle(1,1,1))(0.1,0.2) ≈ exp(0.1*cos(0.2))
+
+Jx=MultivariateOrthogonalPolynomials.Lowering{1}(space(f))
+testbandedblockbandedoperator(Jx)
+@test Fun(Jx*f,ProductTriangle(0,1,1))(0.1,0.2) ≈ 0.1exp(0.1*cos(0.2))
+
+Jy=MultivariateOrthogonalPolynomials.Lowering{2}(space(f))
+testbandedblockbandedoperator(Jy)
+
+@test Jy[3,1] ≈ 1/3
+
+@test ApproxFun.colstop(Jy,1) == 3
+@test ApproxFun.colstop(Jy,2) == 5
+@test ApproxFun.colstop(Jy,3) == 6
+@test ApproxFun.colstop(Jy,4) == 8
+
+
+@test Fun(Jy*f,ProductTriangle(1,0,1))(0.1,0.2) ≈ 0.2exp(0.1*cos(0.2))
+@test norm((Jy*f-Fun((x,y)->y*exp(x*cos(y)),KoornwinderTriangle(1,0,1))).coefficients) < 1E-11
+
+Jz=MultivariateOrthogonalPolynomials.Lowering{3}(space(f))
+testbandedblockbandedoperator(Jz)
+@test Fun(Jz*f,ProductTriangle(1,1,0))(0.1,0.2) ≈ (1-0.1-0.2)exp(0.1*cos(0.2))
+
 @test f(0.1,0.2) ≈ exp(0.1*cos(0.2))
 
 
@@ -29,34 +52,37 @@ testbandedblockbandedoperator(C)
 C=Conversion(KoornwinderTriangle(0,0,0),KoornwinderTriangle(1,1,1))
 testbandedblockbandedoperator(C)
 
+
+## 0,0,0 case
+
+Jx=Lowering{1}(KoornwinderTriangle(0,0,0))
+testbandedblockbandedoperator(Jx)
+Jy=Lowering{2}(KoornwinderTriangle(0,0,0))
+testbandedblockbandedoperator(Jy)
+Jz=Lowering{3}(KoornwinderTriangle(0,0,0))
+testbandedblockbandedoperator(Jz)
+
+
+
+Cx=I:KoornwinderTriangle(-1,0,0)→KoornwinderTriangle(0,0,0)
+testbandedblockbandedoperator(Cx)
+
+Cy=I:KoornwinderTriangle(0,-1,0)→KoornwinderTriangle(0,0,0)
+testbandedblockbandedoperator(Cy)
+
+Cz=I:KoornwinderTriangle(0,0,-1)→KoornwinderTriangle(0,0,0)
+testbandedblockbandedoperator(Cz)
+
+f=Fun((x,y)->exp(x*cos(y)),KoornwinderTriangle(0,0,0))
+@test f(0.1,0.2) ≈ exp(0.1*cos(0.2))
+
+## Laplacian
 Δ = Laplacian(space(f))
 testbandedblockbandedoperator(Δ)
 
-# Test recurrence operators
-Jx=MultivariateOrthogonalPolynomials.Recurrence(1,space(f))
-testbandedblockbandedoperator(Jx)
-
-@test ApproxFun.colstop(Jx,1) == 2
-@test ApproxFun.colstop(Jx,2) == 4
-@test ApproxFun.colstop(Jx,3) == 5
-@test ApproxFun.colstop(Jx,4) == 7
 
 
-@test norm((Jx*f-Fun((x,y)->x*exp(x*cos(y)),KoornwinderTriangle(1,1,1))).coefficients) < 1E-11
 
-
-Jy=MultivariateOrthogonalPolynomials.Recurrence(2,space(f))
-
-testbandedblockbandedoperator(Jy)
-
-@test Jy[3,1] ≈ 1/3
-
-@test ApproxFun.colstop(Jy,1) == 3
-@test ApproxFun.colstop(Jy,2) == 5
-@test ApproxFun.colstop(Jy,3) == 6
-@test ApproxFun.colstop(Jy,4) == 8
-
-@test norm((Jy*f-Fun((x,y)->y*exp(x*cos(y)),KoornwinderTriangle(1,0,1))).coefficients) < 1E-11
 
 pyf=ProductFun((x,y)->y*exp(x*cos(y)),ProductTriangle(1,0,1))
 @test pyf(0.1,0.2) ≈ 0.2exp(0.1*cos(0.2))
@@ -65,40 +91,111 @@ pyf=ProductFun((x,y)->y*exp(x*cos(y)),ProductTriangle(1,0,1))
 
 
 
-C=ApproxFun.ConcreteConversion(KoornwinderTriangle(1,0,1),KoornwinderTriangle(1,1,1))
+C=Conversion(KoornwinderTriangle(1,0,1),KoornwinderTriangle(1,1,1))
 testbandedblockbandedoperator(C)
 @test eltype(C)==Float64
 norm((C*Fun((x,y)->exp(x*cos(y)),KoornwinderTriangle(1,0,1))-f).coefficients) < 1E-11
-C=ApproxFun.ConcreteConversion(KoornwinderTriangle(1,1,0),KoornwinderTriangle(1,1,1))
+C=Conversion(KoornwinderTriangle(1,1,0),KoornwinderTriangle(1,1,1))
 testbandedblockbandedoperator(C)
 norm((C*Fun((x,y)->exp(x*cos(y)),KoornwinderTriangle(1,1,0))-f).coefficients) < 1E-11
-C=ApproxFun.ConcreteConversion(KoornwinderTriangle(0,1,1),KoornwinderTriangle(1,1,1))
+C=Conversion(KoornwinderTriangle(0,1,1),KoornwinderTriangle(1,1,1))
 testbandedblockbandedoperator(C)
 norm((C*Fun((x,y)->exp(x*cos(y)),KoornwinderTriangle(0,1,1))-f).coefficients) < 1E-11
 
 
-Jy=MultivariateOrthogonalPolynomials.Recurrence(2,space(f))→space(f)
+Jx=MultivariateOrthogonalPolynomials.Lowering{1}(space(f))→space(f)
+testbandedblockbandedoperator(Jx)
+@test norm((Jx*f-Fun((x,y)->x*exp(x*cos(y)),KoornwinderTriangle(1,1,1))).coefficients) < 1E-10
+
+
+Jy=MultivariateOrthogonalPolynomials.Lowering{2}(space(f))→space(f)
 testbandedblockbandedoperator(Jy)
-
-
 @test norm((Jy*f-Fun((x,y)->y*exp(x*cos(y)),KoornwinderTriangle(1,1,1))).coefficients) < 1E-10
 
+Jz=MultivariateOrthogonalPolynomials.Lowering{3}(space(f))→space(f)
+testbandedblockbandedoperator(Jz)
+@test norm((Jz*f-Fun((x,y)->(1-x-y)*exp(x*cos(y)),KoornwinderTriangle(1,1,1))).coefficients) < 1E-10
 
 
 
 K=KoornwinderTriangle(1,1,1)
 
+
+# test values
+f=Fun(K,[1.])
+@test f(0.1,0.2) ≈ 1
+f=Fun(K,[0.,1.])
+@test f(0.1,0.2) ≈ -1.4
+f=Fun(K,[0.,0.,1.])
+@test f(0.1,0.2) ≈ -1
+f=Fun(K,[0.,0.,0.,1.])
+@test f(0.1,0.2) ≈ 1.18
+f=Fun(K,[0.,0.,0.,0.,1.])
+@test f(0.1,0.2) ≈ 1.2
+
+
+K=KoornwinderTriangle(2,1,1)
+
+C=Conversion(KoornwinderTriangle(1,1,1),K)
+testbandedblockbandedoperator(C)
+
+testbandedblockbandedoperator(Lowering{1}(K))
+
+Jx=(Lowering{1}(K)→K)
+testbandedblockbandedoperator(Jx)
+
+f=Fun(K,[1.])
+@test f(0.1,0.2) ≈ 1
+f=Fun(K,[0.,1.])
+@test f(0.1,0.2) ≈ -2.3
+f=Fun(K,[0.,0.,1.])
+@test f(0.1,0.2) ≈ -1
+f=Fun(K,[0.,0.,0.,1.])
+@test f(0.1,0.2) ≈ 3.16
+f=Fun(K,[0.,0.,0.,0.,1.])
+@test f(0.1,0.2) ≈ 2.1
+
+
+K=KoornwinderTriangle(1,2,1)
+
+Jx=(Lowering{1}(K)→K)
+testbandedblockbandedoperator(Jx)
+
+
+f=Fun(K,[1.])
+@test f(0.1,0.2) ≈ 1
+f=Fun(K,[0.,1.])
+@test f(0.1,0.2) ≈ -1.3
+f=Fun(K,[0.,0.,1.])
+@test f(0.1,0.2) ≈ -1.7
+f=Fun(K,[0.,0.,0.,1.])
+@test f(0.1,0.2) ≈ 0.96
+f=Fun(K,[0.,0.,0.,0.,1.])
+@test f(0.1,0.2) ≈ 1.87
+
+# Test conversions
+K=KoornwinderTriangle(1,1,1)
+
 f=Fun(K,[1.])
 @test Fun(f,KoornwinderTriangle(1,1,2))(0.1,0.2) ≈ f(0.1,0.2)
+@test Fun(f,KoornwinderTriangle(2,1,1))(0.1,0.2) ≈ f(0.1,0.2)
+@test Fun(f,KoornwinderTriangle(1,2,1))(0.1,0.2) ≈ f(0.1,0.2)
 f=Fun(K,[0.,1.])
 @test Fun(f,KoornwinderTriangle(1,1,2))(0.1,0.2) ≈ f(0.1,0.2)
+@test Fun(f,KoornwinderTriangle(2,1,1))(0.1,0.2) ≈ f(0.1,0.2)
+@test Fun(f,KoornwinderTriangle(1,2,1))(0.1,0.2) ≈ f(0.1,0.2)
 f=Fun(K,[0.,0.,1.])
 @test Fun(f,KoornwinderTriangle(1,1,2))(0.1,0.2) ≈ f(0.1,0.2)
+@test Fun(f,KoornwinderTriangle(2,1,1))(0.1,0.2) ≈ f(0.1,0.2)
+@test Fun(f,KoornwinderTriangle(1,2,1))(0.1,0.2) ≈ f(0.1,0.2)
 f=Fun(K,[0.,0.,0.,1.])
 @test Fun(f,KoornwinderTriangle(1,1,2))(0.1,0.2) ≈ f(0.1,0.2)
+@test Fun(f,KoornwinderTriangle(2,1,1))(0.1,0.2) ≈ f(0.1,0.2)
+@test Fun(f,KoornwinderTriangle(1,2,1))(0.1,0.2) ≈ f(0.1,0.2)
 f=Fun(K,[0.,0.,0.,0.,1.])
 @test Fun(f,KoornwinderTriangle(1,1,2))(0.1,0.2) ≈ f(0.1,0.2)
-
+@test Fun(f,KoornwinderTriangle(2,1,1))(0.1,0.2) ≈ f(0.1,0.2)
+@test Fun(f,KoornwinderTriangle(1,2,1))(0.1,0.2) ≈ f(0.1,0.2)
 
 f=Fun((x,y)->exp(x*cos(y)),K)
 @test f(0.1,0.2) ≈ ((x,y)->exp(x*cos(y)))(0.1,0.2)
@@ -106,9 +203,6 @@ f=Fun((x,y)->exp(x*cos(y)),K)
 @test Fun(f,KoornwinderTriangle(2,2,1))(0.1,0.2) ≈ ((x,y)->exp(x*cos(y)))(0.1,0.2)
 @test Fun(f,KoornwinderTriangle(2,2,2))(0.1,0.2) ≈ ((x,y)->exp(x*cos(y)))(0.1,0.2)
 @test Fun(f,KoornwinderTriangle(1,1,2))(0.1,0.2) ≈ ((x,y)->exp(x*cos(y)))(0.1,0.2)
-
-
-
 
 
 K=KoornwinderTriangle(0,0,0)
@@ -139,8 +233,8 @@ D=Derivative(space(f),[2,0])
 
 S=KoornwinderTriangle(1,1,1)
 
-Mx=Recurrence(1,S)
-My=Recurrence(2,S)
+Mx=Lowering{1}(S)
+My=Lowering{2}(S)
 f=Fun((x,y)->exp(x*sin(y)),S)
 
 @test (Mx*f)(0.1,0.2) ≈ 0.1*f(0.1,0.2)
@@ -148,7 +242,7 @@ f=Fun((x,y)->exp(x*sin(y)),S)
 @test_approx_eq_eps ((Mx+My)*f)(0.1,0.2) 0.3*f(0.1,0.2) 1E-12
 
 
-Jx=Mx
+Jx=Mx → S
 Jy=My → S
 
 @test_approx_eq_eps (Jy*f)(0.1,0.2) 0.2*f(0.1,0.2) 1E-12
@@ -179,6 +273,36 @@ A,B,C=Matrix(Jy[K+1,K])',Matrix(Jy[K,K])',Matrix(Jy[K-1,K])'
 
 
 S=TriangleWeight(1.,1.,1.,KoornwinderTriangle(1,1,1))
+C=Conversion(S,KoornwinderTriangle(0,0,0))
+
+testbandedblockbandedoperator(C)
+f=Fun(S,rand(10))
+@test f(0.1,0.2) ≈ (C*f)(0.1,0.2)
+
+
+Derivative(S,[1,0])
+Derivative(TriangleWeight(0.,1.,0.,KoornwinderTriangle(0,1,0)),[0,1])
+C=Conversion(TriangleWeight(1.,1.,1.,KoornwinderTriangle(1,1,1)),KoornwinderTriangle(0,0,0))
+(Derivative(rangespace(C),[2,0])+Derivative(rangespace(C),[0,2]))*C|>ApproxFun.subblockbandinds
+
+S=TriangleWeight(1.,1.,1.,KoornwinderTriangle(1,1,1))
+Derivative(S,[2,0])+Derivative(S,[0,2])|>ApproxFun.blockbandinds
+
+
+@which Laplacian(domainspace(C))
+Laplacian(domainspace(C))|>ApproxFun.subblockbandinds
+
+
+
+Derivative(rangespace(C),[1,0])*C |>ApproxFun.subblockbandinds
+
+
+Laplacian(S)
+
+Derivative(domainspace(C),[1,0])|>ApproxFun.blockbandinds
+Derivative(domainspace(C),[1,0])|>ApproxFun.subblockbandinds
+
+
 
 @test (Derivative(S,[1,0])*Fun(S,[1.]))(0.1,0.2) ≈ ((x,y)->y*(1-x-y)-x*y)(0.1,0.2)
 

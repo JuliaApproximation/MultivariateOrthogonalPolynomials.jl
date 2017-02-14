@@ -303,6 +303,8 @@ end
 
 ## Conversion
 
+union_rule(K1::KoornwinderTriangle,K2::KoornwinderTriangle) =
+    KoornwinderTriangle(min(K1.α,K2.α),min(K1.β,K2.β),min(K1.γ,K2.γ))
 conversion_rule(K1::KoornwinderTriangle,K2::KoornwinderTriangle) =
     KoornwinderTriangle(min(K1.α,K2.α),min(K1.β,K2.β),min(K1.γ,K2.γ))
 maxspace_rule(K1::KoornwinderTriangle,K2::KoornwinderTriangle) =
@@ -354,18 +356,20 @@ function getindex{T}(C::ConcreteConversion{KoornwinderTriangle,KoornwinderTriang
 
     if K2.α == α+1 && K2.β == β && K2.γ == γ
         if     K == J    && κ == ξ
-            T((K+κ+α+β+γ)/(2K+α+β+γ))
+            T((J+ξ+α+β+γ)/(2J+α+β+γ))
         elseif J == K+1  && κ == ξ
-            T((K+κ+β+γ)/(2K+α+β+γ+2))
+            T((J+ξ+β+γ-1)/(2J+α+β+γ))
         else
             zero(T)
         end
     elseif K2.α==α && K2.β==β+1 && K2.γ==γ
         if     J == K   && κ == ξ
+            (β+γ == -1) && return T((K+κ+α+β+γ)/(2*(2K+α+β+γ)))
             T((K+κ+α+β+γ)/(2K+α+β+γ)*(κ+β+γ)/(2κ+β+γ-1))
         elseif J == K   && κ+1 == ξ
             T(-(κ+γ)/(2κ+β+γ+1)*(K-κ)/(2K+α+β+γ))
         elseif J == K+1 && κ == ξ
+            (β+γ == -1) && return T(-(K-κ+α+1)/(2*(2K+α+β+γ+2)))
             T(-(K-κ+α+1)/(2K+α+β+γ+2)*(κ+β+γ)/(2κ+β+γ-1))
         elseif J == K+1 && κ+1 == ξ
             T((κ+γ)/(2κ+β+γ+1)*(K+κ+β+γ+1)/(2K+α+β+γ+2))
@@ -374,11 +378,12 @@ function getindex{T}(C::ConcreteConversion{KoornwinderTriangle,KoornwinderTriang
         end
     elseif K2.α==α && K2.β==β && K2.γ==γ+1
         if K == J && κ == ξ
+            (β+γ == -1) && return T((K+κ+α+β+γ)/(2*(2K+α+β+γ)))
             T((K+κ+α+β+γ)/(2K+α+β+γ)*(κ+β+γ)/(2κ+β+γ-1))
         elseif K == J && κ+1 == ξ
             T((κ+β)/(2κ+β+γ+1)*(K-κ)/(2K+α+β+γ))
         elseif J == K+1 && κ == ξ
-            T(-(K-κ+α+1)/(2K+α+β+γ+2)*(κ+β+γ)/(2κ+β+γ-1))
+            (β+γ == -1) && return T(-(K-κ+α+1)/(2*(2K+α+β+γ+2)))
         elseif J == K+1 && κ+1 == ξ
             T(-(κ+β)/(2κ+β+γ+1)*(K+κ+β+γ+1)/(2K+α+β+γ+2))
         else
@@ -402,20 +407,46 @@ function Base.convert{T}(::Type{BandedBlockBandedMatrix},S::SubOperator{T,Concre
 
     if K2.α == α+1 && K2.β == β && K2.γ == γ
         for KK=Block.(1:N)
+            JJ = KK+K_sh-J_sh  # diagonal
+            if 1 ≤ JJ ≤ M
+                bl = view(ret,KK,JJ)
+                J = size(bl,2)
+                @inbounds for ξ=1:J
+                    bl[ξ,ξ] = (J+ξ+α+β+γ)/(2J+α+β+γ)
+                end
+            end
+            JJ = KK+K_sh-J_sh+1  # super-diagonal
+            if 1 ≤ JJ ≤ M
+                bl = view(ret,KK,JJ)
+                J = size(bl,2)
+                @inbounds for ξ=1:J-1
+                    bl[ξ,ξ] = (J+ξ+β+γ-1)/(2J+α+β+γ)
+                end
+            end
+        end
+    elseif K2.α==α && K2.β==β+1 && K2.γ==γ && β+γ==-1
+        for KK=Block.(1:N)
             J = KK+K_sh-J_sh  # diagonal
             if 1 ≤ J ≤ M
                 bl = view(ret,KK,J)
                 K = size(bl,1)
+                s=2K+α+β+γ
                 @inbounds for κ=1:K
-                    bl[κ,κ] = (K+κ+α+β+γ)/(2K+α+β+γ)
+                    bl[κ,κ] = (K+κ+α+β+γ)/(2s)
+                end
+                @inbounds for κ=1:K-1
+                    bl[κ,κ+1] = -(κ+γ)/(2κ+β+γ+1)*(K-κ)/s
                 end
             end
             J = KK+K_sh-J_sh+1  # super-diagonal
             if 1 ≤ J ≤ M
                 bl = view(ret,KK,J)
                 K = size(bl,1)
+                s=T(2K+α+β+γ+2)
+
                 @inbounds for κ=1:K
-                    bl[κ,κ] = (K+κ+β+γ)/(2K+α+β+γ+2)
+                    bl[κ,κ] = -(K-κ+α+1)/(2s)
+                    bl[κ,κ+1] = (κ+γ)/(2κ+β+γ+1)*(K+κ+β+γ+1)/s
                 end
             end
         end
@@ -439,6 +470,31 @@ function Base.convert{T}(::Type{BandedBlockBandedMatrix},S::SubOperator{T,Concre
                 @inbounds for κ=1:K
                     bl[κ,κ] = -(K-κ+α+1)/(2K+α+β+γ+2)*(κ+β+γ)/(2κ+β+γ-1)
                     bl[κ,κ+1] = (κ+γ)/(2κ+β+γ+1)*(K+κ+β+γ+1)/(2K+α+β+γ+2)
+                end
+            end
+        end
+    elseif K2.α==α && K2.β==β && K2.γ==γ+1  && β+γ==-1
+        for KK=Block.(1:N)
+            J = KK+K_sh-J_sh  # diagonal
+            if 1 ≤ J ≤ M
+                bl = view(ret,KK,J)
+                K = size(bl,1)
+                s=2K+α+β+γ
+                @inbounds for κ=1:K
+                    bl[κ,κ] = (K+κ+α+β+γ)/(2s)
+                end
+                @inbounds for κ=1:K-1
+                   bl[κ,κ+1] = (κ+β)/(2κ+β+γ+1)*(K-κ)/s
+               end
+            end
+            J = KK+K_sh-J_sh+1  # super-diagonal
+            if 1 ≤ J ≤ M
+                bl = view(ret,KK,J)
+                K = size(bl,1)
+                s=2K+α+β+γ+2
+                @inbounds for κ=1:K
+                    bl[κ,κ] = -(K-κ+α+1)/(2s)
+                    bl[κ,κ+1] = -(κ+β)/(2κ+β+γ+1)*(K+κ+β+γ+1)/s
                 end
             end
         end
@@ -504,6 +560,7 @@ rangespace(R::Lowering{2,KoornwinderTriangle}) =
 rangespace(R::Lowering{3,KoornwinderTriangle}) =
     KoornwinderTriangle(R.space.α,R.space.β,R.space.γ-1)
 
+
 function getindex{T}(R::Lowering{1,KoornwinderTriangle,T},k::Integer,j::Integer)
     α,β,γ=R.space.α,R.space.β,R.space.γ
     K=block(rangespace(R),k).K
@@ -511,17 +568,17 @@ function getindex{T}(R::Lowering{1,KoornwinderTriangle,T},k::Integer,j::Integer)
     κ=k-blockstart(rangespace(R),K)+1
     ξ=j-blockstart(domainspace(R),J)+1
 
-    if K == J && κ == ξ
-        T((-2κ^2 + 2K^2 - 2κ*(-1 + β + γ) + (1 + α)*(-1 + α + β + γ) + 2K*(α + β + γ))/
-                    ((-1 + 2K + α + β + γ)*(1 + 2K + α + β + γ)))
-    elseif K+1==J && κ == ξ # super-diagonal
-        T(((1 - κ + K + α)*(κ + K + β + γ))/((1 + 2K + α + β + γ)*(2 + 2K + α + β + γ)))
-    elseif K-1==J && κ == ξ # sub-diagonal
-        T(((1 + J - κ)*(J + κ + α + β + γ))/((2 + 2*(-1 + J) + α + β + γ)*(3 + 2*(-1 + J) + α + β + γ)))
+    s = 2J+α+β+γ
+
+    if K==J && κ == ξ
+        T((J-ξ+α)/s)
+    elseif K==J+1 && κ == ξ
+        T((J-ξ+1)/s)
     else
         zero(T)
     end
 end
+
 
 function getindex{T}(R::Lowering{2,KoornwinderTriangle,T},k::Integer,j::Integer)
     α,β,γ=R.space.α,R.space.β,R.space.γ
@@ -530,18 +587,43 @@ function getindex{T}(R::Lowering{2,KoornwinderTriangle,T},k::Integer,j::Integer)
     κ=k-blockstart(rangespace(R),K)+1
     ξ=j-blockstart(domainspace(R),J)+1
 
+    s = (2ξ-1+β+γ)*(2J+α+β+γ)
+
     if K==J && κ == ξ
-        T((κ-1+β)*(K+κ+β+γ-1)/((2κ-1+β+γ)*(2K+α+β+γ)))
+        T((ξ-1+β)*(J+ξ+β+γ-1)/s)
     elseif K==J && κ == ξ+1
-        T(-ξ*(K-ξ+α)/((2ξ-1+β+γ)*(2K+α+β+γ)))
+        T(-ξ*(J-ξ+α)/s)
     elseif K==J+1 && κ == ξ
-        T(-(κ-1+β)*(J-κ+1)/((2κ-1+β+γ)*(2J+α+β+γ)))
+        T(-(ξ-1+β)*(J-ξ+1)/s)
     elseif K==J+1 && κ == ξ+1
-        T(ξ*(J+ξ+α+β+γ)/((2ξ-1+β+γ)*(2J+α+β+γ)))
+        T(ξ*(J+ξ+α+β+γ)/s)
     else
         zero(T)
     end
 end
+
+function getindex{T}(R::Lowering{3,KoornwinderTriangle,T},k::Integer,j::Integer)
+    α,β,γ=R.space.α,R.space.β,R.space.γ
+    K=block(rangespace(R),k).K
+    J=block(domainspace(R),j).K
+    κ=k-blockstart(rangespace(R),K)+1
+    ξ=j-blockstart(domainspace(R),J)+1
+
+    s = (2ξ+β+γ-1)*(2J+α+β+γ)
+
+    if K==J && κ == ξ
+        T((ξ-1+γ)*(J+ξ+β+γ-1)/s)
+    elseif K==J && κ == ξ+1
+        T(ξ*(J-ξ+α)/s)
+    elseif K==J+1 && κ == ξ
+        T(-(ξ-1+γ)*(J-ξ+1)/s)
+    elseif K==J+1 && κ == ξ+1
+        T(-ξ*(J+ξ+α+β+γ)/s)
+    else
+        zero(T)
+    end
+end
+
 
 function Base.convert{T}(::Type{BandedBlockBandedMatrix},S::SubOperator{T,Lowering{1,KoornwinderTriangle,T},
                                                                         Tuple{UnitRange{Block},UnitRange{Block}}})
@@ -552,36 +634,29 @@ function Base.convert{T}(::Type{BandedBlockBandedMatrix},S::SubOperator{T,Loweri
     J_sh = first(parentindexes(S)[2])-1
     N,M=blocksize(ret)::Tuple{Int,Int}
 
-
     for KK=Block.(1:N)
-        JJ = KK+K_sh-J_sh-1  # sub-diagonal
+        JJ = KK+K_sh-J_sh-1  # super-diagonal
         if 1 ≤ JJ ≤ M
             bl = view(ret,KK,JJ)
             J = size(bl,2)
-            @inbounds for κ=1:J
-                bl[κ,κ] = ((1 + J - κ)*(J + κ + α + β + γ))/((2 + 2*(-1 + J) + α + β + γ)*(3 + 2*(-1 + J) + α + β + γ))
+            s = 2J+α+β+γ
+            @inbounds for ξ=1:J
+                bl[ξ,ξ] = (J-ξ+1)/s
             end
         end
         JJ = KK+K_sh-J_sh  # diagonal
         if 1 ≤ JJ ≤ M
             bl = view(ret,KK,JJ)
-            K = size(bl,1)
-            @inbounds for κ=1:K
-                bl[κ,κ] = (-2κ^2 + 2K^2 - 2κ*(-1 + β + γ) + (1 + α)*(-1 + α + β + γ) + 2K*(α + β + γ))/
-                            ((-1 + 2K + α + β + γ)*(1 + 2K + α + β + γ))
-            end
-        end
-        JJ = KK+K_sh-J_sh+1  # super-diagonal
-        if 1 ≤ JJ ≤ M
-            bl = view(ret,KK,JJ)
-            K = size(bl,1)
-            @inbounds for κ=1:K
-                bl[κ,κ] = ((1 - κ + K + α)*(κ + K + β + γ))/((1 + 2K + α + β + γ)*(2 + 2K + α + β + γ))
+            J = size(bl,2)
+            s = 2J+α+β+γ
+            @inbounds for ξ=1:J
+                bl[ξ,ξ] = (J-ξ+α)/s
             end
         end
     end
     ret
 end
+
 
 function Base.convert{T}(::Type{BandedBlockBandedMatrix},S::SubOperator{T,Lowering{2,KoornwinderTriangle,T},
                                                                         Tuple{UnitRange{Block},UnitRange{Block}}})
@@ -598,9 +673,11 @@ function Base.convert{T}(::Type{BandedBlockBandedMatrix},S::SubOperator{T,Loweri
         if 1 ≤ JJ ≤ M
             bl = view(ret,KK,JJ)
             J = size(bl,2)
+
             @inbounds for ξ=1:J
-                bl[ξ,ξ] = -(ξ-1+β)*(J-ξ+1)/((2ξ-1+β+γ)*(2J+α+β+γ))
-                bl[ξ+1,ξ] = ξ*(J+ξ+α+β+γ)/((2ξ-1+β+γ)*(2J+α+β+γ))
+                s = (2ξ-1+β+γ)*(2J+α+β+γ)
+                bl[ξ,ξ] = -(ξ-1+β)*(J-ξ+1)/s
+                bl[ξ+1,ξ] = ξ*(J+ξ+α+β+γ)/s
             end
         end
         JJ = KK+K_sh-J_sh  # diagonal
@@ -608,14 +685,49 @@ function Base.convert{T}(::Type{BandedBlockBandedMatrix},S::SubOperator{T,Loweri
             bl = view(ret,KK,JJ)
             J = size(bl,2)
             @inbounds for ξ=1:J
-                bl[ξ,ξ] = (ξ-1+β)*(J+ξ+β+γ-1)/((2ξ-1+β+γ)*(2J+α+β+γ))
-                bl[ξ+1,ξ] = -ξ*(J-ξ+α)/((2ξ-1+β+γ)*(2J+α+β+γ))
+                s = (2ξ-1+β+γ)*(2J+α+β+γ)
+                bl[ξ,ξ] = (ξ-1+β)*(J+ξ+β+γ-1)/s
+                bl[ξ+1,ξ] = -ξ*(J-ξ+α)/s
             end
         end
     end
     ret
 end
 
+function Base.convert{T}(::Type{BandedBlockBandedMatrix},S::SubOperator{T,Lowering{3,KoornwinderTriangle,T},
+                                                                        Tuple{UnitRange{Block},UnitRange{Block}}})
+    ret = bbbzeros(S)
+    R = parent(S)
+    α,β,γ=R.space.α,R.space.β,R.space.γ
+    K_sh = first(parentindexes(S)[1])-1
+    J_sh = first(parentindexes(S)[2])-1
+    N,M=blocksize(ret)::Tuple{Int,Int}
+
+    for KK=Block.(1:N)
+        JJ = KK+K_sh-J_sh-1  # super-diagonal
+        if 1 ≤ JJ ≤ M
+            bl = view(ret,KK,JJ)
+            J = size(bl,2)
+
+            @inbounds for ξ=1:J
+                s = (2ξ-1+β+γ)*(2J+α+β+γ)
+                bl[ξ,ξ] = -(ξ-1+γ)*(J-ξ+1)/s
+                bl[ξ+1,ξ] = -ξ*(J+ξ+α+β+γ)/s
+            end
+        end
+        JJ = KK+K_sh-J_sh  # diagonal
+        if 1 ≤ JJ ≤ M
+            bl = view(ret,KK,JJ)
+            J = size(bl,2)
+            @inbounds for ξ=1:J
+                s = (2ξ-1+β+γ)*(2J+α+β+γ)
+                bl[ξ,ξ] = (ξ-1+γ)*(J+ξ+β+γ-1)/s
+                bl[ξ+1,ξ] = ξ*(J-ξ+α)/s
+            end
+        end
+    end
+    ret
+end
 
 
 ### Weighted
@@ -701,33 +813,34 @@ function Conversion(A::TriangleWeight,B::TriangleWeight)
         ConversionWrapper(SpaceOperator(Conversion(A.space,B.space),A,B))
     elseif A.α ≈ B.α+1 && A.β ≈ B.β && A.γ ≈ B.γ &&
            A.space.α ≈ B.space.α+1 && A.space.β ≈ B.space.β && A.space.γ ≈ B.space.γ
-        ConcreteConversion(A,B)
+        ConversionWrapper(SpaceOperator(Lowering{1}(A.space),A,B))
     elseif A.α ≈ B.α && A.β ≈ B.β+1 && A.γ ≈ B.γ &&
            A.space.α ≈ B.space.α && A.space.β ≈ B.space.β+1 && A.space.γ ≈ B.space.γ
-        ConcreteConversion(A,B)
+        ConversionWrapper(SpaceOperator(Lowering{2}(A.space),A,B))
     elseif A.α ≈ B.α && A.β ≈ B.β && A.γ ≈ B.γ+1 &&
            A.space.α ≈ B.space.α && A.space.β ≈ B.space.β && A.space.γ ≈ B.space.γ+1
-        ConcreteConversion(A,B)
+        ConversionWrapper(SpaceOperator(Lowering{3}(A.space),A,B))
     elseif A.α ≈ B.α+1 && A.β ≈ B.β && A.γ ≈ B.γ
-        Jx = Lowering(1,A.space)
+        Jx = Lowering{1}(A.space)
         C = Conversion(rangespace(Jx),B.space)
         ConversionWrapper(SpaceOperator(C*Jx,A,B))
     elseif A.α ≈ B.α && A.β ≈ B.β+1 && A.γ ≈ B.γ
-        Jy = Lowering(2,A.space)
+        Jy = Lowering{2}(A.space)
         C = Conversion(rangespace(Jy),B.space)
         ConversionWrapper(SpaceOperator(C*Jy,A,B))
     elseif A.α ≈ B.α && A.β ≈ B.β && A.γ ≈ B.γ+1
-        Jx = Lowering(1,A.space)
-        Jy = Lowering(2,A.space)
-        W=I-Jx-Jy
-        C = Conversion(rangespace(W),B.space)
-        ConversionWrapper(SpaceOperator(C*W,A,B))
+        Jz = Lowering{3}(A.space)
+        C = Conversion(rangespace(Jz),B.space)
+        ConversionWrapper(SpaceOperator(C*Jz,A,B))
     elseif A.α ≥ B.α+1
-        Conversion(A,TriangleWeight(A.α-1,A.β,A.γ,A.space),B)
+        Conversion(A,TriangleWeight(A.α-1,A.β,A.γ,
+                                    KoornwinderTriangle(A.space.α-1,A.space.β,A.space.γ)),B)
     elseif A.β ≥ B.β+1
-        Conversion(A,TriangleWeight(A.α,A.β-1,A.γ,A.space),B)
+        Conversion(A,TriangleWeight(A.α,A.β-1,A.γ,
+                                        KoornwinderTriangle(A.space.α,A.space.β-1,A.space.γ)),B)
     elseif A.γ ≥ B.γ+1
-        Conversion(A,TriangleWeight(A.α,A.β,A.γ-1,A.space),B)
+        Conversion(A,TriangleWeight(A.α,A.β,A.γ-1,
+                                        KoornwinderTriangle(A.space.α,A.space.β,A.space.γ-1)),B)
     else
         error("Somethings gone wrong!")
     end
@@ -743,6 +856,10 @@ function Derivative(S::TriangleWeight,order)
     if S.α == S.β == S.γ == 0
         D=Derivative(S.space,order)
         SpaceOperator(D,S,rangespace(D))
+    elseif S.α == S.β == S.γ == S.space.α == S.space.β == S.space.γ == 1
+        C=Conversion(S,KoornwinderTriangle(0,0,0))
+        D = Derivative(rangespace(C),order)
+        SpaceOperator(D*C,S,rangespace(D))
     elseif order[2] == 0 && S.α == 0 && S.γ == 0
         Dx = Derivative(S.space,order)
         DerivativeWrapper(
@@ -755,46 +872,46 @@ function Derivative(S::TriangleWeight,order)
             order)
     elseif order == [1,0] && S.α == 0
         Dx = Derivative(S.space,order)
-        Jx = Lowering(1,rangespace(Dx))
-        Jy = Lowering(2,rangespace(Dx))
+        Jx = Lowering{1}(rangespace(Dx))
+        Jy = Lowering{2}(rangespace(Dx))
         A = -S.γ*I + (I-Jx-Jy)*Dx
         DerivativeWrapper(
             SpaceOperator(A,S,TriangleWeight(S.α,S.β,S.γ-1,rangespace(A))),
             order)
     elseif order == [1,0] && S.γ == 0
         Dx = Derivative(S.space,order)
-        Jx = Lowering(1,rangespace(Dx))
+        Jx = Lowering{1}(rangespace(Dx))
         A = S.α*I + Jx*Dx
         DerivativeWrapper(
             SpaceOperator(A,S,TriangleWeight(S.α-1,S.β,S.γ,rangespace(A))),
             order)
     elseif order == [1,0]
         Dx = Derivative(S.space,order)
-        Jx = Lowering(1,rangespace(Dx))
-        Jy = Lowering(2,rangespace(Dx))
+        Jx = Lowering{1}(rangespace(Dx))
+        Jy = Lowering{2}(rangespace(Dx))
         A = S.α*(I-Jx-Jy) - S.γ*Jx + Jx*(I-Jx-Jy)*Dx
         DerivativeWrapper(
             SpaceOperator(A,S,TriangleWeight(S.α-1,S.β,S.γ-1,rangespace(A))),
             order)
     elseif order == [0,1] && S.β == 0
         Dy = Derivative(S.space,order)
-        Jx = Lowering(1,rangespace(Dy))
-        Jy = Lowering(2,rangespace(Dy))
+        Jx = Lowering{1}(rangespace(Dy))
+        Jy = Lowering{2}(rangespace(Dy))
         A = -S.γ*I + (I-Jx-Jy)*Dy
         DerivativeWrapper(
             SpaceOperator(A,S,TriangleWeight(S.α,S.β,S.γ-1,rangespace(A))),
             order)
     elseif order == [0,1] && S.γ == 0
         Dy = Derivative(S.space,order)
-        Jy = Lowering(2,rangespace(Dy))
+        Jy = Lowering{2}(rangespace(Dy))
         A = S.β*I + Jy*Dy
         DerivativeWrapper(
             SpaceOperator(A,S,TriangleWeight(S.α,S.β-1,S.γ,rangespace(A))),
             order)
     elseif order == [0,1]
         Dy = Derivative(S.space,order)
-        Jx = Lowering(1,rangespace(Dy))
-        Jy = Lowering(2,rangespace(Dy))
+        Jx = Lowering{1}(rangespace(Dy))
+        Jy = Lowering{2}(rangespace(Dy))
         A = S.β*(I-Jx-Jy) - S.γ*Jy + Jy*(I-Jx-Jy)*Dy
         DerivativeWrapper(
             SpaceOperator(A,S,TriangleWeight(S.α,S.β-1,S.γ-1,rangespace(A))),
@@ -877,6 +994,6 @@ end
 
 
 function Multiplication(f::Fun{KoornwinderTriangle},S::KoornwinderTriangle)
-    op=operator_clenshaw2D(P.Jx,P.Jy,P.coefficients,Lowering(1,S)→S,Lowering(2,S)→S)
+    op=operator_clenshaw2D(P.Jx,P.Jy,P.coefficients,Lowering{1}(S)→S,Lowering{2}(S)→S)
     MultiplicationWrapper(f,op)
 end
