@@ -269,3 +269,78 @@ function getindex{T}(R::ConcreteConversion{DirichletTriangle{1,0,1},DirichletTri
         zero(T)
     end
 end
+
+
+function getindex{T}(R::ConcreteConversion{DirichletTriangle{0,1,1},DirichletTriangle{0,1,0},T},k::Integer,j::Integer)::T
+    K=block(rangespace(R),k).K
+    J=block(domainspace(R),j).K
+    κ=k-blockstart(rangespace(R),K)+1
+    ξ=j-blockstart(domainspace(R),J)+1
+
+    # J->J-2 and ξ->ξ-2
+    # K->K-1 and k->κ-1
+    s = (2ξ-3)*(2J-2)
+
+
+    if K == J == 1
+        one(T)
+    elseif K == J && κ == ξ == 1
+        -one(T)/2   # JacobiWeight(0,1,Jacobi(0,1))/2 -> Legendre
+    elseif K == J-1 && κ == ξ == 1
+        one(T)/2   # JacobiWeight(0,1,Jacobi(0,1))/2 -> Legendre
+    elseif K == J && κ == ξ == 2
+        T(J)/(J-1)  #  (1-x-2y)*P^{(0,0,0)} -> P^{(0,0)} + *
+    elseif K == J-1 && κ == ξ == 2
+        -T(J-2)/(J-1) #  (1-x-2y)*P^{(0,0,0)} ->P^{(0,0)} + *
+    elseif K == J && ξ == 2 && κ == 1
+        -one(T)/2 #  (1-x-2y)*P^{(0,0,0)} -> * + y*P^{(0,1,0)}
+    elseif K == J-1 && ξ == 2 && κ == 1
+        one(T)/2 #  (1-x-2y)*P^{(0,0,0)} -> * + y*P^{(0,1,0)}
+    elseif K==J-1 && κ == ξ-1
+        (ξ-2)*(J+ξ-3)/s # Lowering{3}
+    elseif K==J-1 && κ == ξ && 2 < ξ ≤ J
+        (ξ-2)*(J-ξ)/s # Lowering{3}
+    elseif K==J && κ == ξ-1
+        -(ξ-2)*(J-ξ+1)/s # Lowering{3}
+    elseif K==J && κ == ξ && 2 < ξ ≤ J
+        -(ξ-2)*(J+ξ-2)/s # Lowering{3}
+    else
+        zero(T)
+    end
+end
+
+
+
+function getindex{T}(R::ConcreteConversion{DirichletTriangle{0,1,1},DirichletTriangle{0,0,1},T},k::Integer,j::Integer)::T
+    K=block(rangespace(R),k).K
+    J=block(domainspace(R),j).K
+    κ=k-blockstart(rangespace(R),K)+1
+    ξ=j-blockstart(domainspace(R),J)+1
+
+    # J->J-2 and ξ->ξ-2
+    # K->K-1 and k->κ-1
+    s = (2ξ-3)*(2J-2)
+
+
+    if K == J == 1
+        one(T)
+    elseif K == J && κ == ξ == 1
+        -one(T)/2   # JacobiWeight(0,1,Jacobi(0,1))/2 -> Legendre
+    elseif K == J-1 && κ == ξ == 1
+        one(T)/2   # JacobiWeight(0,1,Jacobi(0,1))/2 -> Legendre
+    elseif K == J && κ == ξ == 2
+        T(K)/(2(J-1))  #  y*P^{(0,0,0)} -> y*P^{(0,1,0)}
+    elseif K == J-1 && κ == ξ == 2
+        -T(K-1)/(2(J-1))  #  y*P^{(0,0,0)} -> y*P^{(0,1,0)}
+    elseif K==J-1 && κ == ξ-1
+        (ξ-2)*(J+ξ-3)/s # Lowering{3}
+    elseif K==J-1 && κ == ξ && 2 < ξ ≤ J
+        (ξ-2)*(J-ξ)/s # Lowering{3}
+    elseif K==J && κ == ξ-1
+        -(ξ-2)*(J-ξ+1)/s # Lowering{3}
+    elseif K==J && κ == ξ && 2 < ξ ≤ J
+        -(ξ-2)*(J+ξ-2)/s # Lowering{3}
+    else
+        zero(T)
+    end
+end
