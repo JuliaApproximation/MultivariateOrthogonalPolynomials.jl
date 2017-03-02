@@ -143,6 +143,11 @@ subblockbandinds(::ConcreteConversion{DirichletTriangle{1,0,1},DirichletTriangle
 subblockbandinds(::ConcreteConversion{DirichletTriangle{1,0,1},DirichletTriangle{1,0,0}},k::Integer) = k==1? 0 :1
 
 
+blockbandinds(::ConcreteConversion{DirichletTriangle{0,1,1},DirichletTriangle{0,0,1}}) = (0,1)
+subblockbandinds(::ConcreteConversion{DirichletTriangle{0,1,1},DirichletTriangle{0,0,1}}) = (0,1)
+subblockbandinds(::ConcreteConversion{DirichletTriangle{0,1,1},DirichletTriangle{0,0,1}},k::Integer) = k==1? 0 :1
+
+
 
 blockbandinds(::ConcreteConversion{DirichletTriangle{0,1,1},DirichletTriangle{0,1,0}}) = (0,1)
 subblockbandinds(::ConcreteConversion{DirichletTriangle{0,1,1},DirichletTriangle{0,1,0}}) = (0,1)
@@ -344,6 +349,64 @@ function getindex{T}(R::ConcreteConversion{DirichletTriangle{0,1,1},DirichletTri
         -(ξ-2)*(J-ξ+1)/s # Lowering{2}
     elseif K==J && κ == ξ && 2 < ξ ≤ J
         (ξ-2)*(J+ξ-2)/s # Lowering{2}
+    else
+        zero(T)
+    end
+end
+
+
+
+
+
+blockbandinds(::ConcreteConversion{DirichletTriangle{1,1,1},DirichletTriangle{0,1,1}}) = (0,1)
+subblockbandinds(::ConcreteConversion{DirichletTriangle{1,1,1},DirichletTriangle{0,1,1}}) = (0,0)
+subblockbandinds(::ConcreteConversion{DirichletTriangle{1,1,1},DirichletTriangle{0,1,1}},k::Integer) = 0
+
+
+blockbandinds(::ConcreteConversion{DirichletTriangle{1,1,1},DirichletTriangle{1,0,1}}) = (0,1)
+subblockbandinds(::ConcreteConversion{DirichletTriangle{1,1,1},DirichletTriangle{1,0,1}}) = (0,1)
+subblockbandinds(::ConcreteConversion{DirichletTriangle{1,1,1},DirichletTriangle{1,0,1}},k::Integer) = k==1? 0 :1
+
+
+blockbandinds(::ConcreteConversion{DirichletTriangle{1,1,1},DirichletTriangle{1,1,0}}) = (0,1)
+subblockbandinds(::ConcreteConversion{DirichletTriangle{1,1,1},DirichletTriangle{1,1,0}}) = (0,1)
+subblockbandinds(::ConcreteConversion{DirichletTriangle{1,1,1},DirichletTriangle{1,1,0}},k::Integer) = k==1? 0 :1
+
+
+
+
+
+
+function getindex{T}(R::ConcreteConversion{DirichletTriangle{1,1,1},DirichletTriangle{0,1,1},T},k::Integer,j::Integer)::T
+    K=block(rangespace(R),k).K
+    J=block(domainspace(R),j).K
+    κ=k-blockstart(rangespace(R),K)+1
+    ξ=j-blockstart(domainspace(R),J)+1
+
+    s = 2J-3
+
+    if K == J == 1
+        one(T)
+    elseif K == J == 2 && κ == ξ == 1
+        T(2)  # 1-2x = 1-x + *
+    elseif J == 2 && K == 1 && κ == ξ == 1
+        -one(T) # 1-2x
+    elseif K == J == 2  && κ == ξ == 2
+        one(T) #1-x-2y
+    elseif K == J && κ == ξ == 1
+        T(J-2)/s   # JacobiWeight(1,0,Jacobi(1,1))/2 -> Jacobi(0,1)
+    elseif K == J-1 && κ == ξ == 1
+        T(J-2)/s # JacobiWeight(1,0,Jacobi(1,1))/2 -> Jacobi(0,1)
+    elseif K == J && κ == ξ == 2
+        T(J-2)/s # x*(1-x-2y)*P_{n-2}^{(1,1)} -> (1-x-2y)*P_{n-1}^{(1,0)}
+    elseif K == J-1 && κ == ξ == 2
+        T(J-2)/s # x*(1-x-2y)*P_{n-2}^{(1,1)} -> (1-x-2y)*P_{n-1}^{(1,0)}
+    elseif K == J && κ == ξ == J
+        one(T) # y*(1-x-y)*P_{n-2,n-2}^{0,1,1} stays the same
+    elseif K==J-1 && κ == ξ && (2 < κ < J)
+        T(J-ξ)/s # Lowering{1} for interior term
+    elseif K==J && κ == ξ && (2 < κ < J)
+        T(J-ξ)/s # Lowering{1} for interior term
     else
         zero(T)
     end
