@@ -289,13 +289,13 @@ function getindex{T}(R::ConcreteConversion{DirichletTriangle{0,1,1},DirichletTri
     elseif K == J-1 && κ == ξ == 1
         one(T)/2   # JacobiWeight(0,1,Jacobi(0,1))/2 -> Legendre
     elseif K == J && κ == ξ == 2
-        T(J)/(J-1)  #  (1-x-2y)*P^{(0,0,0)} -> P^{(0,0)} + *
+        -T(J)/(J-1)  #  (1-x-2y)*P^{(0,0,0)} -> * + y*P^{(0,1,0)}
     elseif K == J-1 && κ == ξ == 2
-        -T(J-2)/(J-1) #  (1-x-2y)*P^{(0,0,0)} ->P^{(0,0)} + *
+        T(J-2)/(J-1) #  (1-x-2y)*P^{(0,0,0)} -> * + y*P^{(0,1,0)}
     elseif K == J && ξ == 2 && κ == 1
-        -one(T)/2 #  (1-x-2y)*P^{(0,0,0)} -> * + y*P^{(0,1,0)}
+        -one(T)/2 #  (1-x-2y)*P^{(0,0,0)} -> P^{(0,0)} + *
     elseif K == J-1 && ξ == 2 && κ == 1
-        one(T)/2 #  (1-x-2y)*P^{(0,0,0)} -> * + y*P^{(0,1,0)}
+        one(T)/2 #  (1-x-2y)*P^{(0,0,0)} -> P^{(0,0)} + *
     elseif K==J-1 && κ == ξ-1
         (ξ-2)*(J+ξ-3)/s # Lowering{3}
     elseif K==J-1 && κ == ξ && 2 < ξ ≤ J
@@ -329,17 +329,21 @@ function getindex{T}(R::ConcreteConversion{DirichletTriangle{0,1,1},DirichletTri
     elseif K == J-1 && κ == ξ == 1
         one(T)/2   # JacobiWeight(0,1,Jacobi(0,1))/2 -> Legendre
     elseif K == J && κ == ξ == 2
-        T(K)/(2(J-1))  #  y*P^{(0,0,0)} -> y*P^{(0,1,0)}
+        T(J)/(J-1)  #  (1-x-2y)*P^{(0,0,0)} -> * + (1-x-y)*P^{(0,0,1)}
     elseif K == J-1 && κ == ξ == 2
-        -T(K-1)/(2(J-1))  #  y*P^{(0,0,0)} -> y*P^{(0,1,0)}
+        -T(J-2)/(J-1) #  (1-x-2y)*P^{(0,0,0)} -> * + (1-x-y)*P^{(0,0,1)}
+    elseif K == J && ξ == 2 && κ == 1
+        one(T)/2 #  (1-x-2y)*P^{(0,0,0)} -> P^{(0,0)} + *
+    elseif K == J-1 && ξ == 2 && κ == 1
+        -one(T)/2 #  (1-x-2y)*P^{(0,0,0)} -> P^{(0,0)} + *
     elseif K==J-1 && κ == ξ-1
-        (ξ-2)*(J+ξ-3)/s # Lowering{3}
+        (ξ-2)*(J+ξ-3)/s # Lowering{2}
     elseif K==J-1 && κ == ξ && 2 < ξ ≤ J
-        (ξ-2)*(J-ξ)/s # Lowering{3}
+        -(ξ-2)*(J-ξ)/s # Lowering{2}
     elseif K==J && κ == ξ-1
-        -(ξ-2)*(J-ξ+1)/s # Lowering{3}
+        -(ξ-2)*(J-ξ+1)/s # Lowering{2}
     elseif K==J && κ == ξ && 2 < ξ ≤ J
-        -(ξ-2)*(J+ξ-2)/s # Lowering{3}
+        (ξ-2)*(J+ξ-2)/s # Lowering{2}
     else
         zero(T)
     end
