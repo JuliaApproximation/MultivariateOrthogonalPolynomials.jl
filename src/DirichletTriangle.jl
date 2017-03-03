@@ -411,3 +411,54 @@ function getindex{T}(R::ConcreteConversion{DirichletTriangle{1,1,1},DirichletTri
         zero(T)
     end
 end
+
+function getindex{T}(R::ConcreteConversion{DirichletTriangle{1,1,1},DirichletTriangle{1,0,1},T},k::Integer,j::Integer)::T
+    K=block(rangespace(R),k).K
+    J=block(domainspace(R),j).K
+    κ=k-blockstart(rangespace(R),K)+1
+    ξ=j-blockstart(domainspace(R),J)+1
+
+    s = 2J-3
+
+    if K == J == 1
+        one(T)
+    elseif K == J == 2 && κ == ξ == 1
+        -T(2)  # 1-2x = x + *
+    elseif J == 2 && K == 1 && κ == ξ == 1
+        one(T) # 1-2x
+    elseif K == J == 2  && κ == ξ == 2
+        2one(T) #1-x-2y = 2(1-x-y) + *
+    elseif K == J == 2  && ξ == 2 && κ == 1
+        one(T) #1-x-2y = * + x-1
+    elseif J == 2 && K == 1 && ξ == 2 && κ == 1
+        -one(T) #1-x-2y = * + x-1
+    elseif K == J && κ == ξ == 1
+        -T(J-2)/s # x*(1-x)*P^{(1,1)} -> x*P^{(0,1)}
+    elseif K == J-1 && κ == ξ == 1
+        T(J-2)/s # x*(1-x)*P^{(1,1)} -> x*P^{(0,1)}
+    elseif K == J && κ == ξ == 2
+        2T(J)/s # x*(1-x-2y)*P_{n-2}^{(1,0,0)} -> 2x*(1-x-y)*P_{n-2}^{(1,0,1)} + *
+    elseif K == J-1 && κ == ξ == 2 && J > 3
+        -2T(J-2)/s # x*(1-x-2y)*P_{n-2}^{(1,0,0)} -> 2x*(1-x-y)*P_{n-2}^{(1,0,1)} + *
+    elseif K == J && ξ == 2 && κ == 1
+        T(J-2)/s # x*(1-x-2y)*P_{n-2}^{(1,0,0)} -> * + x*P^{(0,1)}
+    elseif K == J-1 && ξ == 2 && κ == 1
+        -T(J-2)/s # x*(1-x-2y)*P_{n-2}^{(1,0,0)} -> * + x*P^{(0,1)}
+    elseif K == J && κ == ξ == J
+        T(J-2)/s # y*(1-x-y)*P_{n-2,n-2}^{0,1,1} -> * + (1-x-y)*P_{n-2,n-2}^{0,0,1}
+    elseif K == J-1 && ξ == J && κ == J-1
+        T(J-2)/s # y*(1-x-y)*P_{n-2,n-2}^{0,1,1} -> * + (1-x-y)*P_{n-2,n-2}^{0,0,1}
+    elseif K == J && ξ == J && κ == J-1
+        -T(J-2)/s # y*(1-x-y)*P_{n-2,n-2}^{0,1,1} -> x*(1-x-y)*P_{n-2,n-2}^{1,0,1}
+    elseif K==J && κ == ξ && (2 < ξ < J)
+        T((J+ξ-2)*(ξ-2))/(s*(2ξ-3)) # Lowering{2} for interior term
+    elseif K==J && κ == ξ-1 && (2 < ξ < J)
+        -T((J-ξ)*(ξ-2))/(s*(2ξ-3)) # Lowering{2} for interior term
+    elseif K==J-1 && κ == ξ && (2 < ξ < J-1)
+        -T((J-ξ)*(ξ-2))/(s*(2ξ-3)) # Lowering{2} for interior term
+    elseif K==J-1 && κ == ξ-1 && (2 < ξ < J)
+        T((J+ξ-4)*(ξ-2))/(s*(2ξ-3)) # Lowering{2} for interior term
+    else
+        zero(T)
+    end
+end
