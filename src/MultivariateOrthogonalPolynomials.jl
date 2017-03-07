@@ -19,10 +19,10 @@ import ApproxFun: BandedMatrix, order, blocksize,
 
 # Operator import
 import ApproxFun:    bandinds,SpaceOperator, ConversionWrapper, DerivativeWrapper,
-                  rangespace, domainspace,
+                  rangespace, domainspace, InterlaceOperator,
                   promotedomainspace,  CalculusOperator, interlace, Multiplication,
                    choosedomainspace, SubOperator,
-                    Dirichlet, Neumann, Laplacian, ConstantTimesOperator, Conversion,
+                    Dirichlet, DirichletWrapper, Neumann, Laplacian, ConstantTimesOperator, Conversion,
                     dirichlet, neumann, Derivative, ConcreteMultiplication, ConcreteConversion, ConcreteLaplacian,
                     ConcreteDerivative, TimesOperator, MultiplicationWrapper, TridiagonalOperator
 

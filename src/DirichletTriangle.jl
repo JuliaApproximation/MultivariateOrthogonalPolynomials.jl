@@ -513,3 +513,62 @@ function getindex{T}(R::ConcreteConversion{DirichletTriangle{1,1,1},DirichletTri
         zero(T)
     end
 end
+
+
+
+
+## Restriction Operators
+
+function Conversion(a::DirichletTriangle{1,0,0},b::Jacobi)
+    @assert b == Legendre(Vec(0.,0.)..Vec(0.,1.))
+    ConcreteConversion(a,b)
+end
+
+function Conversion(a::DirichletTriangle{0,1,0},b::Jacobi)
+    @assert b == Legendre(Vec(0.,0.)..Vec(1.,0.))
+    ConcreteConversion(a,b)
+end
+
+function Conversion(a::DirichletTriangle{0,0,1},b::Jacobi)
+    @assert b == Legendre(Vec(0.,1.)..Vec(1.,0.))
+    ConcreteConversion(a,b)
+end
+
+
+isblockbanded{DT<:DirichletTriangle,JJ<:Jacobi}(::ConcreteConversion{DT,JJ}) = true
+
+blockbandinds{DT<:DirichletTriangle,JJ<:Jacobi}(::ConcreteConversion{DT,JJ}) = (0,0)
+function getindex{JJ<:Jacobi}(R::ConcreteConversion{DirichletTriangle{1,0,0},JJ},k::Integer,j::Integer)
+    T=eltype(R)
+    J=block(domainspace(R),j).K
+    ξ=j-blockstart(domainspace(R),J)+1
+
+    k==J==ξ ? one(T) : zero(T)
+end
+
+function getindex{JJ<:Jacobi}(R::ConcreteConversion{DirichletTriangle{0,1,0},JJ},k::Integer,j::Integer)
+    T=eltype(R)
+    J=block(domainspace(R),j).K
+    ξ=j-blockstart(domainspace(R),J)+1
+
+    k==J &&ξ==1 ? one(T) : zero(T)
+end
+
+function getindex{JJ<:Jacobi}(R::ConcreteConversion{DirichletTriangle{0,0,1},JJ},k::Integer,j::Integer)
+    T=eltype(R)
+    J=block(domainspace(R),j).K
+    ξ=j-blockstart(domainspace(R),J)+1
+
+    k==J &&ξ==1 ? one(T) : zero(T)
+end
+
+
+
+
+function Dirichlet(::DirichletTriangle{1,1,1})
+    Rx=Conversion(DirichletTriangle{1,1,1}(),DirichletTriangle{1,1,0}(),DirichletTriangle{1,0,0}(),Legendre(Vec(0.,0.)..Vec(0.,1.)))
+    Ry=Conversion(DirichletTriangle{1,1,1}(),DirichletTriangle{1,1,0}(),DirichletTriangle{0,1,0}(),Legendre(Vec(0.,0.)..Vec(1.,0.)))
+    Rz=Conversion(DirichletTriangle{1,1,1}(),DirichletTriangle{0,1,1}(),DirichletTriangle{0,0,1}(),Legendre(Vec(0.,1.)..Vec(1.,0.)))
+
+    DirichletWrapper(InterlaceOperator([Rx;Ry;Rz],PiecewiseSpace))
+end
