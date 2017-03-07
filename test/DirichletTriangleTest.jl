@@ -226,4 +226,40 @@ C=Conversion(DirichletTriangle{1,1,1}(),DirichletTriangle{1,1,0}(),DirichletTria
 B=Dirichlet(DirichletTriangle{1,1,1}())
 u=C\f
 ∂u=B*u
-∂u(0.3,0.)
+@test ∂u(0.3,0.)≈ f(0.3,0.)
+@test ∂u(0.,0.3)≈ f(0.,0.3)
+@test ∂u(0.3,1-0.3)≈ f(0.3,1-0.3)
+
+
+Δ=Laplacian(rangespace(C))
+f=Fun((x,y)->real(exp(x+im*y)),rangespace(B))
+u=\([B;Δ*C],[f;0.];tolerance=1E-13)
+
+@test (C*u)(0.1,0.2) ≈ real(exp(0.1+0.2im))
+
+
+import ApproxFun:FiniteRange,Block
+A=[B[FiniteRange,Block.(1:9)];
+ (Δ*C)[Block.(1:7),Block.(1:9)]]
+
+
+(Δ*C)[Block.(1:7),Block.(1:9)]
+
+nullspace(A')
+
+ApproxFun.blockbandinds(B)
+B[Block.(1:9),Block.(1:9)][end,:]|>norm
+(Δ*C)[Block.(1:6),Block.(1:7)]
+
+nullspace(A')
+
+M=[A nullspace(A')]
+
+M\
+
+
+ApproxFun.blockbandinds(Δ)
+
+
+
+B[FiniteRange,Block.(1:5)]

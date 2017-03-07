@@ -570,5 +570,5 @@ function Dirichlet(::DirichletTriangle{1,1,1})
     Ry=Conversion(DirichletTriangle{1,1,1}(),DirichletTriangle{1,1,0}(),DirichletTriangle{0,1,0}(),Legendre(Vec(0.,0.)..Vec(1.,0.)))
     Rz=Conversion(DirichletTriangle{1,1,1}(),DirichletTriangle{0,1,1}(),DirichletTriangle{0,0,1}(),Legendre(Vec(0.,1.)..Vec(1.,0.)))
 
-    DirichletWrapper(InterlaceOperator([Rx;Ry;Rz],PiecewiseSpace))
+    DirichletWrapper(InterlaceOperator(Operator{Float64}[Rx;Ry;Rz],DirichletTriangle{1,1,1}(),PiecewiseSpace((rangespace(Rx),rangespace(Ry),rangespace(Rz)))))
 end
