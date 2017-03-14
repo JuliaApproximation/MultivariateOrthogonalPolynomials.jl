@@ -40,6 +40,8 @@ end
 points(K::KoornwinderTriangle,n::Integer) =
     map(Vec,map(vec,points(ProductTriangle(K),round(Int,sqrt(n)),round(Int,sqrt(n))))...)
 
+points(K::Triangle,n::Integer) = points(KoornwinderTriangle(0,0,0),n)
+
 typealias TriangleSpace Union{ProductTriangle,KoornwinderTriangle}
 
 ProductTriangle(K::KoornwinderTriangle) = ProductTriangle(K.α,K.β,K.γ,K.domain)
@@ -384,6 +386,7 @@ function getindex{T}(C::ConcreteConversion{KoornwinderTriangle,KoornwinderTriang
             T((κ+β)/(2κ+β+γ+1)*(K-κ)/(2K+α+β+γ))
         elseif J == K+1 && κ == ξ
             (β+γ == -1) && return T(-(K-κ+α+1)/(2*(2K+α+β+γ+2)))
+             T(-(K-κ+α+1)/(2K+α+β+γ+2)*(κ+β+γ)/(2κ+β+γ-1))
         elseif J == K+1 && κ+1 == ξ
             T(-(κ+β)/(2κ+β+γ+1)*(K+κ+β+γ+1)/(2K+α+β+γ+2))
         else

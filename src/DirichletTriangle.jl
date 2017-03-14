@@ -2,6 +2,8 @@
 # all the polynomials
 immutable DirichletTriangle{a,b,c} <: Space{RealBasis,Triangle,2}  end
 
+canonicalspace(D::DirichletTriangle) = KoornwinderTriangle(0,0,0)
+
 spacescompatible{a,b,c}(::DirichletTriangle{a,b,c},::DirichletTriangle{a,b,c}) = true
 
 domain(::DirichletTriangle) = Triangle()
@@ -24,8 +26,28 @@ maxspace_rule(A::DirichletTriangle,B::KoornwinderTriangle) = B
 conversion_rule(A::DirichletTriangle,B::KoornwinderTriangle) = A
 
 
-Conversion(A::DirichletTriangle,B::KoornwinderTriangle) = ConcreteConversion(A,B)
-Conversion(A::DirichletTriangle,B::DirichletTriangle) = ConcreteConversion(A,B)
+Conversion(A::DirichletTriangle{1,0,0},B::KoornwinderTriangle) = ConcreteConversion(A,B)
+Conversion(A::DirichletTriangle{0,1,0},B::KoornwinderTriangle) = ConcreteConversion(A,B)
+Conversion(A::DirichletTriangle{0,0,1},B::KoornwinderTriangle) = ConcreteConversion(A,B)
+function Conversion{a,b,c,d,e,f}(A::DirichletTriangle{a,b,c},B::DirichletTriangle{d,e,f})
+    @assert a ≥ d && b ≥ e && c ≥ f
+    # if only one is bigger, we can do a concrete conversion
+    a+b+c-d-e-f == 1 && return ConcreteConversion(A,B)
+    a > d && return Conversion(A,DirichletTriangle{a-1,b,c}(),B)
+    b > e && return Conversion(A,DirichletTriangle{a,b-1,c}(),B)
+    #  c > f &&
+    return Conversion(A,DirichletTriangle{a,b,c-1}(),B)
+end
+function Conversion{a,b,c}(A::DirichletTriangle{a,b,c},B::KoornwinderTriangle)
+    @assert a ≥ 0 && b ≥ 0 && c ≥ 0
+    # if only one is bigger, we can do a concrete conversion
+    a+b+c == 1 && return ConcreteConversion(A,B)
+    a > 0 && return Conversion(A,DirichletTriangle{a-1,b,c}(),B)
+    b > 0 && return Conversion(A,DirichletTriangle{a,b-1,c}(),B)
+    #  c > 0 &&
+    return Conversion(A,DirichletTriangle{a,b,c-1}(),B)
+end
+
 
 isbandedblockbanded{a,b,c}(::ConcreteConversion{DirichletTriangle{a,b,c},KoornwinderTriangle}) = true
 

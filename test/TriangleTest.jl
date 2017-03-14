@@ -94,6 +94,7 @@ pyf=ProductFun((x,y)->y*exp(x*cos(y)),ProductTriangle(1,0,1))
 C=Conversion(KoornwinderTriangle(1,0,1),KoornwinderTriangle(1,1,1))
 testbandedblockbandedoperator(C)
 @test eltype(C)==Float64
+f=Fun((x,y)->exp(x*cos(y)),KoornwinderTriangle(1,1,1))
 norm((C*Fun((x,y)->exp(x*cos(y)),KoornwinderTriangle(1,0,1))-f).coefficients) < 1E-11
 C=Conversion(KoornwinderTriangle(1,1,0),KoornwinderTriangle(1,1,1))
 testbandedblockbandedoperator(C)
@@ -278,29 +279,6 @@ C=Conversion(S,KoornwinderTriangle(0,0,0))
 testbandedblockbandedoperator(C)
 f=Fun(S,rand(10))
 @test f(0.1,0.2) ≈ (C*f)(0.1,0.2)
-
-
-Derivative(S,[1,0])
-Derivative(TriangleWeight(0.,1.,0.,KoornwinderTriangle(0,1,0)),[0,1])
-C=Conversion(TriangleWeight(1.,1.,1.,KoornwinderTriangle(1,1,1)),KoornwinderTriangle(0,0,0))
-(Derivative(rangespace(C),[2,0])+Derivative(rangespace(C),[0,2]))*C|>ApproxFun.subblockbandinds
-
-S=TriangleWeight(1.,1.,1.,KoornwinderTriangle(1,1,1))
-Derivative(S,[2,0])+Derivative(S,[0,2])|>ApproxFun.blockbandinds
-
-
-@which Laplacian(domainspace(C))
-Laplacian(domainspace(C))|>ApproxFun.subblockbandinds
-
-
-
-Derivative(rangespace(C),[1,0])*C |>ApproxFun.subblockbandinds
-
-
-Laplacian(S)
-
-Derivative(domainspace(C),[1,0])|>ApproxFun.blockbandinds
-Derivative(domainspace(C),[1,0])|>ApproxFun.subblockbandinds
 
 
 
