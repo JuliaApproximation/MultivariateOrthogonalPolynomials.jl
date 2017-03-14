@@ -91,8 +91,17 @@ columnspace(T::ProductTriangle,k::Integer) =
 Fun(f::Function,S::KoornwinderTriangle) =
     Fun(Fun(ProductFun(f,ProductTriangle(S))),S)
 
-itransform(S::KoornwinderTriangle,cfs::Vector) =
-    plan_evaluate(Fun(S,cfs)).(points(S,length(cfs)))
+
+
+immutable KoornwinderTriangleITransformPlan{PE,PT}
+    plan::PE
+    points::PT
+end
+
+*(P::KoornwinderTriangleITransformPlan,cfs::Vector) = P.plan.(P.points)
+
+plan_itransform(S::KoornwinderTriangle,cfs) =
+    KoornwinderTriangleITransformPlan(plan_evaluate(Fun(S,cfs)),points(S,length(cfs)))
 
 function coefficients(f::AbstractVector,K::KoornwinderTriangle,P::ProductTriangle)
     C=totensor(K,f)
