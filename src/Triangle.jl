@@ -40,6 +40,8 @@ end
 points(K::KoornwinderTriangle,n::Integer) =
     map(Vec,map(vec,points(ProductTriangle(K),round(Int,sqrt(n)),round(Int,sqrt(n))))...)
 
+points(K::Triangle,n::Integer) = points(KoornwinderTriangle(0,0,0),n)
+
 typealias TriangleSpace Union{ProductTriangle,KoornwinderTriangle}
 
 ProductTriangle(K::KoornwinderTriangle) = ProductTriangle(K.α,K.β,K.γ,K.domain)
@@ -83,14 +85,25 @@ end
 columnspace(T::ProductTriangle,k::Integer) =
     JacobiWeight(0.,k-1.,Jacobi(T.α,2k-1+T.β+T.γ,Segment(0.,1.)))
 
+Base.sum{KT<:KoornwinderTriangle}(f::Fun{KT}) =
+    Fun(f,KoornwinderTriangle(0,0,0)).coefficients[1]/2
 
 # convert coefficients
 
 Fun(f::Function,S::KoornwinderTriangle) =
     Fun(Fun(ProductFun(f,ProductTriangle(S))),S)
 
-itransform(S::KoornwinderTriangle,cfs::Vector) =
-    plan_evaluate(Fun(S,cfs)).(points(S,length(cfs)))
+
+
+immutable KoornwinderTriangleITransformPlan{PE,PT}
+    plan::PE
+    points::PT
+end
+
+*(P::KoornwinderTriangleITransformPlan,cfs::Vector) = P.plan.(P.points)
+
+plan_itransform(S::KoornwinderTriangle,cfs) =
+    KoornwinderTriangleITransformPlan(plan_evaluate(Fun(S,cfs)),points(S,length(cfs)))
 
 function coefficients(f::AbstractVector,K::KoornwinderTriangle,P::ProductTriangle)
     C=totensor(K,f)
@@ -364,12 +377,12 @@ function getindex{T}(C::ConcreteConversion{KoornwinderTriangle,KoornwinderTriang
         end
     elseif K2.α==α && K2.β==β+1 && K2.γ==γ
         if     J == K   && κ == ξ
-            2κ+β+γ==1 && return T((K+κ+α+β+γ)/((2K+α+β+γ)))
+            (β+γ == -1) && return T((K+κ+α+β+γ)/(2*(2K+α+β+γ)))
             T((K+κ+α+β+γ)/(2K+α+β+γ)*(κ+β+γ)/(2κ+β+γ-1))
         elseif J == K   && κ+1 == ξ
             T(-(κ+γ)/(2κ+β+γ+1)*(K-κ)/(2K+α+β+γ))
         elseif J == K+1 && κ == ξ
-            (2κ+β+γ==1) && return T(-(K-κ+α+1)/((2K+α+β+γ+2)))
+            (β+γ == -1) && return T(-(K-κ+α+1)/(2*(2K+α+β+γ+2)))
             T(-(K-κ+α+1)/(2K+α+β+γ+2)*(κ+β+γ)/(2κ+β+γ-1))
         elseif J == K+1 && κ+1 == ξ
             T((κ+γ)/(2κ+β+γ+1)*(K+κ+β+γ+1)/(2K+α+β+γ+2))
@@ -378,13 +391,13 @@ function getindex{T}(C::ConcreteConversion{KoornwinderTriangle,KoornwinderTriang
         end
     elseif K2.α==α && K2.β==β && K2.γ==γ+1
         if K == J && κ == ξ
-            (2κ+β+γ==1) && return T((K+κ+α+β+γ)/((2K+α+β+γ)))
+            (β+γ == -1) && return T((K+κ+α+β+γ)/(2*(2K+α+β+γ)))
             T((K+κ+α+β+γ)/(2K+α+β+γ)*(κ+β+γ)/(2κ+β+γ-1))
         elseif K == J && κ+1 == ξ
             T((κ+β)/(2κ+β+γ+1)*(K-κ)/(2K+α+β+γ))
         elseif J == K+1 && κ == ξ
-            (2κ+β+γ==1) && return T(-(K-κ+α+1)/((2K+α+β+γ+2)))
-            T(-(K-κ+α+1)/(2K+α+β+γ+2)*(κ+β+γ)/(2κ+β+γ-1))
+            (β+γ == -1) && return T(-(K-κ+α+1)/(2*(2K+α+β+γ+2)))
+             T(-(K-κ+α+1)/(2K+α+β+γ+2)*(κ+β+γ)/(2κ+β+γ-1))
         elseif J == K+1 && κ+1 == ξ
             T(-(κ+β)/(2κ+β+γ+1)*(K+κ+β+γ+1)/(2K+α+β+γ+2))
         else
