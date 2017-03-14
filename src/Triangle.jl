@@ -85,6 +85,8 @@ end
 columnspace(T::ProductTriangle,k::Integer) =
     JacobiWeight(0.,k-1.,Jacobi(T.α,2k-1+T.β+T.γ,Segment(0.,1.)))
 
+Base.sum{KT<:KoornwinderTriangle}(f::Fun{KT}) =
+    Fun(f,KoornwinderTriangle(0,0,0)).coefficients[1]/2
 
 # convert coefficients
 
