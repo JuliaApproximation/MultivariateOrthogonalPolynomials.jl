@@ -56,6 +56,7 @@ import ApproxFun: WeightSpace, weight
 include("Triangle.jl")
 include("DirichletTriangle.jl")
 
+include("show.jl")
 include("plot.jl")
 
 end # module

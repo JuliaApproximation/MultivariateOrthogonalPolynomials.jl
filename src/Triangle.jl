@@ -1,4 +1,4 @@
-export Triangle, KoornwinderTriangle, ProductTriangle, TriangleWeight
+export Triangle, KoornwinderTriangle, ProductTriangle, TriangleWeight, WeightedTriangle
 
 
 ## Triangle Def
@@ -746,6 +746,9 @@ end
 TriangleWeight(α::Number,β::Number,γ::Number,sp::Space) =
     TriangleWeight{typeof(sp)}(α,β,γ,sp)
 
+WeightedTriangle(α::Number,β::Number,γ::Number) =
+    TriangleWeight(α,β,γ,KoornwinderTriangle(α,β,γ))
+
 weight(S::TriangleWeight,x,y) = x.^S.α.*y.^S.β.*(1-x-y).^S.γ
 weight(S::TriangleWeight,xy::Vec) = weight(S,xy...)
 
@@ -853,7 +856,7 @@ Conversion(A::TriangleWeight,B::KoornwinderTriangle) =
         A,B))
 
 
-function Derivative(S::TriangleWeight,order)
+function triangleweight_Derivative(S::TriangleWeight,order)
     if S.α == S.β == S.γ == 0
         D=Derivative(S.space,order)
         SpaceOperator(D,S,rangespace(D))
@@ -926,6 +929,47 @@ function Derivative(S::TriangleWeight,order)
         DerivativeWrapper(TimesOperator(Derivative(rangespace(D),[order[1],order[2]-1]),D),order)
     end
 end
+
+function Derivative(S::TriangleWeight{KoornwinderTriangle},order)
+    if S.α == S.space.α && S.β == S.space.β && S.γ == S.space.γ &&
+        (order == [1,0] || order == [0,1])
+        ConcreteDerivative(S,order)
+    else
+        triangleweight_Derivative(S,order)
+    end
+end
+Derivative(S::TriangleWeight,order) = triangleweight_Derivative(S,order)
+
+
+rangespace(D::ConcreteDerivative{TriangleWeight{KoornwinderTriangle}}) =
+    WeightedTriangle(D.space.α-D.order[1],D.space.β-D.order[2],D.space.γ-1)
+
+isbandedblockbanded(::ConcreteDerivative{TriangleWeight{KoornwinderTriangle}}) = true
+
+blockbandinds(::ConcreteDerivative{TriangleWeight{KoornwinderTriangle}}) = (1,1)
+subblockbandinds(D::ConcreteDerivative{TriangleWeight{KoornwinderTriangle}}) =
+    D.order[1] == 1 ? (0,1) : (1,1)
+
+function getindex{T}(D::ConcreteDerivative{TriangleWeight{KoornwinderTriangle},T},k::Integer,j::Integer)
+    α,β,γ=D.space.α,D.space.β,D.space.γ
+    K=block(rangespace(D),k).K
+    J=block(domainspace(D),j).K
+    κ=k-blockstart(rangespace(D),K)+1
+    ξ=j-blockstart(domainspace(D),J)+1
+
+    if D.order[1] == 1
+        K == J+1 && ξ == κ && return (κ+γ-1)*(K-κ+1)
+        K == J+1 && ξ == κ+1 && return κ*(K-κ+α)
+    else
+        @assert D.order[2] == 1
+        K == J+1 && ξ == κ+1 && return T(κ)
+    end
+
+    zero(T)
+end
+
+
+
 
 
 
