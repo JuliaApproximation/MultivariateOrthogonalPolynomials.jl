@@ -288,6 +288,46 @@ f=Fun(S,rand(10))
 
 
 
+
+## Diagonal D
+
+S = TriangleWeight(1,1,1,KoornwinderTriangle(1,1,1))
+
+
+Dx = Derivative(S,[1,0])
+Dy = Derivative(S,[0,1])
+
+for k=1:10
+    v=[zeros(k);1.0]
+    @test (Dy*Fun(S,v))(0.1,0.2) ≈ (Derivative([0,1])*Fun(Fun(S,v),KoornwinderTriangle(1,1,1)))(0.1,0.2)
+    @test (Dx*Fun(S,v))(0.1,0.2) ≈ (Derivative([1,0])*Fun(Fun(S,v),KoornwinderTriangle(1,1,1)))(0.1,0.2)
+end
+
+
+Derivative(S,[2,0])+Derivative(S,[0,2])|>ApproxFun.blockbandinds
+
+L=Laplacian(S)
+    @time L[Block.(1:100),Block.(1:100)]
+
+@time L2[Block.(1:100),Block.(1:100)]
+
+L=TimesOperator(Derivative(KoornwinderTriangle(0,0,0),[1,0]),(Dx → KoornwinderTriangle(0,0,0)))+TimesOperator(Derivative(KoornwinderTriangle(0,0,0),[0,1]),(Dy → KoornwinderTriangle(0,0,0)))
+rangespace(L)
+
+L2=Laplacian(KoornwinderTriangle(0,0,0))*(I : S → KoornwinderTriangle(0,0,0))
+
+@which ApproxFun.subblockbandinds(L.ops[1],1)
+
+show(L)
+Dy → KoornwinderTriangle(0,0,0)
+
+
+
+
+
+v=[1.0]
+
+
 Δ=Laplacian(S)
 
 f=Fun(S,rand(3))

@@ -944,9 +944,23 @@ function triangleweight_Derivative(S::TriangleWeight,order)
 end
 
 function Derivative(S::TriangleWeight{KoornwinderTriangle},order)
-    if S.α == S.space.α && S.β == S.space.β && S.γ == S.space.γ &&
-        (order == [1,0] || order == [0,1])
-        ConcreteDerivative(S,order)
+    if S.α == 0 && S.β == 0 && S.γ == 0
+        D = Derivative(S.space,order)
+        DerivativeWrapper(SpaceOperator(D,S,rangespace(D)),order)
+    elseif (order[1] ≥ 1 &&  (S.α == 0 || S.γ == 0) ) ||
+            (order[2] ≥ 1 &&  (S.β == 0 || S.γ == 0))
+        C = Conversion(S,KoornwinderTriangle(0,0,0))
+        DerivativeWrapper(Derivative(rangespace(C),order)*C,order)
+    elseif S.α == S.space.α && S.β == S.space.β && S.γ == S.space.γ
+        if order == [1,0] || order == [0,1]
+            ConcreteDerivative(S,order)
+        elseif order[1] ≥ 1
+            D1 = Derivative(S,[1,0])
+            DerivativeWrapper(TimesOperator(Derivative(rangespace(D1),[order[1]-1,order[2]]),D1),order)
+        else #order[2] ≥ 1
+            D2 = Derivative(S,[0,1])
+            DerivativeWrapper(TimesOperator(Derivative(rangespace(D2),[order[1],order[2]-1]),D2),order)
+        end
     else
         triangleweight_Derivative(S,order)
     end
@@ -959,11 +973,14 @@ rangespace(D::ConcreteDerivative{TriangleWeight{KoornwinderTriangle}}) =
 
 isbandedblockbanded(::ConcreteDerivative{TriangleWeight{KoornwinderTriangle}}) = true
 
-blockbandinds(::ConcreteDerivative{TriangleWeight{KoornwinderTriangle}}) = (1,1)
+blockbandinds(::ConcreteDerivative{TriangleWeight{KoornwinderTriangle}}) = (-1,0)
 subblockbandinds(D::ConcreteDerivative{TriangleWeight{KoornwinderTriangle}}) =
-    D.order[1] == 1 ? (0,1) : (1,1)
+    (-1,0)  #TODO: subblockbandinds (-1,-1) for Dy
+subblockbandinds(D::ConcreteDerivative{TriangleWeight{KoornwinderTriangle}},k::Integer) =
+    k==1?-1:0  #TODO: subblockbandinds (-1,-1) for Dy
 
-function getindex{T}(D::ConcreteDerivative{TriangleWeight{KoornwinderTriangle},T},k::Integer,j::Integer)
+
+function getindex{OT,T}(D::ConcreteDerivative{TriangleWeight{KoornwinderTriangle},OT,T},k::Integer,j::Integer)::T
     α,β,γ=D.space.α,D.space.β,D.space.γ
     K=block(rangespace(D),k).K
     J=block(domainspace(D),j).K
@@ -971,11 +988,11 @@ function getindex{T}(D::ConcreteDerivative{TriangleWeight{KoornwinderTriangle},T
     ξ=j-blockstart(domainspace(D),J)+1
 
     if D.order[1] == 1
-        K == J+1 && ξ == κ && return (κ+γ-1)*(K-κ+1)
-        K == J+1 && ξ == κ+1 && return κ*(K-κ+α)
+        K == J+1 && ξ == κ && return -T((ξ+γ-1)*(J-ξ+1))/(2ξ+β+γ-1)
+        K == J+1 && ξ+1 == κ && return -T(ξ*(J-ξ+α))/(2ξ+β+γ-1)
     else
         @assert D.order[2] == 1
-        K == J+1 && ξ == κ+1 && return T(κ)
+        K == J+1 && ξ+1 == κ && return T(-ξ)
     end
 
     zero(T)
