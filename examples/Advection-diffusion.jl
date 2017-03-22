@@ -1,4 +1,4 @@
-using ApproxFun, MultivariateOrthogonalPolynomials, FixedSizeArrays, Plots, GLVisualize
+using ApproxFun, MultivariateOrthogonalPolynomials, Plots, GLVisualize
     import MultivariateOrthogonalPolynomials: plan_evaluate
 
 
@@ -6,14 +6,14 @@ window = glscreen()
     @async GLWindow.waiting_renderloop(window)
 
 
-S = TriangleWeight(1,1,1,KoornwinderTriangle(1,1,1))
+S = WeightedTriangle(1,1,1)
 
 Δ = Laplacian(S)
 Dx = Derivative(S,[1,0])
 Dy = Derivative(S,[0,1])
 
 
-h=0.001
+h=0.0001
 ε=0.01
 
 
@@ -53,12 +53,12 @@ u=u0=Fun(S,4randn(10));
 Z
 
 
-for k=1:100
-    @time u=\(QR,C*u;tolerance=1E-5)
+for k=1:500
+    u=\(QR,C*u;tolerance=1E-5)
     chop!(u,1E-7)
     if mod(k,2) == 0
         P = plan_evaluate(u)
-        @time Z = Matrix{Float32}(P.(X,Y))
+        Z = Matrix{Float32}(P.(X,Y))
         GLAbstraction.set_arg!(vis, :position_z, Z)
     end
     yield()

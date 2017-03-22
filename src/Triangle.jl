@@ -11,9 +11,9 @@ immutable Triangle <: BivariateDomain{Vec{2,Float64}} end
 canonicaldomain(::Triangle) = Segment(0,1)^2
 fromcanonical(::Triangle,st::Vec) = Vec(st[1],(1-st[1])*st[2])
 tocanonical(::Triangle,xy::Vec) = Vec(xy[1],xy[1]==1 ? zero(eltype(xy)) : xy[2]/(1-xy[1]))
-checkpoints(d::Triangle) = [fromcanonical(d,Vec(.1,.2243));fromcanonical(d,Vec(-.212423,-.3))]
+checkpoints(d::Triangle) = [fromcanonical(d,Vec(.1,.2243)),fromcanonical(d,Vec(-.212423,-.3))]
 
-∂(d::Triangle) = PiecewiseInterval([(0.,0.),(1.,0.),(0.,1.),(0.,0.)])
+∂(d::Triangle) = PiecewiseSegment([Vec(0.,0.),Vec(1.,0.),Vec(0.,1.),Vec(0.,0.)])
 
 # expansion in OPs orthogonal to
 # x^α*y^β*(1-x-y)^γ
@@ -1021,31 +1021,31 @@ function operator_clenshaw2D{T}(Jx,Jy,cfs::Vector{Vector{T}},x,y)
         Cx,Cy=view(Jx,K,K+1),view(Jy,K,K+1)
         JxK=view(Jx,K+1,K)
         JyK=view(Jy,K+1,K)
-        @inbounds for k=1:K
-            bk1[k] /= JxK.data[k]
+        @inbounds for k=1:K.K
+            bk1[k] /= JxK[k,k]
         end
 
-        bk1[K-1] -= JyK[K-1,end]/(JxK[K-1,K-1]*JyK[end,end])*bk1[K+1]
-        bk1[K]   -= JyK[K,end]/(JxK[K,K]*JyK[end,end])*bk1[K+1]
-        bk1[K+1] /= JyK[K+1,end]
+        bk1[K.K-1] -= JyK[K.K-1,end]/(JxK[K.K-1,K.K-1]*JyK[end,end])*bk1[K.K+1]
+        bk1[K.K]   -= JyK[K.K,end]/(JxK[K.K,K.K]*JyK[end,end])*bk1[K.K+1]
+        bk1[K.K+1] /= JyK[K.K+1,end]
 
-        resize!(Abk2x,K)
-        Abk2x[:]=bk1[1:K]
-        resize!(Abk2y,K)
-        Abk2y[1:K-1]=Z
-        Abk2y[end]=bk1[K+1]
+        resize!(Abk2x,K.K)
+        Abk2x[:]=bk1[1:K.K]
+        resize!(Abk2y,K.K)
+        Abk2y[1:K.K-1]=Z
+        Abk2y[end]=bk1[K.K+1]
 
         Abk1x,Abk2x=Abk2x,Abk1x
         Abk1y,Abk2y=Abk2y,Abk1y
 
 
         bk1,bk2 = bk2,bk1
-        resize!(bk1,K)
+        resize!(bk1,K.K)
         bk1[:]=map((opx,opy)->x*opx+y*opy,Abk1x,Abk1y)
-        bk1[:]-=full(Bx)*Abk1x+full(By)*Abk1y
-        bk1[:]-=full(Cx)*Abk2x+full(Cy)*Abk2y
+        bk1[:]-=Matrix(Bx)*Abk1x+Matrix(By)*Abk1y
+        bk1[:]-=Matrix(Cx)*Abk2x+Matrix(Cy)*Abk2y
         for k=1:length(bk1)
-            bk1[k]+=cfs[K][k]*I
+            bk1[k]+=cfs[K.K][k]*I
         end
     end
 
@@ -1063,12 +1063,13 @@ function operator_clenshaw2D{T}(Jx,Jy,cfs::Vector{Vector{T}},x,y)
     Abk1x,Abk2x=bk1[1:1],Abk1x
     Abk1y,Abk2y=[bk1[2]],Abk1y
     cfs[1][1]*I + x*Abk1x[1] + y*Abk1y[1] -
-        Bx[1]*Abk1x[1] - By[1]*Abk1y[1] -
-        (full(Cx)*Abk2x)[1] - (full(Cy)*Abk2y)[1]
+        Bx[1,1]*Abk1x[1] - By[1,1]*Abk1y[1] -
+        (Matrix(Cx)*Abk2x)[1] - (Matrix(Cy)*Abk2y)[1]
 end
 
 
 function Multiplication(f::Fun{KoornwinderTriangle},S::KoornwinderTriangle)
-    op=operator_clenshaw2D(P.Jx,P.Jy,P.coefficients,Lowering{1}(S)→S,Lowering{2}(S)→S)
+    S1=space(f)
+    op=operator_clenshaw2D(Lowering{1}(S1)→S1,Lowering{2}(S1)→S1,plan_evaluate(f).coefficients,Lowering{1}(S)→S,Lowering{2}(S)→S)
     MultiplicationWrapper(f,op)
 end

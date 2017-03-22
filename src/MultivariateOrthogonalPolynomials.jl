@@ -1,7 +1,7 @@
 __precompile__()
 
 module MultivariateOrthogonalPolynomials
-    using Base, Compat, RecipesBase, ApproxFun, BandedMatrices, FastGaussQuadrature, FixedSizeArrays
+    using Base, Compat, RecipesBase, ApproxFun, BandedMatrices, FastGaussQuadrature, StaticArrays
 
 # package code goes here
 import Base: values,getindex,setindex!,*,.*,+,.+,-,.-,==,<,<=,>,
@@ -21,7 +21,7 @@ import ApproxFun: BandedMatrix, order, blocksize,
 import ApproxFun:    bandinds,SpaceOperator, ConversionWrapper, DerivativeWrapper,
                   rangespace, domainspace, InterlaceOperator,
                   promotedomainspace,  CalculusOperator, interlace, Multiplication,
-                   choosedomainspace, SubOperator,
+                   choosedomainspace, SubOperator, ZeroOperator,
                     Dirichlet, DirichletWrapper, Neumann, Laplacian, ConstantTimesOperator, Conversion,
                     dirichlet, neumann, Derivative, ConcreteMultiplication, ConcreteConversion, ConcreteLaplacian,
                     ConcreteDerivative, TimesOperator, MultiplicationWrapper, TridiagonalOperator
@@ -35,7 +35,7 @@ import ApproxFun: PolynomialSpace, ConstantSpace, NoSpace,
                     transform,itransform,transform!,itransform!,
                     isambiguous, fromcanonical, tocanonical, checkpoints, ∂, spacescompatible,
                    mappoint, UnivariateSpace, setdomain, Space, points, space, conversion_rule, maxspace_rule,
-                   coefficients, RealUnivariateSpace
+                   coefficients, RealUnivariateSpace, PiecewiseSegment
 
 # Multivariate import
 import ApproxFun: BivariateDomain,DirectSumSpace, AbstractProductSpace,
@@ -50,6 +50,9 @@ import ApproxFun: jacobip, JacobiSD
 
 # Singularities
 import ApproxFun: WeightSpace, weight
+
+# Vec is for two points
+import ApproxFun: Vec
 
 
 

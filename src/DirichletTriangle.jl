@@ -594,3 +594,10 @@ function Dirichlet(::DirichletTriangle{1,1,1})
 
     DirichletWrapper(InterlaceOperator(Operator{Float64}[Rx;Ry;Rz],DirichletTriangle{1,1,1}(),PiecewiseSpace((rangespace(Rx),rangespace(Ry),rangespace(Rz)))))
 end
+
+
+Dirichlet(::Triangle) = Dirichlet(DirichletTriangle{1,1,1}())
+
+
+Base.sum{DT<:DirichletTriangle}(f::Fun{DT}) =
+    sum(Fun(f,KoornwinderTriangle(0,0,0)))
