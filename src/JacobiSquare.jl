@@ -36,7 +36,7 @@ canonicalspace(S::WeightedSquare)=S
 points(S::WeightedSquare,n)=sqrt(points(S.space,n))
 checkpoints(S::WeightedSquare)=sqrt(checkpoints(S.space))
 
-plan_transform(S::WeightedSquare,vals::Vector)=(S,points(S,length(vals)),plan_transform(S.space,vals))
+plan_transform(S::WeightedSquare,vals::Vector) = (S,points(S,length(vals)),plan_transform(S.space,vals))
 
 function transform(S::WeightedSquare,vals::Vector,plan)
     if S.m == 0

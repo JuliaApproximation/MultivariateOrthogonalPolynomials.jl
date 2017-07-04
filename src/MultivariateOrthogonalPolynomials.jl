@@ -15,7 +15,7 @@ importall ApproxFun
 # ApproxFun general import
 import ApproxFun: BandedMatrix, order, blocksize,
                   linesum,complexlength, BandedBlockBandedMatrix, bbbzeros,
-                  real, eps, isapproxinteger, ∞, FiniteRange
+                  real, eps, isapproxinteger, ∞, FiniteRange, F
 
 # Operator import
 import ApproxFun:    bandinds,SpaceOperator, ConversionWrapper, DerivativeWrapper,
@@ -35,7 +35,7 @@ import ApproxFun: PolynomialSpace, ConstantSpace, NoSpace,
                     transform,itransform,transform!,itransform!,
                     isambiguous, fromcanonical, tocanonical, checkpoints, ∂, spacescompatible,
                    mappoint, UnivariateSpace, setdomain, Space, points, space, conversion_rule, maxspace_rule,
-                   coefficients, RealUnivariateSpace, PiecewiseSegment
+                   union_rule, coefficients, RealUnivariateSpace, PiecewiseSegment
 
 # Multivariate import
 import ApproxFun: BivariateDomain,DirectSumSpace, AbstractProductSpace,

@@ -90,7 +90,7 @@ Base.sum{KT<:KoornwinderTriangle}(f::Fun{KT}) =
 
 # convert coefficients
 
-Fun(f::Function,S::KoornwinderTriangle) =
+Fun(f::F,S::KoornwinderTriangle;kwds...) =
     Fun(Fun(ProductFun(f,ProductTriangle(S))),S)
 
 
