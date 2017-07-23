@@ -209,19 +209,19 @@ f=Fun((x,y)->exp(x*cos(y)),K)
 K=KoornwinderTriangle(0,0,0)
 f=Fun((x,y)->exp(x*cos(y)),K)
 D=Derivative(space(f),[1,0])
-@test_approx_eq_eps (D*f)(0.1,0.2) ((x,y)->cos(y)*exp(x*cos(y)))(0.1,0.2) 100000eps()
+@test (D*f)(0.1,0.2) ≈ ((x,y)->cos(y)*exp(x*cos(y)))(0.1,0.2) atol=100000eps()
 
 D=Derivative(space(f),[0,1])
-@test_approx_eq_eps (D*f)(0.1,0.2) ((x,y)->-x*sin(y)*exp(x*cos(y)))(0.1,0.2) 100000eps()
+@test (D*f)(0.1,0.2) ≈  ((x,y)->-x*sin(y)*exp(x*cos(y)))(0.1,0.2) atol=100000eps()
 
 D=Derivative(space(f),[1,1])
-@test_approx_eq_eps (D*f)(0.1,0.2) ((x,y)->-sin(y)*exp(x*cos(y)) -x*sin(y)*cos(y)exp(x*cos(y)))(0.1,0.2)  1000000eps()
+@test (D*f)(0.1,0.2) ≈ ((x,y)->-sin(y)*exp(x*cos(y)) -x*sin(y)*cos(y)exp(x*cos(y)))(0.1,0.2)  atol=1000000eps()
 
 D=Derivative(space(f),[0,2])
-@test_approx_eq_eps (D*f)(0.1,0.2) ((x,y)->-x*cos(y)*exp(x*cos(y)) + x^2*sin(y)^2*exp(x*cos(y)))(0.1,0.2)  1000000eps()
+@test (D*f)(0.1,0.2) ≈ ((x,y)->-x*cos(y)*exp(x*cos(y)) + x^2*sin(y)^2*exp(x*cos(y)))(0.1,0.2)  atol=1000000eps()
 
 D=Derivative(space(f),[2,0])
-@test_approx_eq_eps (D*f)(0.1,0.2) ((x,y)->cos(y)^2*exp(x*cos(y)))(0.1,0.2)  1000000eps()
+@test (D*f)(0.1,0.2) ≈ ((x,y)->cos(y)^2*exp(x*cos(y)))(0.1,0.2)  atol=1000000eps()
 
 
 
@@ -239,14 +239,14 @@ My=Lowering{2}(S)
 f=Fun((x,y)->exp(x*sin(y)),S)
 
 @test (Mx*f)(0.1,0.2) ≈ 0.1*f(0.1,0.2)
-@test_approx_eq_eps (My*f)(0.1,0.2) 0.2*f(0.1,0.2) 1E-12
-@test_approx_eq_eps ((Mx+My)*f)(0.1,0.2) 0.3*f(0.1,0.2) 1E-12
+@test (My*f)(0.1,0.2) ≈ 0.2*f(0.1,0.2) atol=1E-12
+@test ((Mx+My)*f)(0.1,0.2) ≈ 0.3*f(0.1,0.2) atol=1E-12
 
 
 Jx=Mx → S
 Jy=My → S
 
-@test_approx_eq_eps (Jy*f)(0.1,0.2) 0.2*f(0.1,0.2) 1E-12
+@test (Jy*f)(0.1,0.2) ≈ 0.2*f(0.1,0.2) atol=1E-12
 
 x,y=0.1,0.2
 
@@ -302,25 +302,6 @@ for k=1:10
     @test (Dy*Fun(S,v))(0.1,0.2) ≈ (Derivative([0,1])*Fun(Fun(S,v),KoornwinderTriangle(1,1,1)))(0.1,0.2)
     @test (Dx*Fun(S,v))(0.1,0.2) ≈ (Derivative([1,0])*Fun(Fun(S,v),KoornwinderTriangle(1,1,1)))(0.1,0.2)
 end
-
-
-Derivative(S,[2,0])+Derivative(S,[0,2])|>ApproxFun.blockbandinds
-
-L=Laplacian(S)
-    @time L[Block.(1:100),Block.(1:100)]
-
-@time L2[Block.(1:100),Block.(1:100)]
-
-L=TimesOperator(Derivative(KoornwinderTriangle(0,0,0),[1,0]),(Dx → KoornwinderTriangle(0,0,0)))+TimesOperator(Derivative(KoornwinderTriangle(0,0,0),[0,1]),(Dy → KoornwinderTriangle(0,0,0)))
-rangespace(L)
-
-L2=Laplacian(KoornwinderTriangle(0,0,0))*(I : S → KoornwinderTriangle(0,0,0))
-
-@which ApproxFun.subblockbandinds(L.ops[1],1)
-
-show(L)
-Dy → KoornwinderTriangle(0,0,0)
-
 
 
 

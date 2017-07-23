@@ -23,13 +23,13 @@ import ApproxFun:    bandinds,SpaceOperator, ConversionWrapper, DerivativeWrappe
                   promotedomainspace,  CalculusOperator, interlace, Multiplication,
                    choosedomainspace, SubOperator, ZeroOperator,
                     Dirichlet, DirichletWrapper, Neumann, Laplacian, ConstantTimesOperator, Conversion,
-                    dirichlet, neumann, Derivative, ConcreteMultiplication, ConcreteConversion, ConcreteLaplacian,
+                    Derivative, ConcreteMultiplication, ConcreteConversion, ConcreteLaplacian,
                     ConcreteDerivative, TimesOperator, MultiplicationWrapper, TridiagonalOperator
 
 
 # Spaces import
-import ApproxFun: PolynomialSpace, ConstantSpace, NoSpace,
-                    SumSpace,PiecewiseSpace, ArraySpace,RealBasis,ComplexBasis,AnyBasis,
+import ApproxFun: PolynomialSpace, ConstantSpace, NoSpace, prectype,
+                    SumSpace,PiecewiseSpace, ArraySpace,
                     UnsetSpace, canonicalspace, canonicaldomain, domain, evaluate,
                     AnyDomain, plan_transform,plan_itransform,
                     transform,itransform,transform!,itransform!,
@@ -38,7 +38,7 @@ import ApproxFun: PolynomialSpace, ConstantSpace, NoSpace,
                    union_rule, coefficients, RealUnivariateSpace, PiecewiseSegment
 
 # Multivariate import
-import ApproxFun: BivariateDomain,DirectSumSpace, AbstractProductSpace,
+import ApproxFun: BivariateDomain,DirectSumSpace, AbstractProductSpace, factor,
                     BivariateFun,  ProductFun, LowRankFun, lap, columnspace,
                     blockbandinds, subblockbandinds, fromtensor, totensor, isbandedblockbanded,
                     Tensorizer, tensorizer, block, blockstart, blockstop, blocklengths,
