@@ -1,6 +1,6 @@
 # this is TriangleWeight(a,b,c,KoornwinderTriangle(a,b,c)) with some extra columns to span
 # all the polynomials
-immutable DirichletTriangle{a,b,c} <: Space{RealBasis,Triangle,2}  end
+immutable DirichletTriangle{a,b,c} <: Space{Triangle,Float64}  end
 
 canonicalspace(D::DirichletTriangle) = KoornwinderTriangle(0,0,0)
 

@@ -3,7 +3,7 @@ export Triangle, KoornwinderTriangle, ProductTriangle, TriangleWeight, WeightedT
 
 ## Triangle Def
 # currently right trianglel
-immutable Triangle <: BivariateDomain{Vec{2,Float64}} end
+struct Triangle <: BivariateDomain{Float64} end
 
 
 #canonical is rectangle [0,1]^2
@@ -21,8 +21,9 @@ checkpoints(d::Triangle) = [fromcanonical(d,Vec(.1,.2243)),fromcanonical(d,Vec(-
 # P_{n-k}^{2k+β+γ+1,α}(2x-1)*(1-x)^k*P_k^{γ,β}(2y/(1-x)-1)
 
 
-immutable ProductTriangle <: AbstractProductSpace{Tuple{WeightedJacobi{Float64,Segment{Float64}},
-                                                        Jacobi{Float64,Segment{Float64}}},Float64,Triangle,2}
+immutable ProductTriangle <: AbstractProductSpace{Tuple{WeightedJacobi{Segment{Float64},Float64},
+                                                        Jacobi{Segment{Float64},Float64}},
+                                                  Triangle,Float64}
     α::Float64
     β::Float64
     γ::Float64
@@ -30,7 +31,7 @@ immutable ProductTriangle <: AbstractProductSpace{Tuple{WeightedJacobi{Float64,S
 end
 
 
-immutable KoornwinderTriangle <: Space{RealBasis,Triangle,2}
+immutable KoornwinderTriangle <: Space{Triangle,Float64}
     α::Float64
     β::Float64
     γ::Float64
@@ -42,7 +43,7 @@ points(K::KoornwinderTriangle,n::Integer) =
 
 points(K::Triangle,n::Integer) = points(KoornwinderTriangle(0,0,0),n)
 
-typealias TriangleSpace Union{ProductTriangle,KoornwinderTriangle}
+const TriangleSpace = Union{ProductTriangle,KoornwinderTriangle}
 
 ProductTriangle(K::KoornwinderTriangle) = ProductTriangle(K.α,K.β,K.γ,K.domain)
 
@@ -77,7 +78,7 @@ end
 
 # support for ProductFun constructor
 
-function space(T::ProductTriangle,k::Integer)
+function factor(T::ProductTriangle,k::Integer)
     @assert k==2
     Jacobi(T.β,T.γ,Segment(0.,1.))
 end
@@ -181,7 +182,7 @@ end
 # TODO: replace with RaggedMatrix
 function totree(S,f::Fun)
     N=block(S,ncoefficients(f))
-    ret = Array(Vector{eltype(f)},N.K)
+    ret = Array{Vector{eltype(f)}}(N.K)
     for K=Block(1):N
         ret[K.K]=coefficient(f,K)
     end
@@ -548,7 +549,7 @@ immutable Lowering{k,S,T} <: Operator{T}
     space::S
 end
 
-Base.convert{k}(::Type{Lowering{k}},sp) = Lowering{k,typeof(sp),promote_type(eltype(sp),eltype(eltype(domain(sp))))}(sp)
+Base.convert{k}(::Type{Lowering{k}},sp) = Lowering{k,typeof(sp),prectype(sp)}(sp)
 Base.convert{x,T,S}(::Type{Operator{T}},J::Lowering{x,S}) = Lowering{x,S,T}(J.space)
 
 
@@ -746,13 +747,13 @@ end
 
 ### Weighted
 
-immutable TriangleWeight{S} <: WeightSpace{S,RealBasis,Triangle,2}
+immutable TriangleWeight{S} <: WeightSpace{S,Triangle,Float64}
     α::Float64
     β::Float64
     γ::Float64
     space::S
 
-    TriangleWeight(α::Number,β::Number,γ::Number,sp::S) =
+    TriangleWeight{S}(α::Number,β::Number,γ::Number,sp::S) where S =
         new(Float64(α),Float64(β),Float64(γ),sp)
 end
 
