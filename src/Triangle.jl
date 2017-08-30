@@ -15,6 +15,9 @@ checkpoints(d::Triangle) = [fromcanonical(d,Vec(.1,.2243)),fromcanonical(d,Vec(-
 
 ∂(d::Triangle) = PiecewiseSegment([Vec(0.,0.),Vec(1.,0.),Vec(0.,1.),Vec(0.,0.)])
 
+
+Base.isnan(::Triangle) = false
+
 # expansion in OPs orthogonal to
 # x^α*y^β*(1-x-y)^γ
 # defined as

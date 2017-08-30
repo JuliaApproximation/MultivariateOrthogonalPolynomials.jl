@@ -587,7 +587,8 @@ end
 
 
 
-function Dirichlet(::DirichletTriangle{1,1,1})
+function Dirichlet(::DirichletTriangle{1,1,1}, k::Int)
+    @assert k==0
     Rx=Conversion(DirichletTriangle{1,1,1}(),DirichletTriangle{1,1,0}(),DirichletTriangle{1,0,0}(),Legendre(Vec(0.,0.)..Vec(0.,1.)))
     Ry=Conversion(DirichletTriangle{1,1,1}(),DirichletTriangle{1,1,0}(),DirichletTriangle{0,1,0}(),Legendre(Vec(0.,0.)..Vec(1.,0.)))
     Rz=Conversion(DirichletTriangle{1,1,1}(),DirichletTriangle{0,1,1}(),DirichletTriangle{0,0,1}(),Legendre(Vec(0.,1.)..Vec(1.,0.)))

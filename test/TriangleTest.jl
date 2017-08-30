@@ -304,6 +304,22 @@ for k=1:10
 end
 
 
+d = Triangle()
+B = Dirichlet(d)
+Δ = Laplacian(domainspace(B))
+
+@which Dirichlet(d)
+
+ApproxFun.promotedomainspace(Δ, domainspace(Δ))
+ApproxFun.promotedomainspace(B, domainspace(Δ))
+
+L = [B;Δ]
+
+∂u = Fun((x,y) -> exp(x)*sin(y), ∂(d))
+Fun([∂u;0],rangespace(L))
+
+L = [B;Laplacian()]
+Fun([∂u;0],rangespace(L))
 
 
 v=[1.0]
