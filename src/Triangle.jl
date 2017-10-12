@@ -94,9 +94,8 @@ Base.sum{KT<:KoornwinderTriangle}(f::Fun{KT}) =
 
 # convert coefficients
 
-Fun(f::F,S::KoornwinderTriangle;kwds...) =
-    Fun(Fun(ProductFun(f,ProductTriangle(S))),S)
-
+Fun(f::Function, S::KoornwinderTriangle) = Fun(Fun(ProductFun(f,ProductTriangle(S))),S)
+Fun(f::Fun, S::KoornwinderTriangle) = Fun(S,coefficients(f,S))
 
 
 immutable KoornwinderTriangleITransformPlan{PE,PT}

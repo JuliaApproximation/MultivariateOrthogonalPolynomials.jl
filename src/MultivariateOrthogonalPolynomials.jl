@@ -15,7 +15,7 @@ importall ApproxFun
 # ApproxFun general import
 import ApproxFun: BandedMatrix, order, blocksize,
                   linesum,complexlength, BandedBlockBandedMatrix, bbbzeros,
-                  real, eps, isapproxinteger, ∞, FiniteRange, F
+                  real, eps, isapproxinteger, ∞, FiniteRange, DFunction
 
 # Operator import
 import ApproxFun:    bandinds,SpaceOperator, ConversionWrapper, DerivativeWrapper,
