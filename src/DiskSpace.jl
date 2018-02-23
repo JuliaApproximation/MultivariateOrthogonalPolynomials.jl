@@ -49,7 +49,7 @@ function Base.real{JS,DD}(f::ProductFun{JS,Laurent{DD},DiskSpace{0,0,0,JS,Lauren
     cfs=f.coefficients
     n=length(cfs)
 
-    ret=Array(Fun{JS,Float64},iseven(n)?n+1:n)
+    ret=Array(Fun{JS,Float64},iseven(n) ? n+1 : n)
     ret[1]=real(cfs[1])
 
     for k=2:2:n
