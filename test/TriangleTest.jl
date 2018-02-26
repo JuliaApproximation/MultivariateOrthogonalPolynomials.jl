@@ -1,7 +1,7 @@
 using StaticArrays,Plots,BandedMatrices,
         ApproxFun,MultivariateOrthogonalPolynomials, Base.Test
     import MultivariateOrthogonalPolynomials: Lowering, ProductTriangle, clenshaw, block, TriangleWeight,plan_evaluate
-    import ApproxFun: testbandedblockbandedoperator, Block, BandedBlockBandedMatrix, bbbzeros, blockcolrange, blocksize, Vec
+    import ApproxFun: testbandedblockbandedoperator, Block, BandedBlockBandedMatrix, blockcolrange, blocksize, Vec
 
 
 

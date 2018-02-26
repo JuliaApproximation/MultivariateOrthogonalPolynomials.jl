@@ -1,20 +1,20 @@
 __precompile__()
 
 module MultivariateOrthogonalPolynomials
-    using Base, Compat, RecipesBase, ApproxFun, BandedMatrices, FastGaussQuadrature, StaticArrays
+    using Base, Compat, RecipesBase, ApproxFun, BandedMatrices, BlockArrays, FastGaussQuadrature, StaticArrays, FillArrays
 
 # package code goes here
 import Base: values,getindex,setindex!,*,.*,+,.+,-,.-,==,<,<=,>,
                 >=,./,/,.^,^,\,∪,transpose
 
 
-import BandedMatrices: αA_mul_B_plus_βC!, inbands_getindex, inbands_setindex!
+import BandedMatrices: mul!, inbands_getindex, inbands_setindex!
 
 importall ApproxFun
 
 # ApproxFun general import
 import ApproxFun: BandedMatrix, order, blocksize,
-                  linesum,complexlength, BandedBlockBandedMatrix, bbbzeros,
+                  linesum,complexlength, BandedBlockBandedMatrix,
                   real, eps, isapproxinteger, ∞, FiniteRange, DFunction
 
 # Operator import
@@ -42,7 +42,7 @@ import ApproxFun: BivariateDomain,DirectSumSpace, AbstractProductSpace, factor,
                     BivariateFun,  ProductFun, LowRankFun, lap, columnspace,
                     blockbandinds, subblockbandinds, fromtensor, totensor, isbandedblockbanded,
                     Tensorizer, tensorizer, block, blockstart, blockstop, blocklengths,
-                    domaintensorizer, rangetensorizer, blockrange, Block
+                    domaintensorizer, rangetensorizer, blockrange, Block, BlockRange1
 
 
 # Jacobi import

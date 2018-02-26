@@ -132,24 +132,25 @@ function clenshaw2D{T}(Jx,Jy,cfs::Vector{Vector{T}},x,y)
     Abk2y=zeros(T,N+1)
 
 
-    @inbounds for K=Block(N):-1:Block(2)
+    @inbounds for K_int = N:-1:2
+        K = Block(K_int)
         Bx,By=view(Jx,K,K),view(Jy,K,K)
         Cx,Cy=view(Jx,K,K+1),view(Jy,K,K+1)
         JxK=view(Jx,K+1,K)
         JyK=view(Jy,K+1,K)
-        @inbounds for k=1:K.K
+        @inbounds for k=1:Int(K)
             bk1[k] /= inbands_getindex(JxK,k,k)
         end
 
-        bk1[K.K-1] -= JyK[K.K-1,end]/(JxK[K.K-1,K.K-1]*JyK[end,end])*bk1[K.K+1]
-        bk1[K.K]   -= JyK[K.K,end]/(JxK[K.K,K.K]*JyK[end,end])*bk1[K.K+1]
-        bk1[K.K+1] /= JyK[K.K+1,end]
+        bk1[Int(K)-1] -= JyK[Int(K)-1,end]/(JxK[Int(K)-1,Int(K)-1]*JyK[end,end])*bk1[Int(K)+1]
+        bk1[Int(K)]   -= JyK[Int(K),end]/(JxK[Int(K),Int(K)]*JyK[end,end])*bk1[Int(K)+1]
+        bk1[Int(K)+1] /= JyK[Int(K)+1,end]
 
-        resize!(Abk2x,K.K)
-        BLAS.blascopy!(K.K,bk1,1,Abk2x,1)
-        resize!(Abk2y,K.K)
-        Abk2y[1:K.K-1]=0
-        Abk2y[end]=bk1[K.K+1]
+        resize!(Abk2x,Int(K))
+        BLAS.blascopy!(Int(K),bk1,1,Abk2x,1)
+        resize!(Abk2y,Int(K))
+        Abk2y[1:Int(K)-1]=0
+        Abk2y[end]=bk1[Int(K)+1]
 
         Abk1x,Abk2x=Abk2x,Abk1x
         Abk1y,Abk2y=Abk2y,Abk1y
@@ -158,11 +159,11 @@ function clenshaw2D{T}(Jx,Jy,cfs::Vector{Vector{T}},x,y)
 
         bk1 = (x*Abk1x) ::Vector{T}
         Base.axpy!(y,Abk1y,bk1)
-        αA_mul_B_plus_βC!(-one(T),Bx,Abk1x,one(T),bk1)
-        αA_mul_B_plus_βC!(-one(T),By,Abk1y,one(T),bk1)
-        αA_mul_B_plus_βC!(-one(T),Cx,Abk2x,one(T),bk1)
-        αA_mul_B_plus_βC!(-one(T),Cy,Abk2y,one(T),bk1)
-        Base.axpy!(one(T),cfs[K.K],bk1)
+        mul!(bk1,Bx,Abk1x,-one(T),one(T))
+        mul!(bk1,By,Abk1y,-one(T),one(T))
+        mul!(bk1,Cx,Abk2x,-one(T),one(T))
+        mul!(bk1,Cy,Abk2y,-one(T),one(T))
+        Base.axpy!(one(T),cfs[Int(K)],bk1)
     end
 
     K = Block(1)
@@ -184,9 +185,9 @@ end
 # TODO: replace with RaggedMatrix
 function totree(S,f::Fun)
     N=block(S,ncoefficients(f))
-    ret = Array{Vector{eltype(f)}}(N.K)
+    ret = Array{Vector{eltype(f)}}(Int(N))
     for K=Block(1):N
-        ret[K.K]=coefficient(f,K)
+        ret[Int(K)]=coefficient(f,K)
     end
 
     ret
@@ -254,8 +255,8 @@ function getindex(D::ConcreteDerivative{KoornwinderTriangle},k::Integer,j::Integ
     T=eltype(D)
     S=domainspace(D)
     α,β,γ = S.α,S.β,S.γ
-    K=block(rangespace(D),k).K
-    J=block(S,j).K
+    K = Int(block(rangespace(D),k))
+    J = Int(block(S,j))
     κ=k-blockstart(rangespace(D),K)+1
     ξ=j-blockstart(S,J)+1
 
@@ -278,20 +279,21 @@ function getindex(D::ConcreteDerivative{KoornwinderTriangle},k::Integer,j::Integ
     end
 end
 
-function Base.convert{T}(::Type{BandedBlockBandedMatrix},S::SubOperator{T,ConcreteDerivative{KoornwinderTriangle,Vector{Int},T},
-                                                                        Tuple{UnitRange{Block},UnitRange{Block}}})
-    ret = bbbzeros(S)
+function Base.convert{T}(::Type{BandedBlockBandedMatrix},
+        S::SubOperator{T,ConcreteDerivative{KoornwinderTriangle,Vector{Int},T},
+                                                                        Tuple{BlockRange1,BlockRange1}})
+    ret = BandedBlockBandedMatrix(Zeros,S)
     D = parent(S)
     sp=domainspace(D)
     α,β,γ = sp.α,sp.β,sp.γ
     K_sh = first(parentindexes(S)[1])-1
     J_sh = first(parentindexes(S)[2])-1
-    N,M=blocksize(ret)::Tuple{Int,Int}
+    N,M=nblocks(ret)::Tuple{Int,Int}
 
     if D.order == [1,0]
         for K=Block.(1:N)
             J = K+K_sh-J_sh+1
-            if 1 ≤ J ≤ M
+            if 1 ≤ Int(J) < M
                 bl = view(ret,K,J)
                 KK = size(bl,1)
                 @inbounds for κ=1:KK
@@ -303,7 +305,7 @@ function Base.convert{T}(::Type{BandedBlockBandedMatrix},S::SubOperator{T,Concre
     elseif D.order == [0,1]
         for K=Block.(1:N)
             J = K+K_sh-J_sh+1
-            if 1 ≤ J ≤ M
+            if 1 ≤ Int(J) < M
                 bl = view(ret,K,J)
                 KK = size(bl,1)
                 @inbounds for κ=1:KK
@@ -365,8 +367,8 @@ subblockbandinds(C::ConcreteConversion{KoornwinderTriangle,KoornwinderTriangle},
 function getindex{T}(C::ConcreteConversion{KoornwinderTriangle,KoornwinderTriangle,T},k::Integer,j::Integer)
     K1=domainspace(C);K2=rangespace(C)
     α,β,γ = K1.α,K1.β,K1.γ
-    K=block(K2,k).K
-    J=block(K1,j).K
+    K = Int(block(K2,k))
+    J = Int(block(K1,j))
     κ=k-blockstart(K2,K)+1
     ξ=j-blockstart(K1,J)+1
 
@@ -413,19 +415,19 @@ end
 
 
 function Base.convert{T}(::Type{BandedBlockBandedMatrix},S::SubOperator{T,ConcreteConversion{KoornwinderTriangle,KoornwinderTriangle,T},
-                                                                        Tuple{UnitRange{Block},UnitRange{Block}}})
-    ret = bbbzeros(S)
+                                                                        Tuple{BlockRange1,BlockRange1}})
+    ret = BandedBlockBandedMatrix(Zeros,S)
     K1=domainspace(parent(S))
     K2=rangespace(parent(S))
     α,β,γ = K1.α,K1.β,K1.γ
     K_sh = first(parentindexes(S)[1])-1
     J_sh = first(parentindexes(S)[2])-1
-    N,M=blocksize(ret)::Tuple{Int,Int}
+    N,M=nblocks(ret)::Tuple{Int,Int}
 
     if K2.α == α+1 && K2.β == β && K2.γ == γ
         for KK=Block.(1:N)
             JJ = KK+K_sh-J_sh  # diagonal
-            if 1 ≤ JJ ≤ M
+            if 1 ≤ Int(JJ) ≤ M
                 bl = view(ret,KK,JJ)
                 J = size(bl,2)
                 @inbounds for ξ=1:J
@@ -433,7 +435,7 @@ function Base.convert{T}(::Type{BandedBlockBandedMatrix},S::SubOperator{T,Concre
                 end
             end
             JJ = KK+K_sh-J_sh+1  # super-diagonal
-            if 1 ≤ JJ ≤ M
+            if 1 ≤ Int(JJ) ≤ M
                 bl = view(ret,KK,JJ)
                 J = size(bl,2)
                 @inbounds for ξ=1:J-1
@@ -444,7 +446,7 @@ function Base.convert{T}(::Type{BandedBlockBandedMatrix},S::SubOperator{T,Concre
     elseif K2.α==α && K2.β==β+1 && K2.γ==γ && β+γ==-1
         for KK=Block.(1:N)
             J = KK+K_sh-J_sh  # diagonal
-            if 1 ≤ J ≤ M
+            if 1 ≤ Int(J) ≤ M
                 bl = view(ret,KK,J)
                 K = size(bl,1)
                 s=2K+α+β+γ
@@ -456,7 +458,7 @@ function Base.convert{T}(::Type{BandedBlockBandedMatrix},S::SubOperator{T,Concre
                 end
             end
             J = KK+K_sh-J_sh+1  # super-diagonal
-            if 1 ≤ J ≤ M
+            if 1 ≤ Int(J) ≤ M
                 bl = view(ret,KK,J)
                 K = size(bl,1)
                 s=T(2K+α+β+γ+2)
@@ -470,7 +472,7 @@ function Base.convert{T}(::Type{BandedBlockBandedMatrix},S::SubOperator{T,Concre
     elseif K2.α==α && K2.β==β+1 && K2.γ==γ
         for KK=Block.(1:N)
             J = KK+K_sh-J_sh  # diagonal
-            if 1 ≤ J ≤ M
+            if 1 ≤ Int(J) ≤ M
                 bl = view(ret,KK,J)
                 K = size(bl,1)
                 @inbounds for κ=1:K
@@ -481,7 +483,7 @@ function Base.convert{T}(::Type{BandedBlockBandedMatrix},S::SubOperator{T,Concre
                 end
             end
             J = KK+K_sh-J_sh+1  # super-diagonal
-            if 1 ≤ J ≤ M
+            if 1 ≤ Int(J) ≤ M
                 bl = view(ret,KK,J)
                 K = size(bl,1)
                 @inbounds for κ=1:K
@@ -493,7 +495,7 @@ function Base.convert{T}(::Type{BandedBlockBandedMatrix},S::SubOperator{T,Concre
     elseif K2.α==α && K2.β==β && K2.γ==γ+1  && β+γ==-1
         for KK=Block.(1:N)
             J = KK+K_sh-J_sh  # diagonal
-            if 1 ≤ J ≤ M
+            if 1 ≤ Int(J) ≤ M
                 bl = view(ret,KK,J)
                 K = size(bl,1)
                 s=2K+α+β+γ
@@ -505,7 +507,7 @@ function Base.convert{T}(::Type{BandedBlockBandedMatrix},S::SubOperator{T,Concre
                end
             end
             J = KK+K_sh-J_sh+1  # super-diagonal
-            if 1 ≤ J ≤ M
+            if 1 ≤ Int(J) ≤ M
                 bl = view(ret,KK,J)
                 K = size(bl,1)
                 s=2K+α+β+γ+2
@@ -518,7 +520,7 @@ function Base.convert{T}(::Type{BandedBlockBandedMatrix},S::SubOperator{T,Concre
     elseif K2.α==α && K2.β==β && K2.γ==γ+1
         for KK=Block.(1:N)
             J = KK+K_sh-J_sh  # diagonal
-            if 1 ≤ J ≤ M
+            if 1 ≤ Int(J) < M
                 bl = view(ret,KK,J)
                 K = size(bl,1)
                 @inbounds for κ=1:K
@@ -529,7 +531,7 @@ function Base.convert{T}(::Type{BandedBlockBandedMatrix},S::SubOperator{T,Concre
                end
             end
             J = KK+K_sh-J_sh+1  # super-diagonal
-            if 1 ≤ J ≤ M
+            if 1 ≤ Int(J) < M
                 bl = view(ret,KK,J)
                 K = size(bl,1)
                 @inbounds for κ=1:K
@@ -580,16 +582,16 @@ rangespace(R::Lowering{3,KoornwinderTriangle}) =
 
 function getindex{T}(R::Lowering{1,KoornwinderTriangle,T},k::Integer,j::Integer)
     α,β,γ=R.space.α,R.space.β,R.space.γ
-    K=block(rangespace(R),k).K
-    J=block(domainspace(R),j).K
-    κ=k-blockstart(rangespace(R),K)+1
-    ξ=j-blockstart(domainspace(R),J)+1
+    K = Int(block(rangespace(R),k))
+    J = Int(block(domainspace(R),j))
+    κ = k-blockstart(rangespace(R),K)+1
+    ξ = j-blockstart(domainspace(R),J)+1
 
     s = 2J+α+β+γ
 
-    if K==J && κ == ξ
+    if K == J && κ == ξ
         T((J-ξ+α)/s)
-    elseif K==J+1 && κ == ξ
+    elseif K == J+1 && κ == ξ
         T((J-ξ+1)/s)
     else
         zero(T)
@@ -597,32 +599,32 @@ function getindex{T}(R::Lowering{1,KoornwinderTriangle,T},k::Integer,j::Integer)
 end
 
 
-function getindex{T}(R::Lowering{2,KoornwinderTriangle,T},k::Integer,j::Integer)
+function getindex(R::Lowering{2,KoornwinderTriangle,T},k::Integer,j::Integer) where T
     α,β,γ=R.space.α,R.space.β,R.space.γ
-    K=block(rangespace(R),k).K
-    J=block(domainspace(R),j).K
-    κ=k-blockstart(rangespace(R),K)+1
-    ξ=j-blockstart(domainspace(R),J)+1
+    K = Int(block(rangespace(R),k))
+    J = Int(block(domainspace(R),j))
+    κ = k-blockstart(rangespace(R),K)+1
+    ξ = j-blockstart(domainspace(R),J)+1
 
     s = (2ξ-1+β+γ)*(2J+α+β+γ)
 
-    if K==J && κ == ξ
+    if K == J && κ == ξ
         T((ξ-1+β)*(J+ξ+β+γ-1)/s)
-    elseif K==J && κ == ξ+1
+    elseif K == J && κ == ξ+1
         T(-ξ*(J-ξ+α)/s)
-    elseif K==J+1 && κ == ξ
+    elseif K == J+1 && κ == ξ
         T(-(ξ-1+β)*(J-ξ+1)/s)
-    elseif K==J+1 && κ == ξ+1
+    elseif K == J+1 && κ == ξ+1
         T(ξ*(J+ξ+α+β+γ)/s)
     else
         zero(T)
     end
 end
 
-function getindex{T}(R::Lowering{3,KoornwinderTriangle,T},k::Integer,j::Integer)
+function getindex(R::Lowering{3,KoornwinderTriangle,T},k::Integer,j::Integer) where T
     α,β,γ=R.space.α,R.space.β,R.space.γ
-    K=block(rangespace(R),k).K
-    J=block(domainspace(R),j).K
+    K = Int(block(rangespace(R),k))
+    J = Int(block(domainspace(R),j))
     κ=k-blockstart(rangespace(R),K)+1
     ξ=j-blockstart(domainspace(R),J)+1
 
@@ -642,18 +644,18 @@ function getindex{T}(R::Lowering{3,KoornwinderTriangle,T},k::Integer,j::Integer)
 end
 
 
-function Base.convert{T}(::Type{BandedBlockBandedMatrix},S::SubOperator{T,Lowering{1,KoornwinderTriangle,T},
-                                                                        Tuple{UnitRange{Block},UnitRange{Block}}})
-    ret = bbbzeros(S)
+function Base.convert(::Type{BandedBlockBandedMatrix},S::SubOperator{T,Lowering{1,KoornwinderTriangle,T},
+                                                                        Tuple{BlockRange1,BlockRange1}}) where T
+    ret = BandedBlockBandedMatrix(Zeros, S)
     R = parent(S)
     α,β,γ=R.space.α,R.space.β,R.space.γ
     K_sh = first(parentindexes(S)[1])-1
     J_sh = first(parentindexes(S)[2])-1
-    N,M=blocksize(ret)::Tuple{Int,Int}
+    N,M=nblocks(ret)::Tuple{Int,Int}
 
     for KK=Block.(1:N)
         JJ = KK+K_sh-J_sh-1  # super-diagonal
-        if 1 ≤ JJ ≤ M
+        if 1 ≤ Int(JJ) ≤ M
             bl = view(ret,KK,JJ)
             J = size(bl,2)
             s = 2J+α+β+γ
@@ -662,7 +664,7 @@ function Base.convert{T}(::Type{BandedBlockBandedMatrix},S::SubOperator{T,Loweri
             end
         end
         JJ = KK+K_sh-J_sh  # diagonal
-        if 1 ≤ JJ ≤ M
+        if 1 ≤ Int(JJ) ≤ M
             bl = view(ret,KK,JJ)
             J = size(bl,2)
             s = 2J+α+β+γ
@@ -676,18 +678,18 @@ end
 
 
 function Base.convert{T}(::Type{BandedBlockBandedMatrix},S::SubOperator{T,Lowering{2,KoornwinderTriangle,T},
-                                                                        Tuple{UnitRange{Block},UnitRange{Block}}})
-    ret = bbbzeros(S)
+                                                                        Tuple{BlockRange1,BlockRange1}})
+    ret = BandedBlockBandedMatrix(Zeros,S)
     R = parent(S)
     α,β,γ=R.space.α,R.space.β,R.space.γ
     K_sh = first(parentindexes(S)[1])-1
     J_sh = first(parentindexes(S)[2])-1
-    N,M=blocksize(ret)::Tuple{Int,Int}
+    N,M = nblocks(ret)::Tuple{Int,Int}
 
 
     for KK=Block.(1:N)
         JJ = KK+K_sh-J_sh-1  # super-diagonal
-        if 1 ≤ JJ ≤ M
+        if 1 ≤ Int(JJ) ≤ M
             bl = view(ret,KK,JJ)
             J = size(bl,2)
 
@@ -698,13 +700,15 @@ function Base.convert{T}(::Type{BandedBlockBandedMatrix},S::SubOperator{T,Loweri
             end
         end
         JJ = KK+K_sh-J_sh  # diagonal
-        if 1 ≤ JJ ≤ M
+        if 1 ≤ Int(JJ) ≤ M
             bl = view(ret,KK,JJ)
             J = size(bl,2)
             @inbounds for ξ=1:J
                 s = (2ξ-1+β+γ)*(2J+α+β+γ)
                 bl[ξ,ξ] = (ξ-1+β)*(J+ξ+β+γ-1)/s
-                bl[ξ+1,ξ] = -ξ*(J-ξ+α)/s
+                if ξ < J
+                    bl[ξ+1,ξ] = -ξ*(J-ξ+α)/s
+                end
             end
         end
     end
@@ -712,17 +716,17 @@ function Base.convert{T}(::Type{BandedBlockBandedMatrix},S::SubOperator{T,Loweri
 end
 
 function Base.convert{T}(::Type{BandedBlockBandedMatrix},S::SubOperator{T,Lowering{3,KoornwinderTriangle,T},
-                                                                        Tuple{UnitRange{Block},UnitRange{Block}}})
-    ret = bbbzeros(S)
+                                                                        Tuple{BlockRange1,BlockRange1}})
+    ret = BandedBlockBandedMatrix(Zeros,S)
     R = parent(S)
     α,β,γ=R.space.α,R.space.β,R.space.γ
     K_sh = first(parentindexes(S)[1])-1
     J_sh = first(parentindexes(S)[2])-1
-    N,M=blocksize(ret)::Tuple{Int,Int}
+    N,M=nblocks(ret)::Tuple{Int,Int}
 
     for KK=Block.(1:N)
         JJ = KK+K_sh-J_sh-1  # super-diagonal
-        if 1 ≤ JJ ≤ M
+        if 1 ≤ Int(JJ) ≤ M
             bl = view(ret,KK,JJ)
             J = size(bl,2)
 
@@ -733,13 +737,15 @@ function Base.convert{T}(::Type{BandedBlockBandedMatrix},S::SubOperator{T,Loweri
             end
         end
         JJ = KK+K_sh-J_sh  # diagonal
-        if 1 ≤ JJ ≤ M
+        if 1 ≤ Int(JJ) ≤ M
             bl = view(ret,KK,JJ)
             J = size(bl,2)
             @inbounds for ξ=1:J
                 s = (2ξ-1+β+γ)*(2J+α+β+γ)
                 bl[ξ,ξ] = (ξ-1+γ)*(J+ξ+β+γ-1)/s
-                bl[ξ+1,ξ] = ξ*(J-ξ+α)/s
+                if ξ < J
+                    bl[ξ+1,ξ] = ξ*(J-ξ+α)/s
+                end
             end
         end
     end
@@ -985,8 +991,8 @@ subblockbandinds(D::ConcreteDerivative{TriangleWeight{KoornwinderTriangle}},k::I
 
 function getindex{OT,T}(D::ConcreteDerivative{TriangleWeight{KoornwinderTriangle},OT,T},k::Integer,j::Integer)::T
     α,β,γ=D.space.α,D.space.β,D.space.γ
-    K=block(rangespace(D),k).K
-    J=block(domainspace(D),j).K
+    K = Int(block(rangespace(D),k))
+    J = Int(block(domainspace(D),j))
     κ=k-blockstart(rangespace(D),K)+1
     ξ=j-blockstart(domainspace(D),J)+1
 
@@ -1024,31 +1030,31 @@ function operator_clenshaw2D{T}(Jx,Jy,cfs::Vector{Vector{T}},x,y)
         Cx,Cy=view(Jx,K,K+1),view(Jy,K,K+1)
         JxK=view(Jx,K+1,K)
         JyK=view(Jy,K+1,K)
-        @inbounds for k=1:K.K
+        @inbounds for k=1:Int(K)
             bk1[k] /= JxK[k,k]
         end
 
-        bk1[K.K-1] -= JyK[K.K-1,end]/(JxK[K.K-1,K.K-1]*JyK[end,end])*bk1[K.K+1]
-        bk1[K.K]   -= JyK[K.K,end]/(JxK[K.K,K.K]*JyK[end,end])*bk1[K.K+1]
-        bk1[K.K+1] /= JyK[K.K+1,end]
+        bk1[Int(K)-1] -= JyK[Int(K)-1,end]/(JxK[Int(K)-1,Int(K)-1]*JyK[end,end])*bk1[Int(K)+1]
+        bk1[Int(K)]   -= JyK[Int(K),end]/(JxK[Int(K),Int(K)]*JyK[end,end])*bk1[Int(K)+1]
+        bk1[Int(K)+1] /= JyK[Int(K)+1,end]
 
-        resize!(Abk2x,K.K)
-        Abk2x[:]=bk1[1:K.K]
-        resize!(Abk2y,K.K)
-        Abk2y[1:K.K-1]=Z
-        Abk2y[end]=bk1[K.K+1]
+        resize!(Abk2x,Int(K))
+        Abk2x[:]=bk1[1:Int(K)]
+        resize!(Abk2y,Int(K))
+        Abk2y[1:Int(K)-1]=Z
+        Abk2y[end]=bk1[Int(K)+1]
 
         Abk1x,Abk2x=Abk2x,Abk1x
         Abk1y,Abk2y=Abk2y,Abk1y
 
 
         bk1,bk2 = bk2,bk1
-        resize!(bk1,K.K)
+        resize!(bk1,Int(K))
         bk1[:]=map((opx,opy)->x*opx+y*opy,Abk1x,Abk1y)
         bk1[:]-=Matrix(Bx)*Abk1x+Matrix(By)*Abk1y
         bk1[:]-=Matrix(Cx)*Abk2x+Matrix(Cy)*Abk2y
         for k=1:length(bk1)
-            bk1[k]+=cfs[K.K][k]*I
+            bk1[k]+=cfs[Int(K)][k]*I
         end
     end
 
