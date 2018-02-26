@@ -62,11 +62,11 @@ subblockbandinds(::ConcreteConversion{DirichletTriangle{1,0,0},KoornwinderTriang
 subblockbandinds(::ConcreteConversion{DirichletTriangle{1,0,0},KoornwinderTriangle},k::Integer) = 0
 
 subblockbandinds(::ConcreteConversion{DirichletTriangle{0,1,0},KoornwinderTriangle}) = (0,1)
-subblockbandinds(::ConcreteConversion{DirichletTriangle{0,1,0},KoornwinderTriangle},k::Integer) = k==1? 0 : 1
+subblockbandinds(::ConcreteConversion{DirichletTriangle{0,1,0},KoornwinderTriangle},k::Integer) = k==1 ? 0 : 1
 
 
 subblockbandinds(::ConcreteConversion{DirichletTriangle{0,0,1},KoornwinderTriangle}) = (0,1)
-subblockbandinds(::ConcreteConversion{DirichletTriangle{0,0,1},KoornwinderTriangle},k::Integer) = k==1? 0 : 1
+subblockbandinds(::ConcreteConversion{DirichletTriangle{0,0,1},KoornwinderTriangle},k::Integer) = k==1 ? 0 : 1
 
 function getindex(R::ConcreteConversion{DirichletTriangle{1,0,0},KoornwinderTriangle},k::Integer,j::Integer)
     T=eltype(R)
@@ -158,22 +158,22 @@ subblockbandinds(::ConcreteConversion{DirichletTriangle{1,0,1},DirichletTriangle
 
 blockbandinds(::ConcreteConversion{DirichletTriangle{1,1,0},DirichletTriangle{1,0,0}}) = (0,1)
 subblockbandinds(::ConcreteConversion{DirichletTriangle{1,1,0},DirichletTriangle{1,0,0}}) = (0,1)
-subblockbandinds(::ConcreteConversion{DirichletTriangle{1,1,0},DirichletTriangle{1,0,0}},k::Integer) = k==1? 0 :1
+subblockbandinds(::ConcreteConversion{DirichletTriangle{1,1,0},DirichletTriangle{1,0,0}},k::Integer) = k==1 ? 0 : 1
 
 blockbandinds(::ConcreteConversion{DirichletTriangle{1,0,1},DirichletTriangle{1,0,0}}) = (0,1)
 subblockbandinds(::ConcreteConversion{DirichletTriangle{1,0,1},DirichletTriangle{1,0,0}}) = (0,1)
-subblockbandinds(::ConcreteConversion{DirichletTriangle{1,0,1},DirichletTriangle{1,0,0}},k::Integer) = k==1? 0 :1
+subblockbandinds(::ConcreteConversion{DirichletTriangle{1,0,1},DirichletTriangle{1,0,0}},k::Integer) = k==1 ? 0 : 1
 
 
 blockbandinds(::ConcreteConversion{DirichletTriangle{0,1,1},DirichletTriangle{0,0,1}}) = (0,1)
 subblockbandinds(::ConcreteConversion{DirichletTriangle{0,1,1},DirichletTriangle{0,0,1}}) = (0,1)
-subblockbandinds(::ConcreteConversion{DirichletTriangle{0,1,1},DirichletTriangle{0,0,1}},k::Integer) = k==1? 0 :1
+subblockbandinds(::ConcreteConversion{DirichletTriangle{0,1,1},DirichletTriangle{0,0,1}},k::Integer) = k==1 ? 0 : 1
 
 
 
 blockbandinds(::ConcreteConversion{DirichletTriangle{0,1,1},DirichletTriangle{0,1,0}}) = (0,1)
 subblockbandinds(::ConcreteConversion{DirichletTriangle{0,1,1},DirichletTriangle{0,1,0}}) = (0,1)
-subblockbandinds(::ConcreteConversion{DirichletTriangle{0,1,1},DirichletTriangle{0,1,0}},k::Integer) = k==1? 0 :1
+subblockbandinds(::ConcreteConversion{DirichletTriangle{0,1,1},DirichletTriangle{0,1,0}},k::Integer) = k==1 ? 0 : 1
 
 
 
@@ -387,12 +387,12 @@ subblockbandinds(::ConcreteConversion{DirichletTriangle{1,1,1},DirichletTriangle
 
 blockbandinds(::ConcreteConversion{DirichletTriangle{1,1,1},DirichletTriangle{1,0,1}}) = (0,1)
 subblockbandinds(::ConcreteConversion{DirichletTriangle{1,1,1},DirichletTriangle{1,0,1}}) = (0,1)
-subblockbandinds(::ConcreteConversion{DirichletTriangle{1,1,1},DirichletTriangle{1,0,1}},k::Integer) = k==1? 0 :1
+subblockbandinds(::ConcreteConversion{DirichletTriangle{1,1,1},DirichletTriangle{1,0,1}},k::Integer) = k==1 ? 0 : 1
 
 
 blockbandinds(::ConcreteConversion{DirichletTriangle{1,1,1},DirichletTriangle{1,1,0}}) = (0,1)
 subblockbandinds(::ConcreteConversion{DirichletTriangle{1,1,1},DirichletTriangle{1,1,0}}) = (0,1)
-subblockbandinds(::ConcreteConversion{DirichletTriangle{1,1,1},DirichletTriangle{1,1,0}},k::Integer) = k==1? 0 :1
+subblockbandinds(::ConcreteConversion{DirichletTriangle{1,1,1},DirichletTriangle{1,1,0}},k::Integer) = k==1 ? 0 : 1
 
 
 

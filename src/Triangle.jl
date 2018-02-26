@@ -360,7 +360,7 @@ isbandedblockbanded(::ConcreteConversion{KoornwinderTriangle,KoornwinderTriangle
 blockbandinds(C::ConcreteConversion{KoornwinderTriangle,KoornwinderTriangle}) = (0,1)
 
 subblockbandinds(C::ConcreteConversion{KoornwinderTriangle,KoornwinderTriangle}) = (0,1)
-subblockbandinds(C::ConcreteConversion{KoornwinderTriangle,KoornwinderTriangle},k::Integer) = k==1?0:1
+subblockbandinds(C::ConcreteConversion{KoornwinderTriangle,KoornwinderTriangle},k::Integer) = k==1 ? 0 : 1
 
 
 
@@ -568,8 +568,8 @@ subblockbandinds(::Lowering{2,KoornwinderTriangle}) = (-1,0)
 subblockbandinds(::Lowering{3,KoornwinderTriangle}) = (-1,0)
 
 subblockbandinds(::Lowering{1,KoornwinderTriangle},k::Integer) = 0
-subblockbandinds(::Lowering{2,KoornwinderTriangle},k::Integer) = k==1? -1 : 0
-subblockbandinds(::Lowering{3,KoornwinderTriangle},k::Integer) = k==1? -1 : 0
+subblockbandinds(::Lowering{2,KoornwinderTriangle},k::Integer) = k==1 ? -1 : 0
+subblockbandinds(::Lowering{3,KoornwinderTriangle},k::Integer) = k==1 ? -1 : 0
 
 
 rangespace(R::Lowering{1,KoornwinderTriangle}) =
@@ -809,7 +809,7 @@ spacescompatible(A::TriangleWeight,B::TriangleWeight) = A.α ≈ B.α && A.β �
 function conversion_rule(A::TriangleWeight,B::TriangleWeight)
     if isapproxinteger(A.α-B.α) && isapproxinteger(A.β-B.β) && isapproxinteger(A.γ-B.γ)
         ct=conversion_type(A.space,B.space)
-        ct==NoSpace()?NoSpace():TriangleWeight(max(A.α,B.α),max(A.β,B.β),max(A.γ,B.γ),ct)
+        ct==NoSpace() ? NoSpace() : TriangleWeight(max(A.α,B.α),max(A.β,B.β),max(A.γ,B.γ),ct)
     else
         NoSpace()
     end
@@ -986,7 +986,7 @@ blockbandinds(::ConcreteDerivative{TriangleWeight{KoornwinderTriangle}}) = (-1,0
 subblockbandinds(D::ConcreteDerivative{TriangleWeight{KoornwinderTriangle}}) =
     (-1,0)  #TODO: subblockbandinds (-1,-1) for Dy
 subblockbandinds(D::ConcreteDerivative{TriangleWeight{KoornwinderTriangle}},k::Integer) =
-    k==1?-1:0  #TODO: subblockbandinds (-1,-1) for Dy
+    k==1 ? -1 : 0  #TODO: subblockbandinds (-1,-1) for Dy
 
 
 function getindex{OT,T}(D::ConcreteDerivative{TriangleWeight{KoornwinderTriangle},OT,T},k::Integer,j::Integer)::T

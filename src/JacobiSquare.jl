@@ -48,7 +48,7 @@ end
 
 
 plan_itransform(S::WeightedSquare,vals::Vector)=(points(S,length(vals)),plan_itransform(S.space,vals))
-itransform(S::WeightedSquare,cfs::Vector,plan)=isempty(cfs)?cfs:plan[1].^S.m.*itransform(S.space,cfs,plan[2])
+itransform(S::WeightedSquare,cfs::Vector,plan)=isempty(cfs) ? cfs : plan[1].^S.m.*itransform(S.space,cfs,plan[2])
 
 evaluate(f::AbstractVector,sp::WeightedSquare,x)=x.^sp.m.*evaluate(f,sp.space,x.^2)
 
