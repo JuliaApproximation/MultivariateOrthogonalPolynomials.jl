@@ -1,4 +1,4 @@
-using ApproxFun, MultivariateOrthogonalPolynomials, Base.Test, FixedSizeArrays
+using ApproxFun, MultivariateOrthogonalPolynomials, Base.Test, StaticArrays
     import MultivariateOrthogonalPolynomials: DirichletTriangle
     x,y=0.1,0.2
 

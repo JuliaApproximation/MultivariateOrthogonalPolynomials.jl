@@ -1,6 +1,7 @@
-using ApproxFun, MultivariateOrthogonalPolynomials, Base.Test
+using ApproxFun, MultivariateOrthogonalPolynomials, Compat.Test
 
 include("TriangleTest.jl")
+include("DirichletTriangleTest.jl")
 
 
 ##  bessel

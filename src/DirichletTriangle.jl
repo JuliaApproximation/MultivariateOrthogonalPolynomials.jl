@@ -70,8 +70,8 @@ subblockbandinds(::ConcreteConversion{DirichletTriangle{0,0,1},KoornwinderTriang
 
 function getindex(R::ConcreteConversion{DirichletTriangle{1,0,0},KoornwinderTriangle},k::Integer,j::Integer)
     T=eltype(R)
-    K=block(rangespace(R),k).K
-    J=block(domainspace(R),j).K
+    K = Int(block(rangespace(R),k))
+    J = Int(block(domainspace(R),j))
     κ=k-blockstart(rangespace(R),K)+1
     ξ=j-blockstart(domainspace(R),J)+1
 
@@ -93,8 +93,8 @@ end
 
 
 function getindex{T}(R::ConcreteConversion{DirichletTriangle{0,1,0},KoornwinderTriangle,T},k::Integer,j::Integer)::T
-    K=block(rangespace(R),k).K
-    J=block(domainspace(R),j).K
+    K = Int(block(rangespace(R),k))
+    J = Int(block(domainspace(R),j))
     κ=k-blockstart(rangespace(R),K)+1
     ξ=j-blockstart(domainspace(R),J)+1
 
@@ -120,8 +120,8 @@ end
 
 function getindex(R::ConcreteConversion{DirichletTriangle{0,0,1},KoornwinderTriangle},k::Integer,j::Integer)
     T=eltype(R)
-    K=block(rangespace(R),k).K
-    J=block(domainspace(R),j).K
+    K = Int(block(rangespace(R),k))
+    J = Int(block(domainspace(R),j))
     κ=k-blockstart(rangespace(R),K)+1
     ξ=j-blockstart(domainspace(R),J)+1
 
@@ -179,8 +179,8 @@ subblockbandinds(::ConcreteConversion{DirichletTriangle{0,1,1},DirichletTriangle
 
 function getindex(R::ConcreteConversion{DirichletTriangle{1,1,0},DirichletTriangle{0,1,0}},k::Integer,j::Integer)
     T=eltype(R)
-    K=block(rangespace(R),k).K
-    J=block(domainspace(R),j).K
+    K = Int(block(rangespace(R),k))
+    J = Int(block(domainspace(R),j))
     κ=k-blockstart(rangespace(R),K)+1
     ξ=j-blockstart(domainspace(R),J)+1
 
@@ -203,8 +203,8 @@ end
 
 
 function getindex{T}(R::ConcreteConversion{DirichletTriangle{1,1,0},DirichletTriangle{1,0,0},T},k::Integer,j::Integer)::T
-    K=block(rangespace(R),k).K
-    J=block(domainspace(R),j).K
+    K = Int(block(rangespace(R),k))
+    J = Int(block(domainspace(R),j))
     κ=k-blockstart(rangespace(R),K)+1
     ξ=j-blockstart(domainspace(R),J)+1
 
@@ -239,8 +239,8 @@ end
 
 function getindex(R::ConcreteConversion{DirichletTriangle{1,0,1},DirichletTriangle{0,0,1}},k::Integer,j::Integer)
     T=eltype(R)
-    K=block(rangespace(R),k).K
-    J=block(domainspace(R),j).K
+    K = Int(block(rangespace(R),k))
+    J = Int(block(domainspace(R),j))
     κ=k-blockstart(rangespace(R),K)+1
     ξ=j-blockstart(domainspace(R),J)+1
 
@@ -263,8 +263,8 @@ end
 
 
 function getindex{T}(R::ConcreteConversion{DirichletTriangle{1,0,1},DirichletTriangle{1,0,0},T},k::Integer,j::Integer)::T
-    K=block(rangespace(R),k).K
-    J=block(domainspace(R),j).K
+    K = Int(block(rangespace(R),k))
+    J = Int(block(domainspace(R),j))
     κ=k-blockstart(rangespace(R),K)+1
     ξ=j-blockstart(domainspace(R),J)+1
 
@@ -299,8 +299,8 @@ end
 
 
 function getindex{T}(R::ConcreteConversion{DirichletTriangle{0,1,1},DirichletTriangle{0,1,0},T},k::Integer,j::Integer)::T
-    K=block(rangespace(R),k).K
-    J=block(domainspace(R),j).K
+    K = Int(block(rangespace(R),k))
+    J = Int(block(domainspace(R),j))
     κ=k-blockstart(rangespace(R),K)+1
     ξ=j-blockstart(domainspace(R),J)+1
 
@@ -339,8 +339,8 @@ end
 
 
 function getindex{T}(R::ConcreteConversion{DirichletTriangle{0,1,1},DirichletTriangle{0,0,1},T},k::Integer,j::Integer)::T
-    K=block(rangespace(R),k).K
-    J=block(domainspace(R),j).K
+    K = Int(block(rangespace(R),k))
+    J = Int(block(domainspace(R),j))
     κ=k-blockstart(rangespace(R),K)+1
     ξ=j-blockstart(domainspace(R),J)+1
 
@@ -400,8 +400,8 @@ subblockbandinds(::ConcreteConversion{DirichletTriangle{1,1,1},DirichletTriangle
 
 
 function getindex{T}(R::ConcreteConversion{DirichletTriangle{1,1,1},DirichletTriangle{0,1,1},T},k::Integer,j::Integer)::T
-    K=block(rangespace(R),k).K
-    J=block(domainspace(R),j).K
+    K = Int(block(rangespace(R),k))
+    J = Int(block(domainspace(R),j))
     κ=k-blockstart(rangespace(R),K)+1
     ξ=j-blockstart(domainspace(R),J)+1
 
@@ -435,8 +435,8 @@ function getindex{T}(R::ConcreteConversion{DirichletTriangle{1,1,1},DirichletTri
 end
 
 function getindex{T}(R::ConcreteConversion{DirichletTriangle{1,1,1},DirichletTriangle{1,0,1},T},k::Integer,j::Integer)::T
-    K=block(rangespace(R),k).K
-    J=block(domainspace(R),j).K
+    K = Int(block(rangespace(R),k))
+    J = Int(block(domainspace(R),j))
     κ=k-blockstart(rangespace(R),K)+1
     ξ=j-blockstart(domainspace(R),J)+1
 
@@ -486,8 +486,8 @@ function getindex{T}(R::ConcreteConversion{DirichletTriangle{1,1,1},DirichletTri
 end
 
 function getindex{T}(R::ConcreteConversion{DirichletTriangle{1,1,1},DirichletTriangle{1,1,0},T},k::Integer,j::Integer)::T
-    K=block(rangespace(R),k).K
-    J=block(domainspace(R),j).K
+    K = Int(block(rangespace(R),k))
+    J = Int(block(domainspace(R),j))
     κ=k-blockstart(rangespace(R),K)+1
     ξ=j-blockstart(domainspace(R),J)+1
 
@@ -562,7 +562,7 @@ isblockbanded{DT<:DirichletTriangle,JJ<:Jacobi}(::ConcreteConversion{DT,JJ}) = t
 blockbandinds{DT<:DirichletTriangle,JJ<:Jacobi}(::ConcreteConversion{DT,JJ}) = (0,0)
 function getindex{JJ<:Jacobi}(R::ConcreteConversion{DirichletTriangle{1,0,0},JJ},k::Integer,j::Integer)
     T=eltype(R)
-    J=block(domainspace(R),j).K
+    J = Int(block(domainspace(R),j))
     ξ=j-blockstart(domainspace(R),J)+1
 
     k==J==ξ ? one(T) : zero(T)
@@ -570,7 +570,7 @@ end
 
 function getindex{JJ<:Jacobi}(R::ConcreteConversion{DirichletTriangle{0,1,0},JJ},k::Integer,j::Integer)
     T=eltype(R)
-    J=block(domainspace(R),j).K
+    J = Int(block(domainspace(R),j))
     ξ=j-blockstart(domainspace(R),J)+1
 
     k==J &&ξ==1 ? one(T) : zero(T)
@@ -578,7 +578,7 @@ end
 
 function getindex{JJ<:Jacobi}(R::ConcreteConversion{DirichletTriangle{0,0,1},JJ},k::Integer,j::Integer)
     T=eltype(R)
-    J=block(domainspace(R),j).K
+    J = Int(block(domainspace(R),j))
     ξ=j-blockstart(domainspace(R),J)+1
 
     k==J &&ξ==1 ? one(T) : zero(T)
