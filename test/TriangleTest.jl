@@ -6,18 +6,18 @@ using StaticArrays,Plots,BandedMatrices,
 
 
 
-pf=ProductFun((x,y)->exp(x*cos(y)),ProductTriangle(1,1,1),40,40)
+pf = ProductFun((x,y)->exp(x*cos(y)),ProductTriangle(1,1,1),40,40)
 @test pf(0.1,0.2) ≈ exp(0.1*cos(0.2))
 
 
-f=Fun((x,y)->exp(x*cos(y)),KoornwinderTriangle(1,1,1))
+f = Fun((x,y)->exp(x*cos(y)),KoornwinderTriangle(1,1,1))
 @test Fun(f,ProductTriangle(1,1,1))(0.1,0.2) ≈ exp(0.1*cos(0.2))
 
-Jx=MultivariateOrthogonalPolynomials.Lowering{1}(space(f))
+Jx = MultivariateOrthogonalPolynomials.Lowering{1}(space(f))
 testbandedblockbandedoperator(Jx)
 @test Fun(Jx*f,ProductTriangle(0,1,1))(0.1,0.2) ≈ 0.1exp(0.1*cos(0.2))
 
-Jy=MultivariateOrthogonalPolynomials.Lowering{2}(space(f))
+Jy = MultivariateOrthogonalPolynomials.Lowering{2}(space(f))
 testbandedblockbandedoperator(Jy)
 
 @test Jy[3,1] ≈ 1/3
@@ -31,7 +31,7 @@ testbandedblockbandedoperator(Jy)
 @test Fun(Jy*f,ProductTriangle(1,0,1))(0.1,0.2) ≈ 0.2exp(0.1*cos(0.2))
 @test norm((Jy*f-Fun((x,y)->y*exp(x*cos(y)),KoornwinderTriangle(1,0,1))).coefficients) < 1E-11
 
-Jz=MultivariateOrthogonalPolynomials.Lowering{3}(space(f))
+Jz = MultivariateOrthogonalPolynomials.Lowering{3}(space(f))
 testbandedblockbandedoperator(Jz)
 @test Fun(Jz*f,ProductTriangle(1,1,0))(0.1,0.2) ≈ (1-0.1-0.2)exp(0.1*cos(0.2))
 
@@ -39,16 +39,14 @@ testbandedblockbandedoperator(Jz)
 
 
 # Test conversion
-C=Conversion(KoornwinderTriangle(0,0,0),KoornwinderTriangle(1,0,0))
+C = Conversion(KoornwinderTriangle(0,0,0),KoornwinderTriangle(1,0,0))
 testbandedblockbandedoperator(C)
 
-C=Conversion(KoornwinderTriangle(0,0,0),KoornwinderTriangle(0,1,0))
+C = Conversion(KoornwinderTriangle(0,0,0),KoornwinderTriangle(0,1,0))
 testbandedblockbandedoperator(C)
 
-C=Conversion(KoornwinderTriangle(0,0,0),KoornwinderTriangle(0,0,1))
+C = Conversion(KoornwinderTriangle(0,0,0),KoornwinderTriangle(0,0,1))
 testbandedblockbandedoperator(C)
-
-
 C=Conversion(KoornwinderTriangle(0,0,0),KoornwinderTriangle(1,1,1))
 testbandedblockbandedoperator(C)
 
@@ -77,10 +75,14 @@ f=Fun((x,y)->exp(x*cos(y)),KoornwinderTriangle(0,0,0))
 @test f(0.1,0.2) ≈ exp(0.1*cos(0.2))
 
 ## Laplacian
+Dx = Derivative(KoornwinderTriangle(1,0,1), [1,0])
+testbandedblockbandedoperator(Dx)
+
+Dy = Derivative(KoornwinderTriangle(1,0,1), [0,1])
+testbandedblockbandedoperator(Dy)
+
 Δ = Laplacian(space(f))
 testbandedblockbandedoperator(Δ)
-
-
 
 
 

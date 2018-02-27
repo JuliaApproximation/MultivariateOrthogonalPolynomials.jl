@@ -293,7 +293,7 @@ function Base.convert{T}(::Type{BandedBlockBandedMatrix},
     if D.order == [1,0]
         for K=Block.(1:N)
             J = K+K_sh-J_sh+1
-            if 1 ≤ Int(J) < M
+            if 1 ≤ Int(J) ≤ M
                 bl = view(ret,K,J)
                 KK = size(bl,1)
                 @inbounds for κ=1:KK
@@ -305,7 +305,7 @@ function Base.convert{T}(::Type{BandedBlockBandedMatrix},
     elseif D.order == [0,1]
         for K=Block.(1:N)
             J = K+K_sh-J_sh+1
-            if 1 ≤ Int(J) < M
+            if 1 ≤ Int(J) ≤ M
                 bl = view(ret,K,J)
                 KK = size(bl,1)
                 @inbounds for κ=1:KK
@@ -518,9 +518,9 @@ function Base.convert{T}(::Type{BandedBlockBandedMatrix},S::SubOperator{T,Concre
             end
         end
     elseif K2.α==α && K2.β==β && K2.γ==γ+1
-        for KK=Block.(1:N)
+        for KK = Block.(1:N)
             J = KK+K_sh-J_sh  # diagonal
-            if 1 ≤ Int(J) < M
+            if 1 ≤ Int(J) ≤ M
                 bl = view(ret,KK,J)
                 K = size(bl,1)
                 @inbounds for κ=1:K
@@ -531,7 +531,7 @@ function Base.convert{T}(::Type{BandedBlockBandedMatrix},S::SubOperator{T,Concre
                end
             end
             J = KK+K_sh-J_sh+1  # super-diagonal
-            if 1 ≤ Int(J) < M
+            if 1 ≤ Int(J) ≤ M
                 bl = view(ret,KK,J)
                 K = size(bl,1)
                 @inbounds for κ=1:K
