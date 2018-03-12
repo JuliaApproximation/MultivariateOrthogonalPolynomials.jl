@@ -1,4 +1,4 @@
 julia 0.6
 ApproxFun 0.7.1
-BlockArrays 0.2
-FillArrays 0.0.2
+BlockArrays 0.3.1
+FillArrays 0.0.1
