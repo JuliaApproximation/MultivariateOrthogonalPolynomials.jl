@@ -3,17 +3,23 @@ export Triangle, KoornwinderTriangle, ProductTriangle, TriangleWeight, WeightedT
 
 ## Triangle Def
 # currently right trianglel
-struct Triangle <: BivariateDomain{Float64} end
+struct Triangle <: BivariateDomain{Float64}
+    a::Vec{2,Float64}
+    b::Vec{2,Float64}
+    c::Vec{2,Float64}
+end
 
+Triangle() = Triangle(Vec(0,0), Vec(1,0), Vec(0,1))
 
 #canonical is rectangle [0,1]^2
 # with the map (x,y)=(s,(1-s)*t)
-canonicaldomain(::Triangle) = Segment(0,1)^2
-fromcanonical(::Triangle,st::Vec) = Vec(st[1],(1-st[1])*st[2])
-tocanonical(::Triangle,xy::Vec) = Vec(xy[1],xy[1]==1 ? zero(eltype(xy)) : xy[2]/(1-xy[1]))
-checkpoints(d::Triangle) = [fromcanonical(d,Vec(.1,.2243)),fromcanonical(d,Vec(-.212423,-.3))]
+iduffy(st::Vec) = Vec(st[1],(1-st[1])*st[2])
+iduffy(s,t) = Vec(s,(1-s)*t)
+duffy(xy::Vec) = Vec(xy[1],xy[1]==1 ? zero(eltype(xy)) : xy[2]/(1-xy[1]))
+duffy(x::T,y::T) where T = Vec(x,x == 1 ? zero(Y) : y/(1-x))
+checkpoints(d::Triangle) = [iduffy(Vec(.1,.2243)),iduffy(Vec(-.212423,-.3))]
 
-∂(d::Triangle) = PiecewiseSegment([Vec(0.,0.),Vec(1.,0.),Vec(0.,1.),Vec(0.,0.)])
+∂(d::Triangle) = PiecewiseSegment([d.a,d.b,d.c,d.a])
 
 
 Base.isnan(::Triangle) = false
@@ -49,6 +55,11 @@ points(K::Triangle,n::Integer) = points(KoornwinderTriangle(0,0,0),n)
 const TriangleSpace = Union{ProductTriangle,KoornwinderTriangle}
 
 ProductTriangle(K::KoornwinderTriangle) = ProductTriangle(K.α,K.β,K.γ,K.domain)
+
+canonicaldomain(sp::ProductTriangle) = Segment(0,1)^2
+tocanonical(sp::ProductTriangle, x...) = duffy(x...)
+fromcanonical(sp::ProductTriangle, x...) = iduffy(x...)
+
 
 
 for TYP in (:ProductTriangle,:KoornwinderTriangle)

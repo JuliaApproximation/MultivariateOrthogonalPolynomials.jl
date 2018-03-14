@@ -29,7 +29,7 @@ conversion_rule(A::DirichletTriangle,B::KoornwinderTriangle) = A
 Conversion(A::DirichletTriangle{1,0,0},B::KoornwinderTriangle) = ConcreteConversion(A,B)
 Conversion(A::DirichletTriangle{0,1,0},B::KoornwinderTriangle) = ConcreteConversion(A,B)
 Conversion(A::DirichletTriangle{0,0,1},B::KoornwinderTriangle) = ConcreteConversion(A,B)
-function Conversion{a,b,c,d,e,f}(A::DirichletTriangle{a,b,c},B::DirichletTriangle{d,e,f})
+function Conversion(A::DirichletTriangle{a,b,c},B::DirichletTriangle{d,e,f}) where {a,b,c,d,e,f}
     @assert a ≥ d && b ≥ e && c ≥ f
     # if only one is bigger, we can do a concrete conversion
     a+b+c-d-e-f == 1 && return ConcreteConversion(A,B)
@@ -38,7 +38,7 @@ function Conversion{a,b,c,d,e,f}(A::DirichletTriangle{a,b,c},B::DirichletTriangl
     #  c > f &&
     return Conversion(A,DirichletTriangle{a,b,c-1}(),B)
 end
-function Conversion{a,b,c}(A::DirichletTriangle{a,b,c},B::KoornwinderTriangle)
+function Conversion(A::DirichletTriangle{a,b,c},B::KoornwinderTriangle) where {a,b,c}
     @assert a ≥ 0 && b ≥ 0 && c ≥ 0
     # if only one is bigger, we can do a concrete conversion
     a+b+c == 1 && return ConcreteConversion(A,B)
@@ -49,7 +49,11 @@ function Conversion{a,b,c}(A::DirichletTriangle{a,b,c},B::KoornwinderTriangle)
 end
 
 
-isbandedblockbanded{a,b,c}(::ConcreteConversion{DirichletTriangle{a,b,c},KoornwinderTriangle}) = true
+isbandedblockbanded(::ConcreteConversion{<:DirichletTriangle,<:DirichletTriangle}) = true
+
+
+
+isbandedblockbanded(::ConcreteConversion{<:DirichletTriangle,KoornwinderTriangle})= true
 
 blockbandinds(::ConcreteConversion{DirichletTriangle{1,0,0},KoornwinderTriangle}) = (0,1)
 blockbandinds(::ConcreteConversion{DirichletTriangle{0,1,0},KoornwinderTriangle}) = (0,1)
@@ -102,7 +106,7 @@ function getindex{T}(R::ConcreteConversion{DirichletTriangle{0,1,0},KoornwinderT
 
     if K==J && κ==ξ==1
         T(K)/(2K-1)
-    elseif K==J-1 && ξ==1
+    elseif K==J-1 && κ==ξ==1
         -T(K)/(2K+1)
     elseif K==J-1 && κ == ξ-1
         T((ξ-1)*(J+ξ-2)/s)
@@ -129,7 +133,7 @@ function getindex(R::ConcreteConversion{DirichletTriangle{0,0,1},KoornwinderTria
 
     if K==J && κ==ξ==1
         T(K)/(2K-1)
-    elseif K==J-1 && ξ==1
+    elseif K==J-1 && κ==ξ==1
         -T(K)/(2K+1)
     elseif K==J-1 && κ == ξ-1
         T((J+ξ-2)/s)

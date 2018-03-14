@@ -1,8 +1,10 @@
 using ApproxFun, MultivariateOrthogonalPolynomials, Base.Test, StaticArrays
     import MultivariateOrthogonalPolynomials: DirichletTriangle
+    import ApproxFun: testbandedblockbandedoperator, testblockbandedoperator
     x,y=0.1,0.2
 
 C=Conversion(DirichletTriangle{1,0,0}(),KoornwinderTriangle(0,0,0))
+    testbandedblockbandedoperator(C)
     u=C*Fun(domainspace(C),[1.0])
     @test u(0.1,0.2) ≈ 1
     u=C*Fun(domainspace(C),[0,1.0])
@@ -18,6 +20,7 @@ C=Conversion(DirichletTriangle{1,0,0}(),KoornwinderTriangle(0,0,0))
 
 
 C=Conversion(DirichletTriangle{0,1,0}(),KoornwinderTriangle(0,0,0))
+    testbandedblockbandedoperator(C)
     u=C*Fun(domainspace(C),[1.0])
     @test u(0.1,0.2) ≈ 1
     u=C*Fun(domainspace(C),[0,1.0])
@@ -34,6 +37,7 @@ C=Conversion(DirichletTriangle{0,1,0}(),KoornwinderTriangle(0,0,0))
     @test u(0.1,0.2) ≈ Fun(Legendre(0..1),[0,0,0,1.])(0.1)
 
 C=Conversion(DirichletTriangle{0,0,1}(),KoornwinderTriangle(0,0,0))
+    testbandedblockbandedoperator(C)
     u=C*Fun(domainspace(C),[1.0])
     @test u(0.1,0.2) ≈ 1
     u=C*Fun(domainspace(C),[0,1.0])
@@ -50,6 +54,7 @@ C=Conversion(DirichletTriangle{0,0,1}(),KoornwinderTriangle(0,0,0))
     @test u(0.1,0.2) ≈ Fun(Legendre(0..1),[0,0,0,1.])(0.1)
 
 C=Conversion(DirichletTriangle{1,1,0}(),DirichletTriangle{0,1,0}(),KoornwinderTriangle(0,0,0))
+    testbandedblockbandedoperator(C)
     n,k=0,0;u=C*Fun(domainspace(C),[zeros(sum(0:n)+k);1.0])
     @test u(x,y) ≈ 1
     n,k=1,0;u=C*Fun(domainspace(C),[zeros(sum(0:n)+k);1.0])
@@ -72,11 +77,13 @@ C=Conversion(DirichletTriangle{1,1,0}(),DirichletTriangle{0,1,0}(),KoornwinderTr
     @test u(x,y) ≈ y*Fun(KoornwinderTriangle(0,1,0),[zeros(sum(0:(n-1))+n-1);1.0])(x,y)
 
 C̃=Conversion(DirichletTriangle{1,1,0}(),DirichletTriangle{1,0,0}(),KoornwinderTriangle(0,0,0))
+    testbandedblockbandedoperator(C̃)
     @test C[1:20,1:20] ≈ C̃[1:20,1:20]
 
 
 
 C=Conversion(DirichletTriangle{1,0,1}(),DirichletTriangle{0,0,1}(),KoornwinderTriangle(0,0,0))
+    testbandedblockbandedoperator(C)
     n,k=0,0;u=C*Fun(domainspace(C),[zeros(sum(0:n)+k);1.0])
     @test u(x,y) ≈ 1
     n,k=1,0;u=C*Fun(domainspace(C),[zeros(sum(0:n)+k);1.0])
@@ -100,10 +107,12 @@ C=Conversion(DirichletTriangle{1,0,1}(),DirichletTriangle{0,0,1}(),KoornwinderTr
 
 
 C̃=Conversion(DirichletTriangle{1,0,1}(),DirichletTriangle{1,0,0}(),KoornwinderTriangle(0,0,0))
+    testbandedblockbandedoperator(C̃)
     @test C[1:20,1:20] ≈ C̃[1:20,1:20]
 
 
 C=Conversion(DirichletTriangle{0,1,1}(),DirichletTriangle{0,1,0}(),KoornwinderTriangle(0,0,0))
+    testbandedblockbandedoperator(C)
     n,k=0,0;u=C*Fun(domainspace(C),[zeros(sum(0:n)+k);1.0])
     @test u(x,y) ≈ 1
     n,k=1,0;u=C*Fun(domainspace(C),[zeros(sum(0:n)+k);1.0])
@@ -126,10 +135,12 @@ C=Conversion(DirichletTriangle{0,1,1}(),DirichletTriangle{0,1,0}(),KoornwinderTr
     @test u(x,y) ≈ y*(1-x-y)*Fun(KoornwinderTriangle(0,1,1),[zeros(sum(0:(n-2))+k-2);1.0])(x,y)
 
 C̃=Conversion(DirichletTriangle{0,1,1}(),DirichletTriangle{0,0,1}(),KoornwinderTriangle(0,0,0))
+    testbandedblockbandedoperator(C̃)
     @test C[1:20,1:20] ≈ C̃[1:20,1:20]
 
 
 C=Conversion(DirichletTriangle{1,1,1}(),DirichletTriangle{0,1,1}(),DirichletTriangle{0,0,1}(),KoornwinderTriangle(0,0,0))
+    testbandedblockbandedoperator(C)
     n,k=0,0;u=C*Fun(domainspace(C),[zeros(sum(0:n)+k);1.0])
     @test u(x,y) ≈ 1
     n,k=1,0;u=C*Fun(domainspace(C),[zeros(sum(0:n)+k);1.0])
@@ -162,6 +173,7 @@ C=Conversion(DirichletTriangle{1,1,1}(),DirichletTriangle{0,1,1}(),DirichletTria
     @test u(x,y) ≈ y*(1-x-y)*Fun(KoornwinderTriangle(0,1,1),[zeros(sum(0:(n-2))+n-2);1.0])(x,y)
 
 C̃=Conversion(DirichletTriangle{1,1,1}(),DirichletTriangle{1,0,1}(),DirichletTriangle{0,0,1}(),KoornwinderTriangle(0,0,0))
+    testbandedblockbandedoperator(C̃)
     @test C[1:20,1:20] ≈ C̃[1:20,1:20]
 
 C̃=Conversion(DirichletTriangle{1,1,1}(),DirichletTriangle{1,0,1}(),DirichletTriangle{1,0,0}(),KoornwinderTriangle(0,0,0))
@@ -224,11 +236,16 @@ u=C\f
 
 C=Conversion(DirichletTriangle{1,1,1}(),DirichletTriangle{1,1,0}(),DirichletTriangle{1,0,0}(),KoornwinderTriangle(0,0,0))
 B=Dirichlet(DirichletTriangle{1,1,1}())
+testblockbandedoperator(B)
 u=C\f
 ∂u=B*u
 @test ∂u(0.3,0.)≈ f(0.3,0.)
 @test ∂u(0.,0.3)≈ f(0.,0.3)
 @test ∂u(0.3,1-0.3)≈ f(0.3,1-0.3)
+
+Δ=Laplacian(DirichletTriangle{1,1,1}())
+testbandedblockbandedoperator(Δ)
+
 
 
 Δ=Laplacian(rangespace(C))

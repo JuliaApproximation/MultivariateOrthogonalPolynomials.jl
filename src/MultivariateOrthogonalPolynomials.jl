@@ -35,7 +35,7 @@ import ApproxFun: PolynomialSpace, ConstantSpace, NoSpace, prectype,
                     transform,itransform,transform!,itransform!,
                     isambiguous, fromcanonical, tocanonical, checkpoints, ∂, spacescompatible,
                    mappoint, UnivariateSpace, setdomain, Space, points, space, conversion_rule, maxspace_rule,
-                   union_rule, coefficients, RealUnivariateSpace, PiecewiseSegment
+                   union_rule, coefficients, RealUnivariateSpace, PiecewiseSegment, rangetype
 
 # Multivariate import
 import ApproxFun: BivariateDomain,DirectSumSpace, AbstractProductSpace, factor,
@@ -58,6 +58,8 @@ import ApproxFun: Vec
 
 include("Triangle.jl")
 include("DirichletTriangle.jl")
+
+include("SphericalHarmonics.jl")
 
 include("show.jl")
 include("plot.jl")

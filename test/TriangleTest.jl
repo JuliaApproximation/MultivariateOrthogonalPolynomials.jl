@@ -6,9 +6,8 @@ using StaticArrays,Plots,BandedMatrices,
 
 
 
-pf = ProductFun((x,y)->exp(x*cos(y)),ProductTriangle(1,1,1),40,40)
+pf = ProductFun((x,y)->exp(x*cos(y)), ProductTriangle(1,1,1), 40, 40)
 @test pf(0.1,0.2) ≈ exp(0.1*cos(0.2))
-
 
 f = Fun((x,y)->exp(x*cos(y)),KoornwinderTriangle(1,1,1))
 @test Fun(f,ProductTriangle(1,1,1))(0.1,0.2) ≈ exp(0.1*cos(0.2))
