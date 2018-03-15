@@ -1,4 +1,4 @@
-Base.show(io::IO,d::Triangle) = print(io,"◣")
+Base.show(io::IO,d::Triangle) = print(io, "Triangle($(d.a),$(d.b),$(d.c))")
 Base.show(io::IO,s::KoornwinderTriangle) = print(io,"KoornwinderTriangle($(s.α),$(s.β),$(s.γ))")
 
 

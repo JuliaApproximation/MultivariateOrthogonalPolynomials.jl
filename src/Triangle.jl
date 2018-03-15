@@ -11,6 +11,36 @@ end
 
 Triangle() = Triangle(Vec(0,0), Vec(1,0), Vec(0,1))
 
+for op in (:-, :+)
+    @eval begin
+        $op(d::Triangle, x::Vec{2}) = Triangle($op(d.a,x), $op(d.b,x), $op(d.c,x))
+        $op(x::Vec{2}, d::Triangle) = Triangle($op(x,d.a), $op(x,d.b), $op(x,d.c))
+    end
+end
+
+for op in (:*, :/)
+    @eval $op(d::Triangle, x::Number) = Triangle($op(d.a,x), $op(d.b,x), $op(d.c,x))
+end
+
+
+
+function tocanonical(d::Triangle, xy::Vec)
+    if d.a == Vec(0,0)
+        [d.b d.c] \ xy
+    else
+        tocanonical(d-d.a, xy-d.a)
+    end
+end
+
+
+function fromcanonical(d::Triangle, xy::Vec)
+    if d.a == Vec(0,0)
+        [d.b d.c]*xy
+    else
+        fromcanonical(d-d.a, xy) + d.a
+    end
+end
+
 #canonical is rectangle [0,1]^2
 # with the map (x,y)=(s,(1-s)*t)
 iduffy(st::Vec) = Vec(st[1],(1-st[1])*st[2])
@@ -57,8 +87,8 @@ const TriangleSpace = Union{ProductTriangle,KoornwinderTriangle}
 ProductTriangle(K::KoornwinderTriangle) = ProductTriangle(K.α,K.β,K.γ,K.domain)
 
 canonicaldomain(sp::ProductTriangle) = Segment(0,1)^2
-tocanonical(sp::ProductTriangle, x...) = duffy(x...)
-fromcanonical(sp::ProductTriangle, x...) = iduffy(x...)
+tocanonical(sp::ProductTriangle, x...) = duffy(tocanonical(domain(sp),x...))
+fromcanonical(sp::ProductTriangle, x...) = fromcanonical(domain(sp),iduffy(x...))
 
 
 
@@ -211,16 +241,27 @@ immutable TriangleEvaluatePlan{S,RX,RY,T}
     Jy::RY
 end
 
+function jacobioperators(S::KoornwinderTriangle)
+    J₁ = (Lowering{1}(S)→S)
+    J₂ = (Lowering{2}(S)→S)
+
+    fromcanonical(S, J₁, J₂)
+end
+
 function plan_evaluate(f::Fun{KoornwinderTriangle},x...)
     N = nblocks(f)
     S = space(f)
+    # we cannot use true Jacobi operators because that changes the band
+    # structure used in clenshaw2D to determine pseudoinverses
+    Jˣ = (Lowering{1}(S)→S)
+    Jʸ = (Lowering{2}(S)→S)
     TriangleEvaluatePlan(S,
                 totree(S,f),
-                (Lowering{1}(S)→S)[Block(1):Block(N+2),Block(1):Block(N+1)],
-                (Lowering{2}(S)→S)[Block(1):Block(N+2),Block(1):Block(N+1)])
+                Jˣ[Block(1):Block(N+2),Block(1):Block(N+1)],
+                Jʸ[Block(1):Block(N+2),Block(1):Block(N+1)])
 end
 
-(P::TriangleEvaluatePlan)(x,y) = clenshaw2D(P.Jx,P.Jy,P.coefficients,x,y)
+(P::TriangleEvaluatePlan)(x,y) = clenshaw2D(P.Jx,P.Jy,P.coefficients,tocanonical(P.space,x,y)...)
 
 (P::TriangleEvaluatePlan)(pt::Vec) = P(pt...)
 

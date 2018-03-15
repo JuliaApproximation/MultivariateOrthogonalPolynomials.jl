@@ -254,3 +254,17 @@ u=\([B;Δ*C],[f;0.];tolerance=1E-13)
 
 @test (C*u)(0.1,0.2) ≈ real(exp(0.1+0.2im))
 @test u(0.1,0.2) ≈ real(exp(0.1+0.2im))
+
+@testset "Triangle Dirichlet Laplacian" begin
+    d = Triangle()
+    B = Dirichlet(d)
+    Δ = Laplacian(domainspace(B))
+
+    L = [B;Δ]
+
+    ∂u = Fun((x,y) -> exp(x)*sin(y), ∂(d))
+    Fun([∂u;0],rangespace(L))
+
+    L = [B;Laplacian()]
+    Fun([∂u;0],rangespace(L))
+end
