@@ -10,6 +10,7 @@ struct Triangle <: BivariateDomain{Float64}
 end
 
 Triangle() = Triangle(Vec(0,0), Vec(1,0), Vec(0,1))
+canonicaldomain(::Triangle) = Triangle()
 
 for op in (:-, :+)
     @eval begin
@@ -38,6 +39,14 @@ function fromcanonical(d::Triangle, xy::Vec)
         [d.b d.c]*xy
     else
         fromcanonical(d-d.a, xy) + d.a
+    end
+end
+
+function tocanonicalD(d::Triangle)
+    if d.a == Vec(0,0)
+        inv([d.b d.c])
+    else
+        tocanonicalD(d-d.a)
     end
 end
 
@@ -89,7 +98,7 @@ ProductTriangle(K::KoornwinderTriangle) = ProductTriangle(K.α,K.β,K.γ,K.domai
 canonicaldomain(sp::ProductTriangle) = Segment(0,1)^2
 tocanonical(sp::ProductTriangle, x...) = duffy(tocanonical(domain(sp),x...))
 fromcanonical(sp::ProductTriangle, x...) = fromcanonical(domain(sp),iduffy(x...))
-
+setdomain(K::KoornwinderTriangle, d::Triangle) = KoornwinderTriangle(K.α,K.β,K.γ,d)
 
 
 for TYP in (:ProductTriangle,:KoornwinderTriangle)
@@ -274,10 +283,23 @@ evaluate(f::AbstractVector,K::KoornwinderTriangle,x...) = plan_evaluate(Fun(K,f)
 
 
 
-function Derivative(K::KoornwinderTriangle,order::Vector{Int})
+function Derivative(K::KoornwinderTriangle, order::Vector{Int})
     @assert length(order)==2
+    d = domain(K)
     if order==[1,0] || order==[0,1]
-        ConcreteDerivative(K,order)
+        if d == Triangle()
+            ConcreteDerivative(K,order)
+        else
+            if order == [1,0]
+                M_x,M_y = tocanonicalD(d)[:,1]
+            else
+                M_x,M_y = tocanonicalD(d)[:,2]
+            end
+            K_c = setcanonicaldomain(K)
+            D_x,D_y = Derivative(K_c,[1,0]),Derivative(K_c,[0,1])
+            L = M_x*D_x + M_y*D_y
+            DerivativeWrapper(SpaceOperator(L,K,setdomain(rangespace(L), d)),order)
+        end
     elseif order[1]>1
         D=Derivative(K,[1,0])
         DerivativeWrapper(TimesOperator(Derivative(rangespace(D),[order[1]-1,order[2]]),D),order)

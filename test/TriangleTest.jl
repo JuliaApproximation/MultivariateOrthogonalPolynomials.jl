@@ -40,47 +40,6 @@ end
 end
 
 
-# f = Fun((x,y)->exp(x*cos(y)),KoornwinderTriangle(1,1,1))
-# f(0.1,0.2)
-# exp(0.1cos(0.2))
-# d = Triangle(Vec(0,0),Vec(3,4),Vec(1,6))
-# plot(d)
-# f = Fun((x,y)->exp(x*cos(y)),KoornwinderTriangle(1,1,1,d))
-# f(2,4)
-# exp(2*cos(4))
-#
-# f = Fun((s,t) -> begin
-#     x,y = fromcanonical(d,s,t)
-#     exp(x*cos(y)) end,KoornwinderTriangle(1,1,1))
-#
-#
-# f = Fun((x,y)->exp(x*cos(y)),KoornwinderTriangle(1,1,1,d))
-#     f.coefficients
-#
-# f.coefficients
-#
-# Fun(KoornwinderTriangle(1,1,1),f.coefficients)(tocanonical(d,x,y))
-# exp(x*cos(y))
-#
-# Jˢ,Jᵗ = jacobioperators(space(f))
-# (Jˢ*f)(tocanonical(d,2,4))
-# x,y = 2,4
-# s,t = tocanonical(d,x,y)
-# s*f(tocanonical(d,x,y))
-#
-# x*f(tocanonical(d,x,y))
-# y*f(tocanonical(d,x,y))
-# ([d.b d.c]*[s,t])[1] * f(tocanonical(d,x,y))
-#
-# ((d.b[1]*Jˢ + d.c[1]*Jᵗ)*f)(tocanonical(d,x,y))
-#
-# (([d.b d.c]*[Jˢ,Jᵗ])[1]*f)(tocanonical(d,x,y))
-# (fromcanonical(d,Jˢ,Jᵗ)[1]*f)(tocanonical(d,x,y))
-
-
-
-
-
 @testset "KoornwinderTriangle constructors" begin
     f = Fun((x,y)->exp(x*cos(y)),KoornwinderTriangle(1,1,1))
     @test Fun(f,ProductTriangle(1,1,1))(0.1,0.2) ≈ exp(0.1*cos(0.2))
@@ -127,6 +86,7 @@ end
     f=Fun(K,[0.,0.,0.,0.,1.])
     @test f(0.1,0.2) ≈ 1.87
 end
+
 
 @testset "Triangle Jacobi" begin
     f = Fun((x,y)->exp(x*cos(y)),KoornwinderTriangle(1,1,1))
@@ -179,6 +139,13 @@ end
         Jx=(Lowering{1}(K)→K)
         testbandedblockbandedoperator(Jx)
     end
+
+    d = Triangle(Vec(0,0),Vec(3,4),Vec(1,6))
+    f = Fun((x,y)->exp(x*cos(y)),KoornwinderTriangle(1,1,1,d))
+    Jx,Jy = MultivariateOrthogonalPolynomials.jacobioperators(space(f))
+    x,y = fromcanonical(d,0.1,0.2)
+    @test (Jx*f)(x,y) ≈ x*f(x,y)
+    @test (Jy*f)(x,y) ≈ y*f(x,y)
 end
 
 @testset "Triangle Conversion" begin
@@ -250,9 +217,7 @@ end
     @test Fun(f,KoornwinderTriangle(1,1,2))(0.1,0.2) ≈ ((x,y)->exp(x*cos(y)))(0.1,0.2)
 end
 
-
-
-@testset "Triangle Laplacian" begin
+@testset "Triangle Derivative/Laplacian" begin
     Dx = Derivative(KoornwinderTriangle(1,0,1), [1,0])
     testbandedblockbandedoperator(Dx)
 
@@ -281,6 +246,18 @@ end
 
     D=Derivative(space(f),[2,0])
     @test (D*f)(0.1,0.2) ≈ ((x,y)->cos(y)^2*exp(x*cos(y)))(0.1,0.2)  atol=1000000eps()
+
+    K = KoornwinderTriangle(1,0,1,d)
+    f=Fun((x,y)->exp(x*cos(y)),K)
+    Dx = Derivative(space(f), [1,0])
+    x,y = fromcanonical(d,0.1,0.2)
+    @test (Dx*f)(x,y) ≈ cos(y)*exp(x*cos(y)) atol=1E-8
+    Dy = Derivative(space(f), [0,1])
+    @test (Dy*f)(x,y) ≈ -x*sin(y)*exp(x*cos(y)) atol=1E-8
+
+    Δ = Laplacian(space(f))
+    testbandedblockbandedoperator(Δ)
+    @test (Δ*f)(x,y) ≈ exp(x*cos(y))*(-x*cos(y) + cos(y)^2 + x^2*sin(y)^2) atol=1E-6
 end
 
 

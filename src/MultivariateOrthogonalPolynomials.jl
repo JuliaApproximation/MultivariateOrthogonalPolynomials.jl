@@ -37,8 +37,9 @@ import ApproxFun: PolynomialSpace, ConstantSpace, NoSpace, prectype,
                     AnyDomain, plan_transform,plan_itransform,
                     transform,itransform,transform!,itransform!,
                     isambiguous, fromcanonical, tocanonical, checkpoints, ∂, spacescompatible,
-                   mappoint, UnivariateSpace, setdomain, Space, points, space, conversion_rule, maxspace_rule,
-                   union_rule, coefficients, RealUnivariateSpace, PiecewiseSegment, rangetype
+                    mappoint, UnivariateSpace, setdomain, setcanonicaldomain, canonicaldomain,
+                    Space, points, space, conversion_rule, maxspace_rule,
+                    union_rule, coefficients, RealUnivariateSpace, PiecewiseSegment, rangetype
 
 # Multivariate import
 import ApproxFun: BivariateDomain,DirectSumSpace, AbstractProductSpace, factor,
