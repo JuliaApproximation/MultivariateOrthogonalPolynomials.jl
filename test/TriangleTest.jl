@@ -333,4 +333,42 @@ end
     @time u=\(QR,f;tolerance=1E-7)
     @time g=Fun(f,rangespace(QR))
     @time \(QR,g;tolerance=1E-7)
+
+    # other domain
+    S = TriangleWeight(1,1,1,KoornwinderTriangle(1,1,1))
+    Dx = Derivative(S,[1,0])
+    Dy = Derivative(S,[0,1])
+    Div = (Dx → KoornwinderTriangle(0,0,0))  + (Dy → KoornwinderTriangle(0,0,0))
+    f = Fun(S,rand(10))
+
+    @test (Div*f)(0.1,0.2) ≈ (Dx*f)(0.1,0.2)+(Dy*f)(0.1,0.2)
+    @test maxspace(rangespace(Dx),rangespace(Dy)) == rangespace(Dx + Dy) == KoornwinderTriangle(0,0,0)
+
+
+    d = Triangle(Vec(2,3),Vec(3,4),Vec(1,6))
+    S=TriangleWeight(1.,1.,1.,KoornwinderTriangle(1,1,1,d))
+    @test domain(S) ≡ d
+    @test maxspace(S,KoornwinderTriangle(0,0,0,d)) == KoornwinderTriangle(0,0,0,d)
+    Dx = Derivative(S,[1,0])
+    Dy = Derivative(S,[0,1])
+    @test maxspace(rangespace(Dx),rangespace(Dy)) == rangespace(Dx + Dy) == KoornwinderTriangle(0,0,0,d)
+    @test rangespace(Laplacian(S)) ≡ KoornwinderTriangle(1,1,1,d)
+    f = Fun(S, randn(10))
+    x,y = fromcanonical(S, 0.1,0.2)
+    @test weight(S,x,y) ≈ 0.1*0.2*(1-0.1-0.2)
+    g = Fun(f, KoornwinderTriangle(0,0,0,d))
+    @test g(x,y) ≈ f(x,y)
+    @test (Derivative([1,0])*g)(x,y) ≈ (Derivative([1,0])*f)(x,y)
+    @test (Laplacian()*g)(x,y) ≈ (Laplacian()*f)(x,y)
+
 end
+
+S=TriangleWeight(1.,1.,1.,KoornwinderTriangle(1,1,1,d))
+f=Fun(S,rand(3))
+h=0.01
+Δ = Laplacian(S)
+@test maxspace(rangespace(Δ), S) == KoornwinderTriangle(1,1,1,d)
+QR=qrfact(I-h*Δ)
+@time u=\(QR,f;tolerance=1E-7)
+@time g=Fun(f,rangespace(QR))
+@time \(QR,g;tolerance=1E-7)

@@ -395,12 +395,27 @@ end
 
 ## Conversion
 
-union_rule(K1::KoornwinderTriangle,K2::KoornwinderTriangle) =
-    KoornwinderTriangle(min(K1.α,K2.α),min(K1.β,K2.β),min(K1.γ,K2.γ))
-conversion_rule(K1::KoornwinderTriangle,K2::KoornwinderTriangle) =
-    KoornwinderTriangle(min(K1.α,K2.α),min(K1.β,K2.β),min(K1.γ,K2.γ))
-maxspace_rule(K1::KoornwinderTriangle,K2::KoornwinderTriangle) =
-    KoornwinderTriangle(max(K1.α,K2.α),max(K1.β,K2.β),max(K1.γ,K2.γ))
+function union_rule(K1::KoornwinderTriangle,K2::KoornwinderTriangle)
+    if domain(K1) == domain(K2)
+        KoornwinderTriangle(min(K1.α,K2.α),min(K1.β,K2.β),min(K1.γ,K2.γ))
+    else
+        K1 ⊕ K2
+    end
+end
+function conversion_rule(K1::KoornwinderTriangle,K2::KoornwinderTriangle)
+    if domain(K1) == domain(K2)
+        KoornwinderTriangle(min(K1.α,K2.α),min(K1.β,K2.β),min(K1.γ,K2.γ),domain(K1))
+    else
+        NoSpace()
+    end
+end
+function maxspace_rule(K1::KoornwinderTriangle, K2::KoornwinderTriangle)
+    if domain(K1) == domain(K2)
+        KoornwinderTriangle(max(K1.α,K2.α),max(K1.β,K2.β),max(K1.γ,K2.γ), domain(K1))
+    else
+        NoSpace()
+    end
+end
 
 function Conversion(K1::KoornwinderTriangle,K2::KoornwinderTriangle)
     @assert K1.α≤K2.α && K1.β≤K2.β && K1.γ≤K2.γ &&
@@ -845,8 +860,14 @@ TriangleWeight(α::Number,β::Number,γ::Number,sp::Space) =
 WeightedTriangle(α::Number,β::Number,γ::Number) =
     TriangleWeight(α,β,γ,KoornwinderTriangle(α,β,γ))
 
-weight(S::TriangleWeight,x,y) = x.^S.α.*y.^S.β.*(1-x-y).^S.γ
+triangleweight(x,y) = x.^S.α.*y.^S.β.*(1-x-y).^S.γ
+triangleweight(xy::Vec) = triangleweight(xy...)
+
+
+weight(S::TriangleWeight,x,y) = triangleweight(tocanonical(S,x,y))
 weight(S::TriangleWeight,xy::Vec) = weight(S,xy...)
+
+setdomain(K::TriangleWeight, d::Triangle) = TriangleWeight(K.α,K.β,K.γ,setdomain(K.space,d))
 
 immutable TriangleWeightEvaluatePlan{S,PP}
     space::S
@@ -901,13 +922,28 @@ function maxspace_rule(A::TriangleWeight,B::TriangleWeight)
     NoSpace()
 end
 
+function maxspace_rule(A::TriangleWeight{<:KoornwinderTriangle},B::TriangleWeight{<:KoornwinderTriangle})
+    if domain(A) == domain(B) && isapproxinteger(A.α-B.α) && isapproxinteger(A.β-B.β) && isapproxinteger(A.γ-B.γ)
+        α = min(A.α,B.α)
+        β = min(A.β,B.β)
+        γ = min(A.γ,B.γ)
+        d = domain(A)
+        A_lowered = KoornwinderTriangle(A.space.α+α-A.α, A.space.β+β-A.β, A.space.γ+γ-A.γ,d)
+        B_lowered = KoornwinderTriangle(B.space.α+α-B.α, B.space.β+β-B.β, B.space.γ+γ-B.γ,d)
+        ms = maxspace(A_lowered,B_lowered)
+        α == β == γ == 0 ? ms : TriangleWeight(α,β,γ,ms)
+    else
+        NoSpace()
+    end
+end
+
 maxspace_rule(A::TriangleWeight,B::KoornwinderTriangle) = maxspace(A,TriangleWeight(0.,0.,0.,B))
 
 conversion_rule(A::TriangleWeight,B::KoornwinderTriangle) = conversion_type(A,TriangleWeight(0.,0.,0.,B))
 
-function Conversion(A::TriangleWeight,B::TriangleWeight)
+function Conversion(A::TriangleWeight{<:KoornwinderTriangle}, B::TriangleWeight{<:KoornwinderTriangle})
     @assert isapproxinteger(A.α-B.α) && isapproxinteger(A.β-B.β) && isapproxinteger(A.γ-B.γ)
-    @assert A.α≥B.α && A.β≥B.β && A.γ≥B.γ
+    @assert A.α ≥ B.α && A.β ≥ B.β && A.γ ≥ B.γ
 
     if A.α ≈ B.α && A.β ≈ B.β && A.γ ≈ B.γ
         ConversionWrapper(SpaceOperator(Conversion(A.space,B.space),A,B))
@@ -1036,7 +1072,20 @@ function Derivative(S::TriangleWeight{KoornwinderTriangle},order)
         DerivativeWrapper(Derivative(rangespace(C),order)*C,order)
     elseif S.α == S.space.α && S.β == S.space.β && S.γ == S.space.γ
         if order == [1,0] || order == [0,1]
-            ConcreteDerivative(S,order)
+            d = domain(S)
+            if d == Triangle()
+                ConcreteDerivative(S,order)
+            else
+                if order == [1,0]
+                    M_x,M_y = tocanonicalD(d)[:,1]
+                else
+                    M_x,M_y = tocanonicalD(d)[:,2]
+                end
+                K_c = setcanonicaldomain(S)
+                D_x,D_y = Derivative(K_c,[1,0]),Derivative(K_c,[0,1])
+                L = M_x*D_x + M_y*D_y
+                DerivativeWrapper(SpaceOperator(L,S,setdomain(rangespace(L), d)),order)
+            end
         elseif order[1] ≥ 1
             D1 = Derivative(S,[1,0])
             DerivativeWrapper(TimesOperator(Derivative(rangespace(D1),[order[1]-1,order[2]]),D1),order)

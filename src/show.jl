@@ -1,5 +1,11 @@
 Base.show(io::IO,d::Triangle) = print(io, "Triangle($(d.a),$(d.b),$(d.c))")
-Base.show(io::IO,s::KoornwinderTriangle) = print(io,"KoornwinderTriangle($(s.α),$(s.β),$(s.γ))")
+function Base.show(io::IO,s::KoornwinderTriangle)
+    if domain(s) == Triangle()
+        print(io, "KoornwinderTriangle($(s.α),$(s.β),$(s.γ))")
+    else
+        print(io, "KoornwinderTriangle($(s.α),$(s.β),$(s.γ),$(domain(s)))")
+    end
+end
 
 
 function Base.show(io::IO,s::TriangleWeight)
