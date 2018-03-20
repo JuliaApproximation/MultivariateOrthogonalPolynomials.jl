@@ -361,14 +361,12 @@ end
     @test (Derivative([1,0])*g)(x,y) ≈ (Derivative([1,0])*f)(x,y)
     @test (Laplacian()*g)(x,y) ≈ (Laplacian()*f)(x,y)
 
+    f=Fun(S,rand(3))
+    h=0.01
+    Δ = Laplacian(S)
+    @test maxspace(rangespace(Δ), S) == KoornwinderTriangle(1,1,1,d)
+    QR=qrfact(I-h*Δ)
+    @time u=\(QR,f;tolerance=1E-7)
+    @time g=Fun(f,rangespace(QR))
+    @time \(QR,g;tolerance=1E-7)
 end
-
-S=TriangleWeight(1.,1.,1.,KoornwinderTriangle(1,1,1,d))
-f=Fun(S,rand(3))
-h=0.01
-Δ = Laplacian(S)
-@test maxspace(rangespace(Δ), S) == KoornwinderTriangle(1,1,1,d)
-QR=qrfact(I-h*Δ)
-@time u=\(QR,f;tolerance=1E-7)
-@time g=Fun(f,rangespace(QR))
-@time \(QR,g;tolerance=1E-7)

@@ -1,12 +1,17 @@
 # this is TriangleWeight(a,b,c,KoornwinderTriangle(a,b,c)) with some extra columns to span
 # all the polynomials
-immutable DirichletTriangle{a,b,c} <: Space{Triangle,Float64}  end
+immutable DirichletTriangle{a,b,c} <: Space{Triangle,Float64}
+    domain::Triangle
+end
 
-canonicalspace(D::DirichletTriangle) = KoornwinderTriangle(0,0,0)
+DirichletTriangle{a,b,c}() where {a,b,c} = DirichletTriangle{a,b,c}(Triangle())
 
-spacescompatible{a,b,c}(::DirichletTriangle{a,b,c},::DirichletTriangle{a,b,c}) = true
+canonicalspace(D::DirichletTriangle) = KoornwinderTriangle(0,0,0,domain(D))
 
-domain(::DirichletTriangle) = Triangle()
+spacescompatible(A::DirichletTriangle{a,b,c}, B::DirichletTriangle{a,b,c}) where {a,b,c} =
+    domainscompatible(A,B)
+
+domain(D::DirichletTriangle) = D.domain
 
 # TODO: @tensorspace
 tensorizer(K::DirichletTriangle) = Tensorizer((ApproxFun.repeated(true),ApproxFun.repeated(true)))
@@ -16,36 +21,45 @@ blocklengths(K::DirichletTriangle) = 1:∞
 
 for OP in (:block,:blockstart,:blockstop)
     @eval begin
-        $OP(s::DirichletTriangle,M::Block) = $OP(tensorizer(s),M)
-        $OP(s::DirichletTriangle,M) = $OP(tensorizer(s),M)
+        $OP(s::DirichletTriangle, M::Block) = $OP(tensorizer(s),M)
+        $OP(s::DirichletTriangle, M) = $OP(tensorizer(s),M)
     end
 end
 
 
-maxspace_rule(A::DirichletTriangle,B::KoornwinderTriangle) = B
-conversion_rule(A::DirichletTriangle,B::KoornwinderTriangle) = A
+function maxspace_rule(A::DirichletTriangle, B::KoornwinderTriangle)
+    domainscompatible(A,B) && return B
+    NoSpace()
+end
+
+function conversion_rule(A::DirichletTriangle, B::KoornwinderTriangle)
+    domainscompatible(A,B) && return A
+    NoSpace()
+end
 
 
-Conversion(A::DirichletTriangle{1,0,0},B::KoornwinderTriangle) = ConcreteConversion(A,B)
-Conversion(A::DirichletTriangle{0,1,0},B::KoornwinderTriangle) = ConcreteConversion(A,B)
-Conversion(A::DirichletTriangle{0,0,1},B::KoornwinderTriangle) = ConcreteConversion(A,B)
-function Conversion(A::DirichletTriangle{a,b,c},B::DirichletTriangle{d,e,f}) where {a,b,c,d,e,f}
+Conversion(A::DirichletTriangle{1,0,0}, B::KoornwinderTriangle) = ConcreteConversion(A,B)
+Conversion(A::DirichletTriangle{0,1,0} ,B::KoornwinderTriangle) = ConcreteConversion(A,B)
+Conversion(A::DirichletTriangle{0,0,1}, B::KoornwinderTriangle) = ConcreteConversion(A,B)
+function Conversion(A::DirichletTriangle{a,b,c}, B::DirichletTriangle{d,e,f}) where {a,b,c,d,e,f}
     @assert a ≥ d && b ≥ e && c ≥ f
+    @assert domainscompatible(A,B)
     # if only one is bigger, we can do a concrete conversion
     a+b+c-d-e-f == 1 && return ConcreteConversion(A,B)
-    a > d && return Conversion(A,DirichletTriangle{a-1,b,c}(),B)
-    b > e && return Conversion(A,DirichletTriangle{a,b-1,c}(),B)
+    a > d && return Conversion(A,DirichletTriangle{a-1,b,c}(domain(A)),B)
+    b > e && return Conversion(A,DirichletTriangle{a,b-1,c}(domain(A)),B)
     #  c > f &&
-    return Conversion(A,DirichletTriangle{a,b,c-1}(),B)
+    return Conversion(A,DirichletTriangle{a,b,c-1}(domain(A)),B)
 end
-function Conversion(A::DirichletTriangle{a,b,c},B::KoornwinderTriangle) where {a,b,c}
+function Conversion(A::DirichletTriangle{a,b,c}, B::KoornwinderTriangle) where {a,b,c}
     @assert a ≥ 0 && b ≥ 0 && c ≥ 0
+    @assert domainscompatible(A,B)
     # if only one is bigger, we can do a concrete conversion
     a+b+c == 1 && return ConcreteConversion(A,B)
-    a > 0 && return Conversion(A,DirichletTriangle{a-1,b,c}(),B)
-    b > 0 && return Conversion(A,DirichletTriangle{a,b-1,c}(),B)
+    a > 0 && return Conversion(A,DirichletTriangle{a-1,b,c}(domain(A)),B)
+    b > 0 && return Conversion(A,DirichletTriangle{a,b-1,c}(domain(A)),B)
     #  c > 0 &&
-    return Conversion(A,DirichletTriangle{a,b,c-1}(),B)
+    return Conversion(A,DirichletTriangle{a,b,c-1}(domain(A)),B)
 end
 
 
@@ -206,7 +220,7 @@ function getindex(R::ConcreteConversion{DirichletTriangle{1,1,0},DirichletTriang
 end
 
 
-function getindex{T}(R::ConcreteConversion{DirichletTriangle{1,1,0},DirichletTriangle{1,0,0},T},k::Integer,j::Integer)::T
+function getindex(R::ConcreteConversion{DirichletTriangle{1,1,0},DirichletTriangle{1,0,0},T},k::Integer,j::Integer)::T where T
     K = Int(block(rangespace(R),k))
     J = Int(block(domainspace(R),j))
     κ=k-blockstart(rangespace(R),K)+1
@@ -266,7 +280,7 @@ function getindex(R::ConcreteConversion{DirichletTriangle{1,0,1},DirichletTriang
 end
 
 
-function getindex{T}(R::ConcreteConversion{DirichletTriangle{1,0,1},DirichletTriangle{1,0,0},T},k::Integer,j::Integer)::T
+function getindex(R::ConcreteConversion{DirichletTriangle{1,0,1},DirichletTriangle{1,0,0},T},k::Integer,j::Integer)::T where {T}
     K = Int(block(rangespace(R),k))
     J = Int(block(domainspace(R),j))
     κ=k-blockstart(rangespace(R),K)+1
@@ -302,7 +316,7 @@ function getindex{T}(R::ConcreteConversion{DirichletTriangle{1,0,1},DirichletTri
 end
 
 
-function getindex{T}(R::ConcreteConversion{DirichletTriangle{0,1,1},DirichletTriangle{0,1,0},T},k::Integer,j::Integer)::T
+function getindex(R::ConcreteConversion{DirichletTriangle{0,1,1},DirichletTriangle{0,1,0},T},k::Integer,j::Integer)::T where {T}
     K = Int(block(rangespace(R),k))
     J = Int(block(domainspace(R),j))
     κ=k-blockstart(rangespace(R),K)+1
@@ -342,7 +356,7 @@ end
 
 
 
-function getindex{T}(R::ConcreteConversion{DirichletTriangle{0,1,1},DirichletTriangle{0,0,1},T},k::Integer,j::Integer)::T
+function getindex(R::ConcreteConversion{DirichletTriangle{0,1,1},DirichletTriangle{0,0,1},T},k::Integer,j::Integer)::T where {T}
     K = Int(block(rangespace(R),k))
     J = Int(block(domainspace(R),j))
     κ=k-blockstart(rangespace(R),K)+1
@@ -403,7 +417,7 @@ subblockbandinds(::ConcreteConversion{DirichletTriangle{1,1,1},DirichletTriangle
 
 
 
-function getindex{T}(R::ConcreteConversion{DirichletTriangle{1,1,1},DirichletTriangle{0,1,1},T},k::Integer,j::Integer)::T
+function getindex(R::ConcreteConversion{DirichletTriangle{1,1,1},DirichletTriangle{0,1,1},T},k::Integer,j::Integer)::T where {T}
     K = Int(block(rangespace(R),k))
     J = Int(block(domainspace(R),j))
     κ=k-blockstart(rangespace(R),K)+1
@@ -438,7 +452,7 @@ function getindex{T}(R::ConcreteConversion{DirichletTriangle{1,1,1},DirichletTri
     end
 end
 
-function getindex{T}(R::ConcreteConversion{DirichletTriangle{1,1,1},DirichletTriangle{1,0,1},T},k::Integer,j::Integer)::T
+function getindex(R::ConcreteConversion{DirichletTriangle{1,1,1},DirichletTriangle{1,0,1},T},k::Integer,j::Integer)::T where {T}
     K = Int(block(rangespace(R),k))
     J = Int(block(domainspace(R),j))
     κ=k-blockstart(rangespace(R),K)+1
@@ -489,7 +503,7 @@ function getindex{T}(R::ConcreteConversion{DirichletTriangle{1,1,1},DirichletTri
     end
 end
 
-function getindex{T}(R::ConcreteConversion{DirichletTriangle{1,1,1},DirichletTriangle{1,1,0},T},k::Integer,j::Integer)::T
+function getindex(R::ConcreteConversion{DirichletTriangle{1,1,1},DirichletTriangle{1,1,0},T},k::Integer,j::Integer)::T where {T}
     K = Int(block(rangespace(R),k))
     J = Int(block(domainspace(R),j))
     κ=k-blockstart(rangespace(R),K)+1
@@ -545,26 +559,26 @@ end
 
 ## Restriction Operators
 
-function Conversion(a::DirichletTriangle{1,0,0},b::Jacobi)
-    @assert b == Legendre(Vec(0.,0.)..Vec(0.,1.))
+function Conversion(a::DirichletTriangle{1,0,0}, b::Jacobi)
+    @assert b == Legendre(domain(a).a .. domain(a).c)
     ConcreteConversion(a,b)
 end
 
-function Conversion(a::DirichletTriangle{0,1,0},b::Jacobi)
-    @assert b == Legendre(Vec(0.,0.)..Vec(1.,0.))
+function Conversion(a::DirichletTriangle{0,1,0}, b::Jacobi)
+    @assert b == Legendre(domain(a).a .. domain(a).b)
     ConcreteConversion(a,b)
 end
 
-function Conversion(a::DirichletTriangle{0,0,1},b::Jacobi)
-    @assert b == Legendre(Vec(0.,1.)..Vec(1.,0.))
+function Conversion(a::DirichletTriangle{0,0,1}, b::Jacobi)
+    @assert b == Legendre(domain(a).c .. domain(a).b)
     ConcreteConversion(a,b)
 end
 
 
-isblockbanded{DT<:DirichletTriangle,JJ<:Jacobi}(::ConcreteConversion{DT,JJ}) = true
+isblockbanded(::ConcreteConversion{<:DirichletTriangle,<:Jacobi}) = true
 
-blockbandinds{DT<:DirichletTriangle,JJ<:Jacobi}(::ConcreteConversion{DT,JJ}) = (0,0)
-function getindex{JJ<:Jacobi}(R::ConcreteConversion{DirichletTriangle{1,0,0},JJ},k::Integer,j::Integer)
+blockbandinds(::ConcreteConversion{<:DirichletTriangle,<:Jacobi}) = (0,0)
+function getindex(R::ConcreteConversion{DirichletTriangle{1,0,0},<:Jacobi},k::Integer,j::Integer)
     T=eltype(R)
     J = Int(block(domainspace(R),j))
     ξ=j-blockstart(domainspace(R),J)+1
@@ -572,7 +586,7 @@ function getindex{JJ<:Jacobi}(R::ConcreteConversion{DirichletTriangle{1,0,0},JJ}
     k==J==ξ ? one(T) : zero(T)
 end
 
-function getindex{JJ<:Jacobi}(R::ConcreteConversion{DirichletTriangle{0,1,0},JJ},k::Integer,j::Integer)
+function getindex(R::ConcreteConversion{DirichletTriangle{0,1,0},<:Jacobi},k::Integer,j::Integer)
     T=eltype(R)
     J = Int(block(domainspace(R),j))
     ξ=j-blockstart(domainspace(R),J)+1
@@ -580,7 +594,7 @@ function getindex{JJ<:Jacobi}(R::ConcreteConversion{DirichletTriangle{0,1,0},JJ}
     k==J &&ξ==1 ? one(T) : zero(T)
 end
 
-function getindex{JJ<:Jacobi}(R::ConcreteConversion{DirichletTriangle{0,0,1},JJ},k::Integer,j::Integer)
+function getindex(R::ConcreteConversion{DirichletTriangle{0,0,1},<:Jacobi},k::Integer,j::Integer)
     T=eltype(R)
     J = Int(block(domainspace(R),j))
     ξ=j-blockstart(domainspace(R),J)+1
@@ -591,18 +605,18 @@ end
 
 
 
-function Dirichlet(::DirichletTriangle{1,1,1}, k::Int)
+function Dirichlet(D::DirichletTriangle{1,1,1}, k::Int)
     @assert k==0
-    Rx=Conversion(DirichletTriangle{1,1,1}(),DirichletTriangle{1,1,0}(),DirichletTriangle{1,0,0}(),Legendre(Vec(0.,0.)..Vec(0.,1.)))
-    Ry=Conversion(DirichletTriangle{1,1,1}(),DirichletTriangle{1,1,0}(),DirichletTriangle{0,1,0}(),Legendre(Vec(0.,0.)..Vec(1.,0.)))
-    Rz=Conversion(DirichletTriangle{1,1,1}(),DirichletTriangle{0,1,1}(),DirichletTriangle{0,0,1}(),Legendre(Vec(0.,1.)..Vec(1.,0.)))
+    d = domain(D)
+    Rx=Conversion(DirichletTriangle{1,1,1}(d),DirichletTriangle{1,1,0}(d),DirichletTriangle{1,0,0}(d),Legendre(d.a .. d.c))
+    Ry=Conversion(DirichletTriangle{1,1,1}(d),DirichletTriangle{1,1,0}(d),DirichletTriangle{0,1,0}(d),Legendre(d.a .. d.b))
+    Rz=Conversion(DirichletTriangle{1,1,1}(d),DirichletTriangle{0,1,1}(d),DirichletTriangle{0,0,1}(d),Legendre(d.c .. d.b))
 
-    DirichletWrapper(InterlaceOperator(Operator{Float64}[Rx;Ry;Rz],DirichletTriangle{1,1,1}(),PiecewiseSpace((rangespace(Rx),rangespace(Ry),rangespace(Rz)))))
+    DirichletWrapper(InterlaceOperator(Operator{Float64}[Rx;Ry;Rz],DirichletTriangle{1,1,1}(d),PiecewiseSpace((rangespace(Rx),rangespace(Ry),rangespace(Rz)))))
 end
 
 
-Dirichlet(::Triangle) = Dirichlet(DirichletTriangle{1,1,1}())
+Dirichlet(d::Triangle) = Dirichlet(DirichletTriangle{1,1,1}(d))
 
 
-Base.sum{DT<:DirichletTriangle}(f::Fun{DT}) =
-    sum(Fun(f,KoornwinderTriangle(0,0,0)))
+Base.sum(f::Fun{<:DirichletTriangle}) = sum(Fun(f,KoornwinderTriangle(0,0,0,domain(f))))

@@ -18,7 +18,7 @@ import ApproxFun: BandedMatrix, order, blocksize,
                   real, eps, isapproxinteger, ∞, FiniteRange, DFunction
 
 # Domains import
-import ApproxFun: fromcanonical, tocanonical
+import ApproxFun: fromcanonical, tocanonical, domainscompatible
 
 # Operator import
 import ApproxFun:    bandinds,SpaceOperator, ConversionWrapper, DerivativeWrapper,
