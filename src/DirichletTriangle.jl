@@ -577,6 +577,56 @@ function Conversion(a::DirichletTriangle{0,0,1}, b::Jacobi)
 end
 
 
+function Conversion(a::DirichletTriangle{1,1,0}, b::Jacobi)
+    d = domain(a)
+    if b == Legendre(d.a .. d.c)
+        Conversion(a, DirichletTriangle{1,0,0}(d), b)
+    elseif b == Legendre(d.a .. d.b)
+        Conversion(a, DirichletTriangle{0,1,0}(d), b)
+    else
+        throw(ArgumentError())
+    end
+end
+
+
+function Conversion(a::DirichletTriangle{1,0,1}, b::Jacobi)
+    d = domain(a)
+    if b == Legendre(d.a .. d.c)
+        Conversion(a, DirichletTriangle{1,0,0}(d), b)
+    elseif b == Legendre(d.c .. d.b)
+        Conversion(a, DirichletTriangle{0,0,1}(d), b)
+    else
+        throw(ArgumentError())
+    end
+end
+
+function Conversion(a::DirichletTriangle{0,1,1}, b::Jacobi)
+    d = domain(a)
+    if b == Legendre(d.a .. d.b)
+        Conversion(a, DirichletTriangle{0,1,0}(d), b)
+    elseif b == Legendre(d.c .. d.b)
+        Conversion(a, DirichletTriangle{0,0,1}(d), b)
+    else
+        throw(ArgumentError())
+    end
+end
+
+
+function Conversion(a::DirichletTriangle{1,1,1}, b::Jacobi)
+    d = domain(a)
+    if b == Legendre(d.a .. d.c)
+        Conversion(a, DirichletTriangle{1,0,1}(d), b)
+    elseif b == Legendre(d.a .. d.b)
+        Conversion(a, DirichletTriangle{0,1,1}(d), b)
+    elseif b == Legendre(d.c .. d.b)
+        Conversion(a, DirichletTriangle{0,1,1}(d), b)
+    else
+        throw(ArgumentError())
+    end
+end
+
+
+
 isblockbanded(::ConcreteConversion{<:DirichletTriangle,<:Jacobi}) = true
 
 blockbandinds(::ConcreteConversion{<:DirichletTriangle,<:Jacobi}) = (0,0)
@@ -603,7 +653,6 @@ function getindex(R::ConcreteConversion{DirichletTriangle{0,0,1},<:Jacobi},k::In
 
     k==J &&ξ==1 ? one(T) : zero(T)
 end
-
 
 
 
