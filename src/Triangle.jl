@@ -86,6 +86,8 @@ immutable KoornwinderTriangle <: Space{Triangle,Float64}
     domain::Triangle
 end
 
+KoornwinderTriangle() = KoornwinderTriangle(0,0,0)
+
 points(K::KoornwinderTriangle,n::Integer) =
     map(Vec,map(vec,points(ProductTriangle(K),round(Int,sqrt(n)),round(Int,sqrt(n))))...)
 

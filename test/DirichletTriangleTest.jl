@@ -265,30 +265,155 @@ end
 
 end
 
+
+@testset "Triangle Dirichlet Derivatives" begin
+    @testset "Triangle() Derivative" begin
+        S = DirichletTriangle{1,0,1}()
+        Dx = Derivative(S, [1,0])
+        testbandedblockbandedoperator(Dx)
+        @test rangespace(Dx) == KoornwinderTriangle()
+        f = Fun(S, randn(20))
+        @test (Dx*f)(0.1,0.2) ≈ (Derivative([1,0])*Fun(f,KoornwinderTriangle(0,0,0)))(0.1,0.2)
+
+        Dx = Derivative(S, [2,0])
+        testbandedblockbandedoperator(Dx)
+        @test rangespace(Dx) == KoornwinderTriangle(1,0,1)
+        f = Fun(S, randn(20))
+        @test (Dx*f)(0.1,0.2) ≈ (Derivative([2,0])*Fun(f,KoornwinderTriangle(0,0,0)))(0.1,0.2)
+
+        Dx = Derivative(S, [2,1])
+        testbandedblockbandedoperator(Dx)
+        @test rangespace(Dx) == KoornwinderTriangle(1,1,2)
+        f = Fun(S, randn(20))
+        @test (Dx*f)(0.1,0.2) ≈ (Derivative([2,1])*Fun(f,KoornwinderTriangle(0,0,0)))(0.1,0.2)
+
+        S = DirichletTriangle{0,1,1}()
+        Dy = Derivative(S, [0,1])
+        testbandedblockbandedoperator(Dy)
+        @test rangespace(Dy) == KoornwinderTriangle()
+        f = Fun(S, randn(20))
+        @test (Dy*f)(0.1,0.2) ≈ (Derivative([0,1])*Fun(f,KoornwinderTriangle(0,0,0)))(0.1,0.2)
+
+        Dx = Derivative(S, [1,0])
+        testbandedblockbandedoperator(Dx)
+        @test rangespace(Dx) == KoornwinderTriangle(1,0,1)
+        f = Fun(S, randn(20))
+        @test (Dx*f)(0.1,0.2) ≈ (Derivative([1,0])*Fun(f,KoornwinderTriangle(0,0,0)))(0.1,0.2)
+
+        Dx = Derivative(S, [2,0])
+        testbandedblockbandedoperator(Dx)
+        @test rangespace(Dx) == KoornwinderTriangle(2,0,2)
+        f = Fun(S, randn(20))
+        @test (Dx*f)(0.1,0.2) ≈ (Derivative([2,0])*Fun(f,KoornwinderTriangle(0,0,0)))(0.1,0.2)
+
+        Dx = Derivative(S, [1,1])
+        testbandedblockbandedoperator(Dx)
+        @test rangespace(Dx) == KoornwinderTriangle(1,0,1)
+        f = Fun(S, randn(20))
+        @test (Dx*f)(0.1,0.2) ≈ (Derivative([1,1])*Fun(f,KoornwinderTriangle(0,0,0)))(0.1,0.2)
+
+
+        S = DirichletTriangle{1,1,1}()
+        Dx = Derivative(S,[1,0])
+        @test rangespace(Dx) == KoornwinderTriangle()
+        testbandedblockbandedoperator(Dx)
+        f = Fun(S, randn(20))
+        @test (Dx*f)(0.1,0.2) ≈ (Derivative([1,0])*Fun(f,KoornwinderTriangle(0,0,0)))(0.1,0.2)
+        Dy = Derivative(S, [0,1])
+        testbandedblockbandedoperator(Dy)
+        @test rangespace(Dy) == KoornwinderTriangle()
+        f = Fun(S, randn(20))
+        @test (Dy*f)(0.1,0.2) ≈ (Derivative([0,1])*Fun(f,KoornwinderTriangle(0,0,0)))(0.1,0.2)
+    end
+
+    @testset "Other triangle Derivative" begin
+        d = Triangle(Vec(2,3),Vec(3,4),Vec(1,6))
+        S = DirichletTriangle{1,0,1}(d)
+        Dx = Derivative(S, [1,0])
+        testbandedblockbandedoperator(Dx)
+        @test rangespace(Dx) == KoornwinderTriangle(1,1,1,d)
+        f = Fun(S, randn(20))
+        @test (Dx*f)(0.1,0.2) ≈ (Derivative([1,0])*Fun(f,KoornwinderTriangle(0,0,0,d)))(0.1,0.2)
+
+        Dx = Derivative(S, [2,0])
+        testbandedblockbandedoperator(Dx)
+        @test rangespace(Dx) == KoornwinderTriangle(2,2,2,d)
+        f = Fun(S, randn(20))
+        @test (Dx*f)(0.1,0.2) ≈ (Derivative([2,0])*Fun(f,KoornwinderTriangle(0,0,0,d)))(0.1,0.2)
+
+        Dx = Derivative(S, [2,1])
+        testbandedblockbandedoperator(Dx)
+        @test rangespace(Dx) == KoornwinderTriangle(3,3,3,d)
+        f = Fun(S, randn(20))
+        @test (Dx*f)(0.1,0.2) ≈ (Derivative([2,1])*Fun(f,KoornwinderTriangle(0,0,0,d)))(0.1,0.2)
+
+        S = DirichletTriangle{0,1,1}(d)
+        Dy = Derivative(S, [0,1])
+        testbandedblockbandedoperator(Dy)
+        @test rangespace(Dy) == KoornwinderTriangle(1,1,1,d)
+        f = Fun(S, randn(20))
+        @test (Dy*f)(0.1,0.2) ≈ (Derivative([0,1])*Fun(f,KoornwinderTriangle(0,0,0,d)))(0.1,0.2)
+
+        Dx = Derivative(S, [1,0])
+        testbandedblockbandedoperator(Dx)
+        @test rangespace(Dx) == KoornwinderTriangle(1,1,1,d)
+        f = Fun(S, randn(20))
+        @test (Dx*f)(0.1,0.2) ≈ (Derivative([1,0])*Fun(f,KoornwinderTriangle(0,0,0,d)))(0.1,0.2)
+
+
+        S = DirichletTriangle{1,1,1}(d)
+        Dx = Derivative(S,[1,0])
+        @test rangespace(Dx) == KoornwinderTriangle(0,0,0,d)
+        testbandedblockbandedoperator(Dx)
+        f = Fun(S, randn(20))
+        @test (Dx*f)(0.1,0.2) ≈ (Derivative([1,0])*Fun(f,KoornwinderTriangle(0,0,0,d)))(0.1,0.2)
+        Dy = Derivative(S, [0,1])
+        testbandedblockbandedoperator(Dy)
+        @test rangespace(Dy) == KoornwinderTriangle(0,0,0,d)
+        f = Fun(S, randn(20))
+        @test (Dy*f)(0.1,0.2) ≈ (Derivative([0,1])*Fun(f,KoornwinderTriangle(0,0,0,d)))(0.1,0.2)
+    end
+end
+
+
 @testset "Triangle Dirichlet Laplacian" begin
-    Δ=Laplacian(DirichletTriangle{1,1,1}())
-    testbandedblockbandedoperator(Δ)
+    @testset "Triangle Laplace" begin
+        S = DirichletTriangle{1,1,1}()
+        Δ=Laplacian(S)
+        testbandedblockbandedoperator(Δ)
+        @test rangespace(Δ) == KoornwinderTriangle(1,1,1)
+        f = Fun(S, randn(20))
+        @test (Δ*f)(0.1,0.2) ≈ (Laplacian()*Fun(f,KoornwinderTriangle(0,0,0)))(0.1,0.2)
+        B=Dirichlet(S)
+        f=Fun((x,y)->real(exp(x+im*y)),rangespace(B))
+        u=\([B;Δ],[f;0.];tolerance=1E-13)
+        @test u(0.1,0.2) ≈ real(exp(0.1+0.2im))
+    end
 
-    C=Conversion(DirichletTriangle{1,1,1}(),DirichletTriangle{1,1,0}(),DirichletTriangle{1,0,0}(),KoornwinderTriangle(0,0,0))
-    B=Dirichlet(DirichletTriangle{1,1,1}())
-    Δ=Laplacian(rangespace(C))
-    f=Fun((x,y)->real(exp(x+im*y)),rangespace(B))
-    u=\([B;Δ*C],[f;0.];tolerance=1E-13)
+    @testset "Triangle Laplace via KoornwinderTriangle(0,0,0)" begin
+        C=Conversion(DirichletTriangle{1,1,1}(),DirichletTriangle{1,1,0}(),DirichletTriangle{1,0,0}(),KoornwinderTriangle(0,0,0))
+        B=Dirichlet(DirichletTriangle{1,1,1}())
+        Δ=Laplacian(rangespace(C))
+        f=Fun((x,y)->real(exp(x+im*y)),rangespace(B))
+        u=\([B;Δ*C],[f;0.];tolerance=1E-13)
 
-    @test u(0.1,0.2) ≈ real(exp(0.1+0.2im))
+        @test u(0.1,0.2) ≈ real(exp(0.1+0.2im))
+    end
 
+    @testset "Other triangle Laplace" begin
+        d = Triangle(Vec(2,3),Vec(3,4),Vec(1,6))
+        S = DirichletTriangle{1,1,1}(d)
+        Δ=Laplacian(S)
+        @test rangespace(Δ) == KoornwinderTriangle(1,1,1,d)
+        testbandedblockbandedoperator(Δ)
+        f = Fun(S, randn(5))
+        x,y = fromcanonical(S, 0.1,0.2)
+        @test (Δ*f)(x,y) ≈ (Laplacian()*Fun(f, KoornwinderTriangle(0,0,0,d)))(0.1,0.2)
 
-    d = Triangle(Vec(2,3),Vec(3,4),Vec(1,6))
-    S = DirichletTriangle{1,1,1}(d)
-    Δ=Laplacian(S)
-    testbandedblockbandedoperator(Δ)
-    f = Fun(S, randn(5))
-    x,y = fromcanonical(S, 0.1,0.2)
-    (Δ*f)(x,y) ≈ (Laplacian()*Fun(f, KoornwinderTriangle(0,0,0,d)))(0.1,0.2)
+        B = Dirichlet(d)
+        f=Fun((x,y)->real(exp(x+im*y)),rangespace(B))
+        u=\([B;Δ],[f;0.];tolerance=1E-13)
 
-    B = Dirichlet(d)
-    f=Fun((x,y)->real(exp(x+im*y)),rangespace(B))
-    u=\([B;Δ],[f;0.];tolerance=1E-13)
-
-    @test u(x,y) ≈ real(exp(x+y*im))
+        @test u(x,y) ≈ real(exp(x+y*im))
+    end
 end

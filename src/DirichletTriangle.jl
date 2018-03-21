@@ -12,6 +12,8 @@ spacescompatible(A::DirichletTriangle{a,b,c}, B::DirichletTriangle{a,b,c}) where
     domainscompatible(A,B)
 
 domain(D::DirichletTriangle) = D.domain
+canonicaldomain(sp::DirichletTriangle) = Triangle()
+setdomain(D::DirichletTriangle{a,b,c}, d::Triangle) where {a,b,c} = DirichletTriangle{a,b,c}(d)
 
 # TODO: @tensorspace
 tensorizer(K::DirichletTriangle) = Tensorizer((ApproxFun.repeated(true),ApproxFun.repeated(true)))
@@ -620,3 +622,143 @@ Dirichlet(d::Triangle) = Dirichlet(DirichletTriangle{1,1,1}(d))
 
 
 Base.sum(f::Fun{<:DirichletTriangle}) = sum(Fun(f,KoornwinderTriangle(0,0,0,domain(f))))
+
+
+
+
+#### Derivatives
+
+
+function Derivative(A::DirichletTriangle{1,0,1}, order)
+    d = domain(A)
+    if order == [1,0]
+        if d == Triangle()
+            ConcreteDerivative(A,order)
+        else
+            S = KoornwinderTriangle(0,0,0,d)
+            DerivativeWrapper(Derivative(S,order)*Conversion(A,S),order)
+        end
+    elseif order == [0,1]
+        S = KoornwinderTriangle(0,0,0,d)
+        DerivativeWrapper(Derivative(S,order)*Conversion(A,S),order)
+    elseif order[1] ≥ 1
+        D = Derivative(A,[1,0])
+        DerivativeWrapper(TimesOperator(Derivative(rangespace(D),[order[1]-1,order[2]]),D),order)
+    else
+        @assert order[2] > 1
+        D=Derivative(A,[0,1])
+        DerivativeWrapper(TimesOperator(Derivative(rangespace(D),[order[1],order[2]-1]),D),order)
+    end
+end
+
+function Derivative(A::DirichletTriangle{0,1,1}, order)
+    d = domain(A)
+    if order == [0,1]
+        if d == Triangle()
+            ConcreteDerivative(A,order)
+        else
+            S = KoornwinderTriangle(0,0,0,d)
+            DerivativeWrapper(Derivative(S,order)*Conversion(A,S),order)
+        end
+    elseif order == [1,0]
+        S = KoornwinderTriangle(0,0,0,d)
+        DerivativeWrapper(Derivative(S,order)*Conversion(A,S),order)
+    elseif order[1] > 1
+        D = Derivative(A,[1,0])
+        DerivativeWrapper(TimesOperator(Derivative(rangespace(D),[order[1]-1,order[2]]),D),order)
+    else
+        @assert order[2] ≥ 1
+        D=Derivative(A,[0,1])
+        DerivativeWrapper(TimesOperator(Derivative(rangespace(D),[order[1],order[2]-1]),D),order)
+    end
+end
+
+function Derivative(A::DirichletTriangle{1,1,1}, order)
+    d = domain(A)
+    if order == [1,0] && d == Triangle()
+        S = DirichletTriangle{1,0,1}()
+        DerivativeWrapper(Derivative(S,order)*Conversion(A,S),order)
+    elseif order == [0,1] && d == Triangle()
+        S = DirichletTriangle{0,1,1}()
+        DerivativeWrapper(Derivative(S,order)*Conversion(A,S),order)
+    elseif order == [1,0] # d ≠ Triangle()
+        M_x,M_y = tocanonicalD(d)[:,1]
+        A_c = setcanonicaldomain(A)
+        D_x,D_y = Derivative(A_c,[1,0]),Derivative(A_c,[0,1])
+        L = M_x*D_x + M_y*D_y
+        DerivativeWrapper(SpaceOperator(L,A,setdomain(rangespace(L), d)),order)
+    elseif order == [0,1] # d ≠ Triangle()
+        M_x,M_y = tocanonicalD(d)[:,2]
+        A_c = setcanonicaldomain(A)
+        D_x,D_y = Derivative(A_c,[1,0]),Derivative(A_c,[0,1])
+        L = M_x*D_x + M_y*D_y
+        DerivativeWrapper(SpaceOperator(L,A,setdomain(rangespace(L), d)),order)
+    elseif order[1] > 1
+        D = Derivative(A,[1,0])
+        DerivativeWrapper(TimesOperator(Derivative(rangespace(D),[order[1]-1,order[2]]),D),order)
+    else
+        @assert order[2] > 1
+        D=Derivative(A,[0,1])
+        DerivativeWrapper(TimesOperator(Derivative(rangespace(D),[order[1],order[2]-1]),D),order)
+    end
+end
+
+
+rangespace(D::ConcreteDerivative{DirichletTriangle{1,0,1}}) = KoornwinderTriangle(0,0,0)
+rangespace(D::ConcreteDerivative{DirichletTriangle{0,1,1}}) = KoornwinderTriangle(0,0,0)
+
+isbandedblockbanded(::ConcreteDerivative{DirichletTriangle{1,0,1}}) = true
+isbandedblockbanded(::ConcreteDerivative{DirichletTriangle{0,1,1}}) = true
+
+
+blockbandinds(::ConcreteDerivative{DirichletTriangle{1,0,1}}) = (-1,1)
+blockbandinds(::ConcreteDerivative{DirichletTriangle{0,1,1}}) = (-1,1)
+
+subblockbandinds(::ConcreteDerivative{DirichletTriangle{1,0,1}}) = (0,1)
+subblockbandinds(::ConcreteDerivative{DirichletTriangle{1,0,1}}, k::Integer) = k == 1 ? 0 : 1
+
+subblockbandinds(::ConcreteDerivative{DirichletTriangle{0,1,1}}) = (-1,1)
+subblockbandinds(::ConcreteDerivative{DirichletTriangle{0,1,1}}, k::Integer) = k == 1 ? -1 : 1
+
+
+function getindex(R::ConcreteDerivative{DirichletTriangle{1,0,1}}, k::Integer, j::Integer)
+    T=eltype(R)
+    K = Int(block(rangespace(R),k))
+    J = Int(block(domainspace(R),j))
+    κ=k-blockstart(rangespace(R),K)+1
+    ξ=j-blockstart(domainspace(R),J)+1
+
+    if K == J-1
+        if κ == ξ == 1
+            T(J-1)
+        elseif ξ == J && κ == K
+            T(1-J)
+        elseif ξ == κ || κ == ξ-1
+            T(ξ-J)/2
+        else
+            zero(T)
+        end
+    else
+        zero(T)
+    end
+end
+
+function getindex(R::ConcreteDerivative{DirichletTriangle{0,1,1}}, k::Integer, j::Integer)
+    T=eltype(R)
+    K = Int(block(rangespace(R),k))
+    J = Int(block(domainspace(R),j))
+    κ=k-blockstart(rangespace(R),K)+1
+    ξ=j-blockstart(domainspace(R),J)+1
+
+    if K == J-1
+        if κ == 1 && ξ == 2
+            -2*one(T)
+        elseif κ == ξ-1
+            (2one(T)-ξ)
+        else
+            zero(T)
+        end
+    else
+        zero(T)
+    end
+end
