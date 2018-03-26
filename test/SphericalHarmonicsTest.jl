@@ -1,5 +1,12 @@
 using ApproxFun, MultivariateOrthogonalPolynomials, Compat.Test, FastTransforms
-    import MultivariateOrthogonalPolynomials: isphericalcoordinates
+    import MultivariateOrthogonalPolynomials: isphericalcoordinates, DoubleWrappedSphere
+
+
+
+S = DoubleWrappedSphere()
+@test domain(S) == Sphere()
+
+
 
 S = ProductSphericalHarmonics()
 
@@ -26,7 +33,7 @@ f = ProductFun((x,y,z) -> z, S, 10,10)
 @test ApproxFun.coefficients(f) ≈ [0,1]''
 @test f(x,y,z) ≈ z
 
-# 
+#
 # using FastTransforms
 #
 #

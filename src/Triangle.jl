@@ -245,7 +245,7 @@ function totree(S,f::Fun)
     ret
 end
 
-immutable TriangleEvaluatePlan{S,RX,RY,T}
+struct TriangleEvaluatePlan{S,RX,RY,T}
     space::S
     coefficients::Vector{Vector{T}}
     Jx::RX

@@ -19,6 +19,7 @@ struct DoubleWrappedSphere <: Space{Sphere,Float64} end
 
 
 domain(::ProductSphericalHarmonics) = Sphere()
+domain(::DoubleWrappedSphere) = Sphere()
 
 canonicaldomain(sp::ProductSphericalHarmonics) = Segment(-1,1) * PeriodicInterval()
 
