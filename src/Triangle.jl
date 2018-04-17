@@ -91,7 +91,7 @@ KoornwinderTriangle() = KoornwinderTriangle(0,0,0)
 points(K::KoornwinderTriangle,n::Integer) =
     map(Vec,map(vec,points(ProductTriangle(K),round(Int,sqrt(n)),round(Int,sqrt(n))))...)
 
-points(K::Triangle,n::Integer) = points(KoornwinderTriangle(0,0,0),n)
+points(K::Triangle,n::Integer) = points(KoornwinderTriangle(0,0,0,K),n)
 
 const TriangleSpace = Union{ProductTriangle,KoornwinderTriangle}
 
