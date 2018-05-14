@@ -862,11 +862,11 @@ TriangleWeight(α::Number,β::Number,γ::Number,sp::Space) =
 WeightedTriangle(α::Number,β::Number,γ::Number) =
     TriangleWeight(α,β,γ,KoornwinderTriangle(α,β,γ))
 
-triangleweight(x,y) = x.^S.α.*y.^S.β.*(1-x-y).^S.γ
-triangleweight(xy::Vec) = triangleweight(xy...)
+triangleweight(S,x,y) = x.^S.α.*y.^S.β.*(1-x-y).^S.γ
+triangleweight(S,xy::Vec) = triangleweight(S,xy...)
 
 
-weight(S::TriangleWeight,x,y) = triangleweight(tocanonical(S,x,y))
+weight(S::TriangleWeight,x,y) = triangleweight(S,tocanonical(S,x,y))
 weight(S::TriangleWeight,xy::Vec) = weight(S,xy...)
 
 setdomain(K::TriangleWeight, d::Triangle) = TriangleWeight(K.α,K.β,K.γ,setdomain(K.space,d))
