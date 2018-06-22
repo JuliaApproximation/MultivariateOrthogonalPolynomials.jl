@@ -1,6 +1,6 @@
 using StaticArrays,Plots,BandedMatrices,
         ApproxFun,MultivariateOrthogonalPolynomials, Compat.Test
-    import MultivariateOrthogonalPolynomials: Lowering, ProductTriangle, clenshaw, block, TriangleWeight,plan_evaluate
+    import MultivariateOrthogonalPolynomials: Lowering, ProductTriangle, clenshaw, block, TriangleWeight,plan_evaluate, weight
     import ApproxFun: testbandedblockbandedoperator, Block, BandedBlockBandedMatrix, blockcolrange, blocksize, Vec
 
 
@@ -224,7 +224,7 @@ end
     Dy = Derivative(KoornwinderTriangle(1,0,1), [0,1])
     testbandedblockbandedoperator(Dy)
 
-    Δ = Laplacian(space(f))
+    Δ = Laplacian(KoornwinderTriangle(1,1,1))
     testbandedblockbandedoperator(Δ)
 end
 
@@ -247,6 +247,7 @@ end
     D=Derivative(space(f),[2,0])
     @test (D*f)(0.1,0.2) ≈ ((x,y)->cos(y)^2*exp(x*cos(y)))(0.1,0.2)  atol=1000000eps()
 
+    d = Triangle(Vec(0,0),Vec(3,4),Vec(1,6))
     K = KoornwinderTriangle(1,0,1,d)
     f=Fun((x,y)->exp(x*cos(y)),K)
     Dx = Derivative(space(f), [1,0])
