@@ -56,7 +56,7 @@ iduffy(st::Vec) = Vec(st[1],(1-st[1])*st[2])
 iduffy(s,t) = Vec(s,(1-s)*t)
 duffy(xy::Vec) = Vec(xy[1],xy[1]==1 ? zero(eltype(xy)) : xy[2]/(1-xy[1]))
 duffy(x::T,y::T) where T = Vec(x,x == 1 ? zero(Y) : y/(1-x))
-checkpoints(d::Triangle) = [iduffy(Vec(.1,.2243)),iduffy(Vec(-.212423,-.3))]
+checkpoints(d::Triangle) = [iduffy(Vec(.1,.2243)),iduffy(Vec(0.212423,0.3))]
 
 ∂(d::Triangle) = PiecewiseSegment([d.a,d.b,d.c,d.a])
 
@@ -150,7 +150,7 @@ Fun(f::Function, S::KoornwinderTriangle) = Fun(Fun(ProductFun(f,ProductTriangle(
 Fun(f::Fun, S::KoornwinderTriangle) = Fun(S,coefficients(f,S))
 
 
-immutable KoornwinderTriangleITransformPlan{PE,PT}
+struct KoornwinderTriangleITransformPlan{PE,PT}
     plan::PE
     points::PT
 end
@@ -252,20 +252,23 @@ struct TriangleEvaluatePlan{S,RX,RY,T}
     Jy::RY
 end
 
-function jacobioperators(S::KoornwinderTriangle)
-    J₁ = (Lowering{1}(S)→S)
-    J₂ = (Lowering{2}(S)→S)
-
-    fromcanonical(S, J₁, J₂)
+function canonicaljacobioperators(S::KoornwinderTriangle)
+    S₁ = KoornwinderTriangle(S.α+1,S.β,S.γ,domain(S))
+    J₁ = Lowering{1}(S₁)*Conversion(S,S₁)
+    S₂ = KoornwinderTriangle(S.α,S.β+1,S.γ,domain(S))
+    J₂ = Lowering{2}(S₂)*Conversion(S,S₂)
+    J₁, J₂
 end
+
+jacobioperators(S::KoornwinderTriangle) = fromcanonical(S, canonicaljacobioperators(S)...)
+
 
 function plan_evaluate(f::Fun{KoornwinderTriangle},x...)
     N = nblocks(f)
     S = space(f)
     # we cannot use true Jacobi operators because that changes the band
     # structure used in clenshaw2D to determine pseudoinverses
-    Jˣ = (Lowering{1}(S)→S)
-    Jʸ = (Lowering{2}(S)→S)
+    Jˣ,Jʸ = canonicaljacobioperators(S)
     TriangleEvaluatePlan(S,
                 totree(S,f),
                 Jˣ[Block(1):Block(N+2),Block(1):Block(N+1)],
@@ -455,7 +458,8 @@ subblockbandinds(C::ConcreteConversion{KoornwinderTriangle,KoornwinderTriangle},
 
 
 
-function getindex{T}(C::ConcreteConversion{KoornwinderTriangle,KoornwinderTriangle,T},k::Integer,j::Integer)
+function getindex(C::ConcreteConversion{KoornwinderTriangle,KoornwinderTriangle,T},k::Integer,j::Integer) where T
+    k == j == 1 && return one(T) # avoid NaN
     K1=domainspace(C);K2=rangespace(C)
     α,β,γ = K1.α,K1.β,K1.γ
     K = Int(block(K2,k))
@@ -505,8 +509,8 @@ function getindex{T}(C::ConcreteConversion{KoornwinderTriangle,KoornwinderTriang
 end
 
 
-function Base.convert{T}(::Type{BandedBlockBandedMatrix},S::SubOperator{T,ConcreteConversion{KoornwinderTriangle,KoornwinderTriangle,T},
-                                                                        Tuple{BlockRange1,BlockRange1}})
+function Base.convert(::Type{BandedBlockBandedMatrix},S::SubOperator{T,ConcreteConversion{KoornwinderTriangle,KoornwinderTriangle,T},
+                                                                        Tuple{BlockRange1,BlockRange1}}) where T
     ret = BandedBlockBandedMatrix(Zeros,S)
     K1=domainspace(parent(S))
     K2=rangespace(parent(S))
@@ -521,8 +525,12 @@ function Base.convert{T}(::Type{BandedBlockBandedMatrix},S::SubOperator{T,Concre
             if 1 ≤ Int(JJ) ≤ M
                 bl = view(ret,KK,JJ)
                 J = size(bl,2)
-                @inbounds for ξ=1:J
-                    bl[ξ,ξ] = (J+ξ+α+β+γ)/(2J+α+β+γ)
+                if J == 1
+                    bl[1,1] = 1 # avoid NaN
+                else
+                    @inbounds for ξ=1:J
+                        bl[ξ,ξ] = (J+ξ+α+β+γ)/(2J+α+β+γ)
+                    end
                 end
             end
             JJ = KK+K_sh-J_sh+1  # super-diagonal

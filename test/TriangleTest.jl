@@ -1,5 +1,5 @@
-using StaticArrays,Plots,BandedMatrices,
-        ApproxFun,MultivariateOrthogonalPolynomials, Compat.Test
+using StaticArrays, Plots, BandedMatrices, FastTransforms,
+        ApproxFun, MultivariateOrthogonalPolynomials, Compat.Test
     import MultivariateOrthogonalPolynomials: Lowering, ProductTriangle, clenshaw, block, TriangleWeight,plan_evaluate, weight
     import ApproxFun: testbandedblockbandedoperator, Block, BandedBlockBandedMatrix, blockcolrange, blocksize, Vec
 
@@ -18,6 +18,60 @@ using StaticArrays,Plots,BandedMatrices,
     @test tocanonical(d,d.b) == Vec(1,0)
     @test tocanonical(d,d.c) == Vec(0,1)
 end
+
+
+# Use DuffyMap with
+
+struct DuffyTriangle{S,T} <: Space{Triangle,T}
+    space::S
+    domain::Triangle
+    function DuffyTriangle{S,T}(s::S, d::Triangle) where {S,T}
+        @assert domain(s) == Interval(0,1)^2
+        new{S,T}(s, d)
+    end
+end
+
+DuffyTriangle(s::S, d) where S = DuffyTriangle{S,ApproxFun.rangetype(S)}(s, d)
+DuffyTriangle() = DuffyTriangle(Chebyshev(0..1)^2, Triangle())
+DuffyTriangle(d::Triangle) = DuffyTriangle(Chebyshev()^2, d)
+
+function points(S::DuffyTriangle, N)
+    pts = points(S.space, N)
+    fromcanonical.(S.domain, iduffy.(pts))
+end
+
+plan_transform(S::DuffyTriangle, n::Integer) = TransformPlan(S, plan_transform(S.space,n), Val{false})
+plan_transform(S::DuffyTriangle, n::AbstractVector) = TransformPlan(S, plan_transform(S.space,n), Val{false})
+
+evaluate(cfs::AbstractVector, S::DuffyTriangle, x) = evaluate(cfs, S.space, duffy(tocanonical(S.domain,x)))
+using FastTransforms
+ff = Fun(KoornwinderTriangle(0.0,-0.5,-0.5),[zeros(2); 1.0])
+    @time f = Fun((x,y) -> P(1,1,x,y), DuffyTriangle(), 20)
+    F = ApproxFun.coefficientmatrix(Fun(space(f).space, coefficients(f)))
+    cheb2tri(F,0.0,-0.5,-0.5)
+
+P(1,1,1.0,0.0)
+
+F
+jacobinorm(n,a,b) = if n ≠ 0
+        sqrt((2n+a+b+1))*exp((lgamma(n+a+b+1)+lgamma(n+1)-log(2)*(a+b+1)-lgamma(n+a+1)-lgamma(n+b+1))/2)
+    else
+        sqrt(exp(lgamma(a+b+2)-log(2)*(a+b+1)-lgamma(a+1)-lgamma(b+1)))
+    end
+njacobip(n,a,b,x) = jacobinorm(n,a,b) * jacobip(n,a,b,x)
+
+P = (ℓ,m,x,y) -> x == 1.0 ? (2*(1-x))^m*njacobip(ℓ-m,2m,0,1.0)*njacobip(m,-0.5,-0.5,-1.0) :
+        (2*(1-x))^m*njacobip(ℓ-m,2m,0,2x-1)*njacobip(m,-0.5,-0.5,2y/(1-x)-1)
+
+f̃ = function(x,y)
+        ret = 0.0
+        for j=1:size(F,2), k=1:size(F,1)-j+1
+            ret += F̌[k,j] * P(k+j-2,j-1,x,y)
+        end
+        ret
+    end
+
+
 
 @testset "ProductTriangle constructors" begin
     S = ProductTriangle(1,1,1)
@@ -147,6 +201,16 @@ end
     @test (Jx*f)(x,y) ≈ x*f(x,y)
     @test (Jy*f)(x,y) ≈ y*f(x,y)
 end
+
+
+
+d = Triangle(Vec(0,0),Vec(3,4),Vec(1,6))
+f = Fun((x,y)->exp(x*cos(y)),KoornwinderTriangle(1,1,1,d))
+Jx,Jy = MultivariateOrthogonalPolynomials.jacobioperators(space(f))
+x,y = fromcanonical(d,0.1,0.2)
+
+Jx
+
 
 @testset "Triangle Conversion" begin
     C = Conversion(KoornwinderTriangle(0,0,0),KoornwinderTriangle(1,0,0))

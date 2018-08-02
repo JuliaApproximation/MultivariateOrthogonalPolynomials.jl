@@ -15,7 +15,8 @@ importall ApproxFun
 # ApproxFun general import
 import ApproxFun: BandedMatrix, order, blocksize,
                   linesum,complexlength, BandedBlockBandedMatrix,
-                  real, eps, isapproxinteger, ∞, FiniteRange, DFunction
+                  real, eps, isapproxinteger, ∞, FiniteRange, DFunction,
+                  TransformPlan
 
 # Domains import
 import ApproxFun: fromcanonical, tocanonical, domainscompatible
