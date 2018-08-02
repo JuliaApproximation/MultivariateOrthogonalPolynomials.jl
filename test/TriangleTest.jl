@@ -19,153 +19,34 @@ using StaticArrays, Plots, BandedMatrices, FastTransforms,
     @test tocanonical(d,d.c) == Vec(0,1)
 end
 
-
-
-@time f = Fun((x,y)->cos(500x*y),KoornwinderTriangle(0.0,-0.5,-0.5)); # 1.15s
-ncoefficients(f) # 37k
-
-K = KoornwinderTriangle(0.0,-0.5,-0.5)
-pts = points(K,20)
-ff = Fun(KoornwinderTriangle(0.0,-0.5,-0.5),[1.0:5;])
-    v = ff.(pts)
-    P = plan_transform(K, v)
-    P*v
-
-v
-v̂ = P.duffyplan*v
-    F = tridevec(v̂)
-    F̌ = P.tri2cheb \ F
-
-
-@time f = Fun((x,y) -> ff(x,y), DuffyTriangle(),15)
-    F = coefficientmatrix(Fun(space(f).space, coefficients(f)))
-v
-@time f = Fun((x,y) -> ff(x,y), DuffyTriangle(),20)
-f.coefficients
-v = ff.(points(DuffyTriangle(),20))
-    PD = plan_transform(DuffyTriangle(), v)
-    PD*v
-transform(DuffyTriangle(),v)
-v̂ = P.duffyplan*v
-
-P*v
-
-pts = points(Chebyshev()^2,6)
-
-P = plan_transform(KoornwinderTriangle(0.0,-0.5,-0.5), v)
-
-using Compat
-P = plan_tri2cheb(F,0.0,-0.5,-0.5)
-
-
-
-@which cheb2tri(F,0.0,-0.5,-0.5)
-K = zeros(3,3)
-ff = Fun(KoornwinderTriangle(0.0,-0.5,-0.5),[zeros(2);1;])
-    # ff = (x,y) -> Pn(1,1,0.0,-0.5,-0.5,x,y)
-    @time f = Fun((x,y) -> ff(x,y), DuffyTriangle(),20)
-    F = coefficientmatrix(Fun(space(f).space, coefficients(f)))
-    F̌ = cheb2tri(F,0.0,-0.5,-0.5)
-    tridenormalize!(F̌)
-K[:,3] = [F̌[1:2,end-1]; F̌[1,end]]
-K[2:end,1:2]|>rank
-rank(K)
-K
-scatter(first.(points(Chebyshev()^2, 20)),last.(points(Chebyshev()^2, 20)))
-trivec(
-
-import ApproxFun: coefficientmatrix
-@which ApproxFun.coefficientmatrix(Fun(space(f).space, coefficients(f)))
-
-
-
-
-
-
-
-
-
-
-F̌
-
-
-@time tridenormalize!(F̌)
-
-F̌[2,1] *= (jacobinorm(1,0,0)jacobinorm(0,-0.5,-0.5))
-F̌[1,2] *= (2jacobinorm(0,2,0)jacobinorm(1,-0.5,-0.5))
-
-
-ff(0.1,0.2)
-
-
-
-2jacobinorm(0,2,0)jacobinorm(1,-0.5,-0.5)*P(1,1,0.,-0.5,-0.5,0.1,0.2)
-Pn(1,1,0.,-0.5,-0.5,0.1,0.2)
-
-jacobinorm(0,
-P = (n,k,a,b,c,x,y) -> x == 1.0 ? ((1-x))^k*jacobip(n-k,2k+b+c+1,a,1.0)*jacobip(k,c,b,-1.0) :
+let P = (n,k,a,b,c,x,y) -> x == 1.0 ? ((1-x))^k*jacobip(n-k,2k+b+c+1,a,1.0)*jacobip(k,c,b,-1.0) :
         ((1-x))^k*jacobip(n-k,2k+b+c+1,a,2x-1)*jacobip(k,c,b,2y/(1-x)-1)
 
-Pn = (n,k,a,b,c,x,y) -> x == 1.0 ? (2*(1-x))^k*njacobip(n-k,2k+b+c+1,a,1.0)*njacobip(k,c,b,-1.0) :
-        (2*(1-x))^k*njacobip(n-k,2k+b+c+1,a,2x-1)*njacobip(k,c,b,2y/(1-x)-1)
-
-P = (ℓ,m,a,b,c,x,y) -> x == 1.0 ? (2*(1-x))^m*njacobip(ℓ-m,2m+b+c+1,a,1.0)*njacobip(m,c,b,-1.0) :
-        (2*(1-x))^m*njacobip(ℓ-m,2m+b+c+1,a,2x-1)*njacobip(m,c,b,2y/(1-x)-1)
-
-
-
-Lowering{2}(S₂)*Conversion(S,S₂)*ff
-
-0.1*ff(0.1,0.2)
-
-
-njacobip(n,a,b,x) = jacobinorm(n,a,b) * jacobip(n,a,b,x)
-
-P = (ℓ,m,x,y) -> x == 1.0 ? (2*(1-x))^m*njacobip(ℓ-m,2m,0,1.0)*njacobip(m,-0.5,-0.5,-1.0) :
-        (2*(1-x))^m*njacobip(ℓ-m,2m,0,2x-1)*njacobip(m,-0.5,-0.5,2y/(1-x)-1)
-
-f̃ = function(x,y)
-        ret = 0.0
-        for j=1:size(F,2), k=1:size(F,1)-j+1
-            ret += F̌[k,j] * P(k+j-2,j-1,x,y)
+    function cfseval(a,b,c,r,x,y)
+        j = 1; ret = 0.0
+        for n=0:length(r),k=0:n
+            ret += r[j]*P(n,k,a,b,c,x,y)
+            j += 1
+            j > length(r) && break
         end
         ret
     end
 
 
+    @testset "Degenerate conversion" begin
+        C = Conversion(KoornwinderTriangle(0.0,-0.5,-0.5),KoornwinderTriangle(0.0,0.5,-0.5))
+        testbandedblockbandedoperator(C)
+        r = randn(10)
+        @test cfseval(0.0,-0.5,-0.5,r,x,y) ≈ cfseval(0.0,0.5,-0.5,[C[k,j] for k=1:10,j=1:10]*r,x,y)
+        @test cfseval(0.0,-0.5,-0.5,r,x,y) ≈ cfseval(0.0,0.5,-0.5,C[1:10,1:10]*r,x,y)
 
-
-P = (n,k,a,b,c,x,y) -> x == 1.0 ? ((1-x))^k*jacobip(n-k,2k+b+c+1,a,1.0)*jacobip(k,c,b,-1.0) :
-        ((1-x))^k*jacobip(n-k,2k+b+c+1,a,2x-1)*jacobip(k,c,b,2y/(1-x)-1)
-
-function cfseval(a,b,c,r,x,y)
-    j = 1; ret = 0.0
-    for n=0:length(r),k=0:n
-        ret += r[j]*P(n,k,a,b,c,x,y)
-        j += 1
-        j > length(r) && break
+        C = Conversion(KoornwinderTriangle(0.0,-0.5,-0.5),KoornwinderTriangle(0.0,-0.5,0.5))
+        testbandedblockbandedoperator(C)
+        r = randn(10)
+        @test cfseval(0.0,-0.5,-0.5,r,x,y) ≈ cfseval(0.0,-0.5,0.5,[C[k,j] for k=1:10,j=1:10]*r,x,y)
+        @test cfseval(0.0,-0.5,-0.5,r,x,y) ≈ cfseval(0.0,-0.5,0.5,C[1:10,1:10]*r,x,y)
     end
-    ret
 end
-
-
-@testset "Degenerate conversion" begin
-    C = Conversion(KoornwinderTriangle(0.0,-0.5,-0.5),KoornwinderTriangle(0.0,0.5,-0.5))
-    testbandedblockbandedoperator(C)
-    r = randn(10)
-    @test cfseval(0.0,-0.5,-0.5,r,x,y) ≈ cfseval(0.0,0.5,-0.5,[C[k,j] for k=1:10,j=1:10]*r,x,y)
-    @test cfseval(0.0,-0.5,-0.5,r,x,y) ≈ cfseval(0.0,0.5,-0.5,C[1:10,1:10]*r,x,y)
-
-    C = Conversion(KoornwinderTriangle(0.0,-0.5,-0.5),KoornwinderTriangle(0.0,-0.5,0.5))
-    testbandedblockbandedoperator(C)
-    r = randn(10)
-    @test cfseval(0.0,-0.5,-0.5,r,x,y) ≈ cfseval(0.0,-0.5,0.5,[C[k,j] for k=1:10,j=1:10]*r,x,y)
-    @test cfseval(0.0,-0.5,-0.5,r,x,y) ≈ cfseval(0.0,-0.5,0.5,C[1:10,1:10]*r,x,y)
-end
-
-
-
-
 
 @testset "ProductTriangle constructors" begin
     S = ProductTriangle(1,1,1)
@@ -187,8 +68,12 @@ end
     @test pyf(0.1,0.2) ≈ 0.2exp(0.1*cos(0.2))
 end
 
-
 @testset "KoornwinderTriangle constructors" begin
+    f = Fun((x,y)->cos(100x*y),KoornwinderTriangle(0.0,-0.5,-0.5)); # 1.15s
+    f = Fun((x,y)->cos(500x*y),KoornwinderTriangle(0.0,-0.5,-0.5),40_000); # 0.2
+
+    @test f(0.1,0.2) ≈ cos(500*0.1*0.2)
+
     f = Fun((x,y)->exp(x*cos(y)),KoornwinderTriangle(1,1,1))
     @test Fun(f,ProductTriangle(1,1,1))(0.1,0.2) ≈ exp(0.1*cos(0.2))
     f=Fun((x,y)->exp(x*cos(y)),KoornwinderTriangle(0,0,0))
