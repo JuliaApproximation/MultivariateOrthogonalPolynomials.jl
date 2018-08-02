@@ -46,13 +46,157 @@ plan_transform(S::DuffyTriangle, n::AbstractVector) = TransformPlan(S, plan_tran
 evaluate(cfs::AbstractVector, S::DuffyTriangle, x) = evaluate(cfs, S.space, duffy(tocanonical(S.domain,x)))
 using FastTransforms
 ff = Fun(KoornwinderTriangle(0.0,-0.5,-0.5),[zeros(2); 1.0])
-    @time f = Fun((x,y) -> P(1,1,x,y), DuffyTriangle(), 20)
+    @time f = Fun((x,y) -> ff(x,y), DuffyTriangle(), 20)
     F = ApproxFun.coefficientmatrix(Fun(space(f).space, coefficients(f)))
     cheb2tri(F,0.0,-0.5,-0.5)
 
-P(1,1,1.0,0.0)
+P(1,1,0.1,0.2)/Fun(ff, KoornwinderTriangle(0.0,0.5,0.5))(0.1,0.2)
+P(1,1,0.2,0.3)/Fun(ff, KoornwinderTriangle(0.0,0.5,0.5))(0.2,0.3)
 
-F
+P(1,0,0.1,0.2)/ff(0.1,0.2)
+P(1,0,0.2,0.3)/ff(0.2,0.3)
+
+
+ff(0.1,0.2)
+ff(0.2,0.3)
+Fun(ff, KoornwinderTriangle(0.0,0.5,0.5))(0.1,0.2)
+Fun(ff, KoornwinderTriangle(0.0,0.5,0.5))(0.2,0.3)
+S1 = space(ff)
+S2 = KoornwinderTriangle(0.0,0.5,0.5)
+C = Conversion(S, S2)
+
+Jx,Jy = jacobioperators(S1)
+testbandedblockbandedoperator(Jy)
+Fun(ff, KoornwinderTriangle(0.0,0.5,0.5))(0.1,0.2)
+Fun((Jx*ff), KoornwinderTriangle(0.0,0.5,0.5))(0.1,0.2)
+Fun((Jy*ff), KoornwinderTriangle(0.0,0.5,0.5))(0.1,0.2)
+
+J2x,J2y = jacobioperators(S2)
+
+using SO
+C[1:100,1:100]\(J2x*C)[1:100,1:100] - Jx[1:100,1:100] |> chopm
+C[1:100,1:100]\(J2y*C)[1:100,1:100] - Jy[1:100,1:100] |> chopm
+
+S₁ = KoornwinderTriangle(S.α+1,S.β,S.γ,domain(S))
+J₁ = Lowering{1}(S₁)*Conversion(S,S₁)
+S₂ = KoornwinderTriangle(S.α,S.β+1,S.γ,domain(S))
+J₂ = Lowering{2}(S₂)*Conversion(S,S₂)
+
+
+Fun(ff, S2)(0.1,0.2)
+Fun(Conversion(S,S₂)*ff, S2)(0.1,0.2)
+Fun(Lowering{2}(S₂)*Conversion(S,S₂)*ff, S2)(0.1,0.2)
+using SO
+
+
+Lowering{2}(S₂)
+
+
+Fun(Fun((x,y) -> y, S2), S)
+ff = (x,y) -> P(2,1,0,0,0,x,y)
+    Fun(pad(ProductFun(ff, ProductTriangle(1,1,1)),20,20))(0.1,0.2), ff(0.1,0.2)
+
+ff = (x,y) -> P(1,1,0,-0.5,-0.5,x,y)
+    g = Fun(Fun(pad(ProductFun(ff, ProductTriangle(0.0,0.5,0.5)),20,20)),KoornwinderTriangle(0.,0.5,0.5))
+    g(0.1,0.2),
+        ff(0.1,0.2)
+
+Fun(ff,DuffyTriangle())(0.1,0.2)
+ProductFun(ff, ProductTriangle(0.0,0.5,0.5))
+ff(0.1,0.2)
+
+
+Fun(g,KoornwinderTriangle(0.0,-0.5,-0.5))
+S1
+C = Conversion(S1,S2)
+C = Conversion(S1,KoornwinderTriangle(0.0,0.5,-0.5))
+@which C[1,1]
+@which C[1,1]
+g.coefficients
+x
+r = randn(10)
+x,y =0.1,0.2
+function cfseval(a,b,c,r,x,y)
+    j = 1; ret = 0.0
+    for n=0:length(r),k=0:n
+        ret += r[j]*P(n,k,a,b,c,x,y)
+        j += 1
+        j > length(r) && break
+    end
+    ret
+end
+@testset "Degenerate conversion" begin
+    C = Conversion(KoornwinderTriangle(0.0,-0.5,-0.5),KoornwinderTriangle(0.0,0.5,-0.5))
+    testbandedblockbandedoperator(C)
+    r = randn(10)
+    @test cfseval(0.0,-0.5,-0.5,r,x,y) ≈ cfseval(0.0,0.5,-0.5,[C[k,j] for k=1:10,j=1:10]*r,x,y)
+    @test cfseval(0.0,-0.5,-0.5,r,x,y) ≈ cfseval(0.0,0.5,-0.5,C[1:10,1:10]*r,x,y)
+
+    C = Conversion(KoornwinderTriangle(0.0,-0.5,-0.5),KoornwinderTriangle(0.0,-0.5,0.5))
+    testbandedblockbandedoperator(C)
+    r = randn(10)
+    @test cfseval(0.0,-0.5,-0.5,r,x,y) ≈ cfseval(0.0,-0.5,0.5,[C[k,j] for k=1:10,j=1:10]*r,x,y)
+    @test cfseval(0.0,-0.5,-0.5,r,x,y) ≈ cfseval(0.0,-0.5,0.5,C[1:10,1:10]*r,x,y)
+end
+
+
+
+k,j=1,2
+
+K1=domainspace(C);K2=rangespace(C)
+α,β,γ = K1.α,K1.β,K1.γ
+K = Int(block(K2,k))
+J = Int(block(K1,j))
+κ=k-blockstart(K2,K)+1
+ξ=j-blockstart(K1,J)+1
+T = Float64
+ J == K   && κ == ξ
+ J == K   && κ+1 == ξ
+ J == K+1 && κ == ξ
+if  J == K == κ == ξ == 1
+    one(T)
+elseif   J == K   && κ == ξ
+    T((K+κ+α+β+γ)/(2K+α+β+γ)*(κ+β+γ)/(2κ+β+γ-1))
+elseif J == K   && κ+1 == ξ
+    T(-(κ+γ)/(2κ+β+γ+1)*(K-κ)/(2K+α+β+γ))
+elseif J == K+1 && κ == ξ
+    T(-(K-κ+α+1)/(2K+α+β+γ+2)*(κ+β+γ)/(2κ+β+γ-1))
+elseif J == K+1 && κ+1 == ξ
+    T((κ+γ)/(2κ+β+γ+1)*(K+κ+β+γ+1)/(2K+α+β+γ+2))
+else
+    zero(T)
+end
+(2K+α+β+γ+2)
+-(K-κ+α+1)/(2K+α+β+γ+2)*(κ+β+γ)/(2κ+β+γ-1)
+(K-κ+α+1)
+(κ+β+γ)
+(2κ+β+γ-1)
+
+Fun(Fun(pad(ProductFun(ff, ProductTriangle(0.0,0.5,0.5)),20,20)),
+
+ProductFun(ff, ProductTriangle(0.0,-0.5,-0.5))
+p = ProductFun(ff, ProductTriangle(1,1,1))
+
+@which Fun(p)
+g = Fun(pad(ProductFun(ff, ProductTriangle(1,1,1)),20,20))
+g(0.1,0.2)
+ff(0.1,0.2)
+P(1,1,0,0,0,0.99999,0.0)
+
+P = (n,k,a,b,c,x,y) -> x == 1.0 ? ((1-x))^k*jacobip(n-k,2k+b+c+1,a,1.0)*jacobip(k,c,b,-1.0) :
+        ((1-x))^k*jacobip(n-k,2k+b+c+1,a,2x-1)*jacobip(k,c,b,2y/(1-x)-1)
+
+
+P = (ℓ,m,a,b,c,x,y) -> x == 1.0 ? (2*(1-x))^m*njacobip(ℓ-m,2m+b+c+1,a,1.0)*njacobip(m,c,b,-1.0) :
+        (2*(1-x))^m*njacobip(ℓ-m,2m+b+c+1,a,2x-1)*njacobip(m,c,b,2y/(1-x)-1)
+
+
+
+Lowering{2}(S₂)*Conversion(S,S₂)*ff
+
+0.1*ff(0.1,0.2)
+
+
 jacobinorm(n,a,b) = if n ≠ 0
         sqrt((2n+a+b+1))*exp((lgamma(n+a+b+1)+lgamma(n+1)-log(2)*(a+b+1)-lgamma(n+a+1)-lgamma(n+b+1))/2)
     else
@@ -201,16 +345,6 @@ end
     @test (Jx*f)(x,y) ≈ x*f(x,y)
     @test (Jy*f)(x,y) ≈ y*f(x,y)
 end
-
-
-
-d = Triangle(Vec(0,0),Vec(3,4),Vec(1,6))
-f = Fun((x,y)->exp(x*cos(y)),KoornwinderTriangle(1,1,1,d))
-Jx,Jy = MultivariateOrthogonalPolynomials.jacobioperators(space(f))
-x,y = fromcanonical(d,0.1,0.2)
-
-Jx
-
 
 @testset "Triangle Conversion" begin
     C = Conversion(KoornwinderTriangle(0,0,0),KoornwinderTriangle(1,0,0))

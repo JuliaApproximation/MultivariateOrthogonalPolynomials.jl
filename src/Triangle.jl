@@ -459,7 +459,6 @@ subblockbandinds(C::ConcreteConversion{KoornwinderTriangle,KoornwinderTriangle},
 
 
 function getindex(C::ConcreteConversion{KoornwinderTriangle,KoornwinderTriangle,T},k::Integer,j::Integer) where T
-    k == j == 1 && return one(T) # avoid NaN
     K1=domainspace(C);K2=rangespace(C)
     α,β,γ = K1.α,K1.β,K1.γ
     K = Int(block(K2,k))
@@ -476,14 +475,22 @@ function getindex(C::ConcreteConversion{KoornwinderTriangle,KoornwinderTriangle,
             zero(T)
         end
     elseif K2.α==α && K2.β==β+1 && K2.γ==γ
-        if     J == K   && κ == ξ
-            (β+γ == -1) && return T((K+κ+α+β+γ)/(2*(2K+α+β+γ)))
-            T((K+κ+α+β+γ)/(2K+α+β+γ)*(κ+β+γ)/(2κ+β+γ-1))
+        if  J == K == κ == ξ == 1
+            one(T)
+        elseif   J == K   && κ == ξ
+            if β+γ == -1 && κ == 1
+                T((K+κ+α+β+γ)/(2K+α+β+γ))
+            else
+                T((K+κ+α+β+γ)/(2K+α+β+γ)*(κ+β+γ)/(2κ+β+γ-1))
+            end
         elseif J == K   && κ+1 == ξ
             T(-(κ+γ)/(2κ+β+γ+1)*(K-κ)/(2K+α+β+γ))
         elseif J == K+1 && κ == ξ
-            (β+γ == -1) && return T(-(K-κ+α+1)/(2*(2K+α+β+γ+2)))
-            T(-(K-κ+α+1)/(2K+α+β+γ+2)*(κ+β+γ)/(2κ+β+γ-1))
+            if β+γ == -1 && κ == 1
+                T(-(K-κ+α+1)/(2K+α+β+γ+2))
+            else
+                T(-(K-κ+α+1)/(2K+α+β+γ+2)*(κ+β+γ)/(2κ+β+γ-1))
+            end
         elseif J == K+1 && κ+1 == ξ
             T((κ+γ)/(2κ+β+γ+1)*(K+κ+β+γ+1)/(2K+α+β+γ+2))
         else
@@ -491,13 +498,19 @@ function getindex(C::ConcreteConversion{KoornwinderTriangle,KoornwinderTriangle,
         end
     elseif K2.α==α && K2.β==β && K2.γ==γ+1
         if K == J && κ == ξ
-            (β+γ == -1) && return T((K+κ+α+β+γ)/(2*(2K+α+β+γ)))
-            T((K+κ+α+β+γ)/(2K+α+β+γ)*(κ+β+γ)/(2κ+β+γ-1))
+            if β+γ == -1 && κ == 1
+                T((K+κ+α+β+γ)/(2K+α+β+γ))
+            else
+                T((K+κ+α+β+γ)/(2K+α+β+γ)*(κ+β+γ)/(2κ+β+γ-1))
+            end
         elseif K == J && κ+1 == ξ
             T((κ+β)/(2κ+β+γ+1)*(K-κ)/(2K+α+β+γ))
         elseif J == K+1 && κ == ξ
-            (β+γ == -1) && return T(-(K-κ+α+1)/(2*(2K+α+β+γ+2)))
-             T(-(K-κ+α+1)/(2K+α+β+γ+2)*(κ+β+γ)/(2κ+β+γ-1))
+            if β+γ == -1 && κ == 1
+                T(-(K-κ+α+1)/(2K+α+β+γ+2))
+            else
+                T(-(K-κ+α+1)/(2K+α+β+γ+2)*(κ+β+γ)/(2κ+β+γ-1))
+            end
         elseif J == K+1 && κ+1 == ξ
             T(-(κ+β)/(2κ+β+γ+1)*(K+κ+β+γ+1)/(2K+α+β+γ+2))
         else
@@ -525,12 +538,8 @@ function Base.convert(::Type{BandedBlockBandedMatrix},S::SubOperator{T,ConcreteC
             if 1 ≤ Int(JJ) ≤ M
                 bl = view(ret,KK,JJ)
                 J = size(bl,2)
-                if J == 1
-                    bl[1,1] = 1 # avoid NaN
-                else
-                    @inbounds for ξ=1:J
-                        bl[ξ,ξ] = (J+ξ+α+β+γ)/(2J+α+β+γ)
-                    end
+                @inbounds for ξ=1:J
+                    bl[ξ,ξ] = (J+ξ+α+β+γ)/(2J+α+β+γ)
                 end
             end
             JJ = KK+K_sh-J_sh+1  # super-diagonal
@@ -548,23 +557,25 @@ function Base.convert(::Type{BandedBlockBandedMatrix},S::SubOperator{T,ConcreteC
             if 1 ≤ Int(J) ≤ M
                 bl = view(ret,KK,J)
                 K = size(bl,1)
-                s=2K+α+β+γ
-                @inbounds for κ=1:K
-                    bl[κ,κ] = (K+κ+α+β+γ)/(2s)
+                s = (2K+α+β+γ)
+                bl[1,1] = (K+1+α+β+γ)/s
+                @inbounds for κ=2:K
+                    bl[κ,κ] = (K+κ+α+β+γ)/s*(κ+β+γ)/(2κ+β+γ-1)
                 end
                 @inbounds for κ=1:K-1
-                    bl[κ,κ+1] = -(κ+γ)/(2κ+β+γ+1)*(K-κ)/s
+                    bl[κ,κ+1] = -(κ+γ)/(2κ+β+γ+1)*(K-κ)/(2K+α+β+γ)
                 end
             end
             J = KK+K_sh-J_sh+1  # super-diagonal
             if 1 ≤ Int(J) ≤ M
                 bl = view(ret,KK,J)
                 K = size(bl,1)
-                s=T(2K+α+β+γ+2)
-
+                bl[1,1] = -(K-1+α+1)/(2K+α+β+γ+2)
+                @inbounds for κ=2:K
+                    bl[κ,κ] = -(K-κ+α+1)/(2K+α+β+γ+2)*(κ+β+γ)/(2κ+β+γ-1)
+                end
                 @inbounds for κ=1:K
-                    bl[κ,κ] = -(K-κ+α+1)/(2s)
-                    bl[κ,κ+1] = (κ+γ)/(2κ+β+γ+1)*(K+κ+β+γ+1)/s
+                    bl[κ,κ+1] = (κ+γ)/(2κ+β+γ+1)*(K+κ+β+γ+1)/(2K+α+β+γ+2)
                 end
             end
         end
@@ -574,8 +585,9 @@ function Base.convert(::Type{BandedBlockBandedMatrix},S::SubOperator{T,ConcreteC
             if 1 ≤ Int(J) ≤ M
                 bl = view(ret,KK,J)
                 K = size(bl,1)
+                s = (2K+α+β+γ)
                 @inbounds for κ=1:K
-                    bl[κ,κ] = (K+κ+α+β+γ)/(2K+α+β+γ)*(κ+β+γ)/(2κ+β+γ-1)
+                    bl[κ,κ] = (K+κ+α+β+γ)/s*(κ+β+γ)/(2κ+β+γ-1)
                 end
                 @inbounds for κ=1:K-1
                     bl[κ,κ+1] = -(κ+γ)/(2κ+β+γ+1)*(K-κ)/(2K+α+β+γ)
@@ -592,14 +604,15 @@ function Base.convert(::Type{BandedBlockBandedMatrix},S::SubOperator{T,ConcreteC
             end
         end
     elseif K2.α==α && K2.β==β && K2.γ==γ+1  && β+γ==-1
-        for KK=Block.(1:N)
+        for KK = Block.(1:N)
             J = KK+K_sh-J_sh  # diagonal
             if 1 ≤ Int(J) ≤ M
                 bl = view(ret,KK,J)
                 K = size(bl,1)
-                s=2K+α+β+γ
-                @inbounds for κ=1:K
-                    bl[κ,κ] = (K+κ+α+β+γ)/(2s)
+                s = (2K+α+β+γ)
+                bl[1,1] = (K+1+α+β+γ)/s
+                @inbounds for κ=2:K
+                    bl[κ,κ] = (K+κ+α+β+γ)/s*(κ+β+γ)/(2κ+β+γ-1)
                 end
                 @inbounds for κ=1:K-1
                    bl[κ,κ+1] = (κ+β)/(2κ+β+γ+1)*(K-κ)/s
@@ -609,9 +622,12 @@ function Base.convert(::Type{BandedBlockBandedMatrix},S::SubOperator{T,ConcreteC
             if 1 ≤ Int(J) ≤ M
                 bl = view(ret,KK,J)
                 K = size(bl,1)
-                s=2K+α+β+γ+2
+                s = (2K+α+β+γ+2)
+                bl[1,1] = -(K+α)/s
+                @inbounds for κ=2:K
+                    bl[κ,κ] = -(K-κ+α+1)/s*(κ+β+γ)/(2κ+β+γ-1)
+                end
                 @inbounds for κ=1:K
-                    bl[κ,κ] = -(K-κ+α+1)/(2s)
                     bl[κ,κ+1] = -(κ+β)/(2κ+β+γ+1)*(K+κ+β+γ+1)/s
                 end
             end
@@ -672,11 +688,11 @@ subblockbandinds(::Lowering{3,KoornwinderTriangle},k::Integer) = k==1 ? -1 : 0
 
 
 rangespace(R::Lowering{1,KoornwinderTriangle}) =
-    KoornwinderTriangle(R.space.α-1,R.space.β,R.space.γ)
+    KoornwinderTriangle(R.space.α-1,R.space.β,R.space.γ,domain(domainspace(R)))
 rangespace(R::Lowering{2,KoornwinderTriangle}) =
-    KoornwinderTriangle(R.space.α,R.space.β-1,R.space.γ)
+    KoornwinderTriangle(R.space.α,R.space.β-1,R.space.γ,domain(domainspace(R)))
 rangespace(R::Lowering{3,KoornwinderTriangle}) =
-    KoornwinderTriangle(R.space.α,R.space.β,R.space.γ-1)
+    KoornwinderTriangle(R.space.α,R.space.β,R.space.γ-1,domain(domainspace(R)))
 
 
 function getindex{T}(R::Lowering{1,KoornwinderTriangle,T},k::Integer,j::Integer)
