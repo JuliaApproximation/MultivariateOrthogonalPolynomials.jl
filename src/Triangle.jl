@@ -88,8 +88,8 @@ end
 
 KoornwinderTriangle() = KoornwinderTriangle(0,0,0)
 
-points(K::KoornwinderTriangle,n::Integer) =
-    map(Vec,map(vec,points(ProductTriangle(K),round(Int,sqrt(n)),round(Int,sqrt(n))))...)
+points(K::KoornwinderTriangle, n::Integer) =
+    points(DuffyTriangle(), n)
 
 points(K::Triangle,n::Integer) = points(KoornwinderTriangle(0,0,0,K),n)
 
@@ -115,6 +115,93 @@ end
 
 
 Space(T::Triangle) = KoornwinderTriangle(T)
+
+# Use DuffyMap with
+
+struct DuffyTriangle{S,T} <: Space{Triangle,T}
+    space::S
+    domain::Triangle
+    function DuffyTriangle{S,T}(s::S, d::Triangle) where {S,T}
+        @assert domain(s) == Interval(0,1)^2
+        new{S,T}(s, d)
+    end
+end
+
+DuffyTriangle(s::S, d) where S = DuffyTriangle{S,ApproxFun.rangetype(S)}(s, d)
+DuffyTriangle() = DuffyTriangle(Chebyshev(0..1)^2, Triangle())
+DuffyTriangle(d::Triangle) = DuffyTriangle(Chebyshev()^2, d)
+
+function points(S::DuffyTriangle, N)
+    pts = points(S.space, N)
+    fromcanonical.(S.domain, iduffy.(pts))
+end
+
+plan_transform(S::DuffyTriangle, n::Integer) = TransformPlan(S, plan_transform(S.space,n), Val{false})
+plan_transform(S::DuffyTriangle, n::AbstractVector) = TransformPlan(S, plan_transform(S.space,n), Val{false})
+
+evaluate(cfs::AbstractVector, S::DuffyTriangle, x) = evaluate(cfs, S.space, duffy(tocanonical(S.domain,x)))
+
+jacobinorm(n,a,b) = if n ≠ 0
+        sqrt((2n+a+b+1))*exp((lgamma(n+a+b+1)+lgamma(n+1)-log(2)*(a+b+1)-lgamma(n+a+1)-lgamma(n+b+1))/2)
+    else
+        sqrt(exp(lgamma(a+b+2)-log(2)*(a+b+1)-lgamma(a+1)-lgamma(b+1)))
+    end
+
+function tridenormalize!(F̌)
+    for n = 0:size(F̌,1)-1, k = 0:n
+        F̌[n-k+1,k+1] *= 2^k*jacobinorm(n-k,2k,0)jacobinorm(k,-0.5,-0.5)
+    end
+    F̌
+end
+
+function trivec(F̌)
+    N = size(F̌,1)
+    v = Array{eltype(F̌)}(N*(N+1) ÷2)
+    j = 1
+    for n=0:N-1, k=0:n
+        v[j] = F̌[n-k+1,k+1]
+        j += 1
+    end
+    v
+end
+
+function tridevec_trans(v::AbstractVector{T}) where T
+    N = floor(Integer,sqrt(2length(v)) + 1/2)
+    ret = zeros(T, N, N)
+    j = 1
+    for n=1:N,k=1:n
+        ret[k,n-k+1] = v[j]
+        j += 1
+    end
+    ret
+end
+
+struct KoornwinderTriangleTransformPlan{DUF,CHEB}
+    duffyplan::DUF
+    tri2cheb::CHEB
+end
+
+KoornwinderTriangleTransformPlan(v::AbstractVector, V::AbstractMatrix) =
+    KoornwinderTriangleTransformPlan(plan_transform(DuffyTriangle(), v),
+                                     plan_tri2cheb(V,0.0,-0.5,-0.5))
+
+function KoornwinderTriangleTransformPlan(v::AbstractVector{T}) where T
+    n = floor(Integer,sqrt(2length(v)) + 1/2)
+    KoornwinderTriangleTransformPlan(v, Array{T}(undef,n,n))
+end
+
+
+function plan_transform(K::KoornwinderTriangle, v)
+    @assert K.α == 0 && K.β == K.γ == -0.5
+    KoornwinderTriangleTransformPlan(v)
+end
+
+function *(P::KoornwinderTriangleTransformPlan, v)
+    v̂ = P.duffyplan*v
+    F = tridevec_trans(v̂)
+    F̌ = P.tri2cheb \ F
+    trivec(tridenormalize!(F̌))
+end
 
 
 # TODO: @tensorspace
@@ -146,8 +233,8 @@ Base.sum{KT<:KoornwinderTriangle}(f::Fun{KT}) =
 
 # convert coefficients
 
-Fun(f::Function, S::KoornwinderTriangle) = Fun(Fun(ProductFun(f,ProductTriangle(S))),S)
-Fun(f::Fun, S::KoornwinderTriangle) = Fun(S,coefficients(f,S))
+# Fun(f::Function, S::KoornwinderTriangle) = Fun(Fun(ProductFun(f,ProductTriangle(S))),S)
+# Fun(f::Fun, S::KoornwinderTriangle) = Fun(S,coefficients(f,S))
 
 
 struct KoornwinderTriangleITransformPlan{PE,PT}
