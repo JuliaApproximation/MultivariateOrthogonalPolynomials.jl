@@ -1,7 +1,7 @@
 using StaticArrays, Plots, BandedMatrices, FastTransforms,
         ApproxFun, MultivariateOrthogonalPolynomials, Compat.Test
-    import MultivariateOrthogonalPolynomials: Lowering, ProductTriangle, clenshaw, block, TriangleWeight,plan_evaluate, weight
-    import ApproxFun: testbandedblockbandedoperator, Block, BandedBlockBandedMatrix, blockcolrange, blocksize, Vec
+    import MultivariateOrthogonalPolynomials: Lowering, ProductTriangle, DuffyTriangle, clenshaw, block, TriangleWeight,plan_evaluate, weight
+    import ApproxFun: testbandedblockbandedoperator, Block, BandedBlockBandedMatrix, blockcolrange, blocksize, Vec, jacobip
 
 
 @testset "Triangle domain" begin
@@ -21,7 +21,6 @@ end
 
 let P = (n,k,a,b,c,x,y) -> x == 1.0 ? ((1-x))^k*jacobip(n-k,2k+b+c+1,a,1.0)*jacobip(k,c,b,-1.0) :
         ((1-x))^k*jacobip(n-k,2k+b+c+1,a,2x-1)*jacobip(k,c,b,2y/(1-x)-1)
-
     function cfseval(a,b,c,r,x,y)
         j = 1; ret = 0.0
         for n=0:length(r),k=0:n
@@ -31,12 +30,11 @@ let P = (n,k,a,b,c,x,y) -> x == 1.0 ? ((1-x))^k*jacobip(n-k,2k+b+c+1,a,1.0)*jaco
         end
         ret
     end
-
-
     @testset "Degenerate conversion" begin
         C = Conversion(KoornwinderTriangle(0.0,-0.5,-0.5),KoornwinderTriangle(0.0,0.5,-0.5))
         testbandedblockbandedoperator(C)
         r = randn(10)
+        x,y = 0.1, 0.2
         @test cfseval(0.0,-0.5,-0.5,r,x,y) ≈ cfseval(0.0,0.5,-0.5,[C[k,j] for k=1:10,j=1:10]*r,x,y)
         @test cfseval(0.0,-0.5,-0.5,r,x,y) ≈ cfseval(0.0,0.5,-0.5,C[1:10,1:10]*r,x,y)
 
@@ -47,6 +45,51 @@ let P = (n,k,a,b,c,x,y) -> x == 1.0 ? ((1-x))^k*jacobip(n-k,2k+b+c+1,a,1.0)*jaco
         @test cfseval(0.0,-0.5,-0.5,r,x,y) ≈ cfseval(0.0,-0.5,0.5,C[1:10,1:10]*r,x,y)
     end
 end
+
+P = (n,k,a,b,c,x,y) -> x == 1.0 ? ((1-x))^k*jacobip(n-k,2k+b+c+1,a,1.0)*jacobip(k,c,b,-1.0) :
+        ((1-x))^k*jacobip(n-k,2k+b+c+1,a,2x-1)*jacobip(k,c,b,2y/(1-x)-1)
+
+using SO
+f = Fun((x,y) -> P(0,0,0.,0.,0.,x,y), KoornwinderTriangle(0.,0.5,-0.5) )
+
+@time f = Fun((x,y) -> cos(10x*y), KoornwinderTriangle(0.,0.5,-0.5) )
+    f(0.1,0.2) ≈ cos(10*0.1*0.2)
+
+
+
+cjt
+
+@time f = Fun((x,y)->cos(100x*y),KoornwinderTriangle(0.0,-0.5,-0.5)); # 1.15s
+@time f = Fun((x,y)->cos(500x*y),KoornwinderTriangle(0.0,-0.5,-0.5),40_000); # 0.2
+@test f(0.1,0.2) ≈ cos(500*0.1*0.2)
+
+@time f = Fun((x,y)->cos(100x*y),KoornwinderTriangle(0.0,0.5,-0.5)); # 1.15s
+@time f = Fun((x,y)->cos(500x*y),KoornwinderTriangle(0.0,0.5,-0.5),40_000); # 0.2
+@test f(0.1,0.2) ≈ cos(500*0.1*0.2)
+
+f = Fun((x,y)->cos(100x*y),KoornwinderTriangle(0.0,0.5,0.5)); # 1.15s
+f = Fun((x,y)->cos(500x*y),KoornwinderTriangle(0.0,0.5,0.5),40_000); # 0.2
+@test f(0.1,0.2) ≈ cos(500*0.1*0.2)
+
+f = Fun((x,y)->cos(100x*y),KoornwinderTriangle(0.0,-0.5,0.5)); # 1.15s
+f = Fun((x,y)->cos(500x*y),KoornwinderTriangle(0.0,-0.5,0.5),40_000); # 0.2
+@test f(0.1,0.2) ≈ cos(500*0.1*0.2)
+
+C = Conversion(KoornwinderTriangle(0.,-0.5,-0.5),KoornwinderTriangle(0.,0.5,0.5))
+
+n = 500
+    M = C[Block.(1:n),Block.(1:n)]
+    @time M*randn(size(M,2))
+using Atom
+A,b = (C.op.op.ops[end], randn(10000))
+    @time A_mul_B_coefficients(A,b);
+n = size(b,1)
+@which A_mul_B_coefficients(view(A,FiniteRange,1:n),b)
+
+@which convert(AbstractMatrix,view(A,FiniteRange,1:n))
+
+arraytype(view(A,FiniteRange,1:n))
+Profile.print()
 
 @testset "ProductTriangle constructors" begin
     S = ProductTriangle(1,1,1)
@@ -71,7 +114,18 @@ end
 @testset "KoornwinderTriangle constructors" begin
     f = Fun((x,y)->cos(100x*y),KoornwinderTriangle(0.0,-0.5,-0.5)); # 1.15s
     f = Fun((x,y)->cos(500x*y),KoornwinderTriangle(0.0,-0.5,-0.5),40_000); # 0.2
+    @test f(0.1,0.2) ≈ cos(500*0.1*0.2)
 
+    f = Fun((x,y)->cos(100x*y),KoornwinderTriangle(0.0,0.5,-0.5)); # 1.15s
+    f = Fun((x,y)->cos(500x*y),KoornwinderTriangle(0.0,0.5,-0.5),40_000); # 0.2
+    @test f(0.1,0.2) ≈ cos(500*0.1*0.2)
+
+    f = Fun((x,y)->cos(100x*y),KoornwinderTriangle(0.0,0.5,0.5)); # 1.15s
+    f = Fun((x,y)->cos(500x*y),KoornwinderTriangle(0.0,0.5,0.5),40_000); # 0.2
+    @test f(0.1,0.2) ≈ cos(500*0.1*0.2)
+
+    f = Fun((x,y)->cos(100x*y),KoornwinderTriangle(0.0,-0.5,0.5)); # 1.15s
+    f = Fun((x,y)->cos(500x*y),KoornwinderTriangle(0.0,-0.5,0.5),40_000); # 0.2
     @test f(0.1,0.2) ≈ cos(500*0.1*0.2)
 
     f = Fun((x,y)->exp(x*cos(y)),KoornwinderTriangle(1,1,1))

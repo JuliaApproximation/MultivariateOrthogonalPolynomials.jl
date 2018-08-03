@@ -139,6 +139,8 @@ end
 plan_transform(S::DuffyTriangle, n::Integer) = TransformPlan(S, plan_transform(S.space,n), Val{false})
 plan_transform(S::DuffyTriangle, n::AbstractVector) = TransformPlan(S, plan_transform(S.space,n), Val{false})
 
+*(P::TransformPlan{<:Any,<:DuffyTriangle}, v::AbstractArray) = P.plan*v
+
 evaluate(cfs::AbstractVector, S::DuffyTriangle, x) = evaluate(cfs, S.space, duffy(tocanonical(S.domain,x)))
 
 jacobinorm(n,a,b) = if n ≠ 0
@@ -176,32 +178,50 @@ function tridevec_trans(v::AbstractVector{T}) where T
     ret
 end
 
-struct KoornwinderTriangleTransformPlan{DUF,CHEB}
+struct FastKoornwinderTriangleTransformPlan{DUF,CHEB}
     duffyplan::DUF
     tri2cheb::CHEB
 end
 
-KoornwinderTriangleTransformPlan(v::AbstractVector, V::AbstractMatrix) =
-    KoornwinderTriangleTransformPlan(plan_transform(DuffyTriangle(), v),
+FastKoornwinderTriangleTransformPlan(v::AbstractVector, V::AbstractMatrix) =
+    FastKoornwinderTriangleTransformPlan(plan_transform(DuffyTriangle(), v),
                                      plan_tri2cheb(V,0.0,-0.5,-0.5))
 
-function KoornwinderTriangleTransformPlan(v::AbstractVector{T}) where T
+function FastKoornwinderTriangleTransformPlan(v::AbstractVector{T}) where T
     n = floor(Integer,sqrt(2length(v)) + 1/2)
-    KoornwinderTriangleTransformPlan(v, Array{T}(undef,n,n))
+    FastKoornwinderTriangleTransformPlan(v, Array{T}(undef,n,n))
 end
 
-
-function plan_transform(K::KoornwinderTriangle, v)
-    @assert K.α == 0 && K.β == K.γ == -0.5
-    KoornwinderTriangleTransformPlan(v)
-end
-
-function *(P::KoornwinderTriangleTransformPlan, v)
+function *(P::FastKoornwinderTriangleTransformPlan, v)
     v̂ = P.duffyplan*v
     F = tridevec_trans(v̂)
     F̌ = P.tri2cheb \ F
     trivec(tridenormalize!(F̌))
 end
+
+struct ShiftKoornwinderTriangleTransformPlan{FAST,CC}
+    fastplan::FAST
+    conversion::CC
+end
+
+
+ShiftKoornwinderTriangleTransformPlan(S::KoornwinderTriangle, v::AbstractVector) =
+    ShiftKoornwinderTriangleTransformPlan(FastKoornwinderTriangleTransformPlan(v),
+                                            cache(Conversion(KoornwinderTriangle(0.0,-0.5,-0.5,domain(S)),S)))
+
+
+*(P::ShiftKoornwinderTriangleTransformPlan, v) = A_mul_B_coefficients(P.conversion,P.fastplan*v)
+
+function plan_transform(K::KoornwinderTriangle, v)
+    if K.α == 0 && K.β == K.γ == -0.5
+        FastKoornwinderTriangleTransformPlan(v)
+    elseif isapproxinteger(K.α) && isapproxinteger(K.β+0.5) &&  isapproxinteger(K.γ+0.5)
+        ShiftKoornwinderTriangleTransformPlan(K, v)
+    else
+        KoornwinderTriangleTransformPlan(v)
+    end
+end
+
 
 
 # TODO: @tensorspace
