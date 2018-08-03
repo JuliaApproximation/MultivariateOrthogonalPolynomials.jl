@@ -49,13 +49,12 @@ end
 P = (n,k,a,b,c,x,y) -> x == 1.0 ? ((1-x))^k*jacobip(n-k,2k+b+c+1,a,1.0)*jacobip(k,c,b,-1.0) :
         ((1-x))^k*jacobip(n-k,2k+b+c+1,a,2x-1)*jacobip(k,c,b,2y/(1-x)-1)
 
-using SO
 f = Fun((x,y) -> P(0,0,0.,0.,0.,x,y), KoornwinderTriangle(0.,0.5,-0.5) )
 
-@time f = Fun((x,y) -> cos(10x*y), KoornwinderTriangle(0.,0.5,-0.5) )
-    f(0.1,0.2) ≈ cos(10*0.1*0.2)
+@time f = Fun((x,y) -> cos(500x*y), KoornwinderTriangle(0.,0.5,-0.5) )
+    f(0.1,0.2) , cos(500*0.1*0.2)
 
-
+ncoefficients(f)
 
 cjt
 
@@ -77,19 +76,10 @@ f = Fun((x,y)->cos(500x*y),KoornwinderTriangle(0.0,-0.5,0.5),40_000); # 0.2
 
 C = Conversion(KoornwinderTriangle(0.,-0.5,-0.5),KoornwinderTriangle(0.,0.5,0.5))
 
-n = 500
-    M = C[Block.(1:n),Block.(1:n)]
-    @time M*randn(size(M,2))
-using Atom
-A,b = (C.op.op.ops[end], randn(10000))
-    @time A_mul_B_coefficients(A,b);
-n = size(b,1)
-@which A_mul_B_coefficients(view(A,FiniteRange,1:n),b)
+C = Conversion(KoornwinderTriangle(0.0,-0.5,-0.5),KoornwinderTriangle(0.0,-0.5,0.5))
 
-@which convert(AbstractMatrix,view(A,FiniteRange,1:n))
+C[Block.(1:5),Block.(1:5)]
 
-arraytype(view(A,FiniteRange,1:n))
-Profile.print()
 
 @testset "ProductTriangle constructors" begin
     S = ProductTriangle(1,1,1)
@@ -112,12 +102,12 @@ Profile.print()
 end
 
 @testset "KoornwinderTriangle constructors" begin
-    f = Fun((x,y)->cos(100x*y),KoornwinderTriangle(0.0,-0.5,-0.5)); # 1.15s
-    f = Fun((x,y)->cos(500x*y),KoornwinderTriangle(0.0,-0.5,-0.5),40_000); # 0.2
+    @time f = Fun((x,y)->cos(100x*y),KoornwinderTriangle(0.0,-0.5,-0.5)); # 0.08s
+    @time f = Fun((x,y)->cos(500x*y),KoornwinderTriangle(0.0,-0.5,-0.5),40_000); # 0.2
     @test f(0.1,0.2) ≈ cos(500*0.1*0.2)
 
-    f = Fun((x,y)->cos(100x*y),KoornwinderTriangle(0.0,0.5,-0.5)); # 1.15s
-    f = Fun((x,y)->cos(500x*y),KoornwinderTriangle(0.0,0.5,-0.5),40_000); # 0.2
+    @time f = Fun((x,y)->cos(100x*y),KoornwinderTriangle(0.0,0.5,-0.5)); # 0.08s
+    @time f = Fun((x,y)->cos(500x*y),KoornwinderTriangle(0.0,0.5,-0.5),40_000); # 0.2
     @test f(0.1,0.2) ≈ cos(500*0.1*0.2)
 
     f = Fun((x,y)->cos(100x*y),KoornwinderTriangle(0.0,0.5,0.5)); # 1.15s
@@ -128,6 +118,14 @@ end
     f = Fun((x,y)->cos(500x*y),KoornwinderTriangle(0.0,-0.5,0.5),40_000); # 0.2
     @test f(0.1,0.2) ≈ cos(500*0.1*0.2)
 
+    d = Triangle(Vec(0,0),Vec(3,4),Vec(1,6))
+    @time f = Fun((x,y)->cos(x*y),KoornwinderTriangle(0.0,-0.5,-0.5,d)); # 0.08s
+    @test f(2,4) ≈ cos(2*4)
+    @time f = Fun((x,y)->cos(x*y),KoornwinderTriangle(0.0,-0.5,0.5,d)); # 0.08s
+    @test f(2,4) ≈ cos(2*4)
+end
+
+@testset "old constructors" begin
     f = Fun((x,y)->exp(x*cos(y)),KoornwinderTriangle(1,1,1))
     @test Fun(f,ProductTriangle(1,1,1))(0.1,0.2) ≈ exp(0.1*cos(0.2))
     f=Fun((x,y)->exp(x*cos(y)),KoornwinderTriangle(0,0,0))

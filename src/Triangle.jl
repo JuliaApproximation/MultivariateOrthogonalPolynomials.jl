@@ -56,7 +56,8 @@ iduffy(st::Vec) = Vec(st[1],(1-st[1])*st[2])
 iduffy(s,t) = Vec(s,(1-s)*t)
 duffy(xy::Vec) = Vec(xy[1],xy[1]==1 ? zero(eltype(xy)) : xy[2]/(1-xy[1]))
 duffy(x::T,y::T) where T = Vec(x,x == 1 ? zero(Y) : y/(1-x))
-checkpoints(d::Triangle) = [iduffy(Vec(.1,.2243)),iduffy(Vec(0.212423,0.3))]
+checkpoints(d::Triangle) = [fromcanonical(d,iduffy(Vec(.1,.2243))),
+                            fromcanonical(d,iduffy(Vec(0.212423,0.3)))]
 
 ∂(d::Triangle) = PiecewiseSegment([d.a,d.b,d.c,d.a])
 
@@ -89,7 +90,7 @@ end
 KoornwinderTriangle() = KoornwinderTriangle(0,0,0)
 
 points(K::KoornwinderTriangle, n::Integer) =
-    points(DuffyTriangle(), n)
+    fromcanonical.(Ref(K), points(DuffyTriangle(), n))
 
 points(K::Triangle,n::Integer) = points(KoornwinderTriangle(0,0,0,K),n)
 
@@ -205,12 +206,15 @@ struct ShiftKoornwinderTriangleTransformPlan{FAST,CC}
 end
 
 
-ShiftKoornwinderTriangleTransformPlan(S::KoornwinderTriangle, v::AbstractVector) =
+function ShiftKoornwinderTriangleTransformPlan(S::KoornwinderTriangle, v::AbstractVector)
+    n = floor(Integer,sqrt(2length(v)) + 1/2)
+    C = Conversion(KoornwinderTriangle(0.0,-0.5,-0.5,domain(S)),S)
     ShiftKoornwinderTriangleTransformPlan(FastKoornwinderTriangleTransformPlan(v),
-                                            cache(Conversion(KoornwinderTriangle(0.0,-0.5,-0.5,domain(S)),S)))
+                                            C[Block.(1:n),Block.(1:n)])
+end
 
 
-*(P::ShiftKoornwinderTriangleTransformPlan, v) = A_mul_B_coefficients(P.conversion,P.fastplan*v)
+*(P::ShiftKoornwinderTriangleTransformPlan, v) = P.conversion*(P.fastplan*v)
 
 function plan_transform(K::KoornwinderTriangle, v)
     if K.α == 0 && K.β == K.γ == -0.5
