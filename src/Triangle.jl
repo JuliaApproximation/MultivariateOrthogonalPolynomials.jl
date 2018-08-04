@@ -137,10 +137,12 @@ function points(S::DuffyTriangle, N)
     fromcanonical.(S.domain, iduffy.(pts))
 end
 
-plan_transform(S::DuffyTriangle, n::Integer) = TransformPlan(S, plan_transform(S.space,n), Val{false})
 plan_transform(S::DuffyTriangle, n::AbstractVector) = TransformPlan(S, plan_transform(S.space,n), Val{false})
+plan_itransform(S::DuffyTriangle, n::AbstractVector) = ITransformPlan(S, plan_itransform(S.space,n), Val{false})
+
 
 *(P::TransformPlan{<:Any,<:DuffyTriangle}, v::AbstractArray) = P.plan*v
+*(P::ITransformPlan{<:Any,<:DuffyTriangle}, v::AbstractArray) = P.plan*v
 
 evaluate(cfs::AbstractVector, S::DuffyTriangle, x) = evaluate(cfs, S.space, duffy(tocanonical(S.domain,x)))
 
@@ -150,9 +152,19 @@ jacobinorm(n,a,b) = if n ≠ 0
         sqrt(exp(lgamma(a+b+2)-log(2)*(a+b+1)-lgamma(a+1)-lgamma(b+1)))
     end
 
+# 2^k*jacobinorm(n-k,2k,0)jacobinorm(k,-0.5,-0.5)
+trinorm(n,k) = k == 0 ? sqrt((2n+1)) /sqrt(2π) : k*sqrt(2n+1)*exp(lgamma(k)-lgamma(k+0.5))
+
 function tridenormalize!(F̌)
     for n = 0:size(F̌,1)-1, k = 0:n
-        F̌[n-k+1,k+1] *= 2^k*jacobinorm(n-k,2k,0)jacobinorm(k,-0.5,-0.5)
+        F̌[n-k+1,k+1] *=trinorm(n,k)
+    end
+    F̌
+end
+
+function trinormalize!(F̌)
+    for n = 0:size(F̌,1)-1, k = 0:n
+        F̌[n-k+1,k+1] /= trinorm(n,k)
     end
     F̌
 end
@@ -178,6 +190,18 @@ function tridevec_trans(v::AbstractVector{T}) where T
     end
     ret
 end
+
+function tridevec(v::AbstractVector{T}) where T
+    N = floor(Integer,sqrt(2length(v)) + 1/2)
+    ret = zeros(T, N, N)
+    j = 1
+    for n=1:N,k=1:n
+        ret[n-k+1,k] = v[j]
+        j += 1
+    end
+    ret
+end
+
 
 struct FastKoornwinderTriangleTransformPlan{DUF,CHEB}
     duffyplan::DUF
@@ -216,6 +240,31 @@ end
 
 *(P::ShiftKoornwinderTriangleTransformPlan, v) = P.conversion*(P.fastplan*v)
 
+struct FastKoornwinderTriangleITransformPlan{DUF,CHEB}
+    iduffyplan::DUF
+    tri2cheb::CHEB
+end
+
+FastKoornwinderTriangleITransformPlan(v::AbstractVector, V::AbstractMatrix) =
+    FastKoornwinderTriangleITransformPlan(plan_itransform(DuffyTriangle(), v),
+                                     plan_tri2cheb(V,0.0,-0.5,-0.5))
+
+function FastKoornwinderTriangleITransformPlan(v::AbstractVector{T}) where T
+    n = floor(Integer,sqrt(2length(v)) + 1/2)
+    v = pad(v, sum(1:n))
+    FastKoornwinderTriangleITransformPlan(v, Array{T}(undef,n,n))
+end
+
+function *(P::FastKoornwinderTriangleITransformPlan, v)
+    n = floor(Integer,sqrt(2length(v)) + 1/2)
+    v = pad(v, sum(1:n))
+    F̌ = trinormalize!(tridevec(v))
+    F = P.tri2cheb * F̌
+    v̂ = trivec(transpose(F))
+    P.iduffyplan*v̂
+end
+
+
 function plan_transform(K::KoornwinderTriangle, v)
     if K.α == 0 && K.β == K.γ == -0.5
         FastKoornwinderTriangleTransformPlan(v)
@@ -223,6 +272,16 @@ function plan_transform(K::KoornwinderTriangle, v)
         ShiftKoornwinderTriangleTransformPlan(K, v)
     else
         KoornwinderTriangleTransformPlan(v)
+    end
+end
+
+function plan_itransform(K::KoornwinderTriangle, v)
+    if K.α == 0 && K.β == K.γ == -0.5
+        FastKoornwinderTriangleITransformPlan(v)
+    elseif isapproxinteger(K.α) && isapproxinteger(K.β+0.5) &&  isapproxinteger(K.γ+0.5)
+        ShiftKoornwinderTriangleITransformPlan(K, v)
+    else
+        KoornwinderTriangleITransformPlan(v)
     end
 end
 
@@ -260,16 +319,6 @@ Base.sum{KT<:KoornwinderTriangle}(f::Fun{KT}) =
 # Fun(f::Function, S::KoornwinderTriangle) = Fun(Fun(ProductFun(f,ProductTriangle(S))),S)
 # Fun(f::Fun, S::KoornwinderTriangle) = Fun(S,coefficients(f,S))
 
-
-struct KoornwinderTriangleITransformPlan{PE,PT}
-    plan::PE
-    points::PT
-end
-
-*(P::KoornwinderTriangleITransformPlan,cfs::Vector) = P.plan.(P.points)
-
-plan_itransform(S::KoornwinderTriangle,cfs) =
-    KoornwinderTriangleITransformPlan(plan_evaluate(Fun(S,cfs)),points(S,length(cfs)))
 
 function coefficients(f::AbstractVector,K::KoornwinderTriangle,P::ProductTriangle)
     C=totensor(K,f)

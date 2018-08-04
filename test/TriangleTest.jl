@@ -105,6 +105,7 @@ end
     @time f = Fun((x,y)->cos(100x*y),KoornwinderTriangle(0.0,-0.5,-0.5)); # 0.08s
     @time f = Fun((x,y)->cos(500x*y),KoornwinderTriangle(0.0,-0.5,-0.5),40_000); # 0.2
     @test f(0.1,0.2) ≈ cos(500*0.1*0.2)
+    @test values(f) ≈ f.(points(f))
 
     @time f = Fun((x,y)->cos(100x*y),KoornwinderTriangle(0.0,0.5,-0.5)); # 0.08s
     @time f = Fun((x,y)->cos(500x*y),KoornwinderTriangle(0.0,0.5,-0.5),40_000); # 0.2
@@ -124,6 +125,7 @@ end
     @time f = Fun((x,y)->cos(x*y),KoornwinderTriangle(0.0,-0.5,0.5,d)); # 0.08s
     @test f(2,4) ≈ cos(2*4)
 end
+
 
 @testset "old constructors" begin
     f = Fun((x,y)->exp(x*cos(y)),KoornwinderTriangle(1,1,1))
