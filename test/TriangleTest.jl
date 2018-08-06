@@ -1,7 +1,7 @@
 using StaticArrays, Plots, BandedMatrices, FastTransforms,
         ApproxFun, MultivariateOrthogonalPolynomials, Compat.Test
     import MultivariateOrthogonalPolynomials: Lowering, ProductTriangle, DuffyTriangle, clenshaw, block, TriangleWeight,plan_evaluate, weight
-    import ApproxFun: testbandedblockbandedoperator, Block, BandedBlockBandedMatrix, blockcolrange, blocksize, Vec, jacobip
+    import ApproxFun: testbandedblockbandedoperator, Block, BandedBlockBandedMatrix, blockcolrange, blocksize, Vec, jacobip, plan_transform
 
 
 @testset "Triangle domain" begin
@@ -49,10 +49,26 @@ end
 P = (n,k,a,b,c,x,y) -> x == 1.0 ? ((1-x))^k*jacobip(n-k,2k+b+c+1,a,1.0)*jacobip(k,c,b,-1.0) :
         ((1-x))^k*jacobip(n-k,2k+b+c+1,a,2x-1)*jacobip(k,c,b,2y/(1-x)-1)
 
-f = Fun((x,y) -> P(0,0,0.,0.,0.,x,y), KoornwinderTriangle(0.,0.5,-0.5) )
+        # f = Fun((x,y) -> P(0,0,0.,-0.5,-0.5,x,y), KoornwinderTriangle(0.,0.5,-0.5) )
+    b = 0.; c=0.
+    ff = (xy) -> P(3,2,0.,b,c,xy...)
+    S = KoornwinderTriangle(0.,b,c)
+    f = Fun(ff, DuffyTriangle(S))
+    F = tridevec_trans(v̂)
+    F̌ = cheb2tri( F, 0.,-0.5,-0.5)
+p = points(S ,20)
+    v = ff.(p)
+    P = plan_transform(S,v)
+    v̂ = P.duffyplan*v
+    F = tridevec_trans(v̂)
+    F |> chopm
 
+trivec(tridenormalize!(F̌))
+using SO
 @time f = Fun((x,y) -> cos(500x*y), KoornwinderTriangle(0.,0.5,-0.5) )
     f(0.1,0.2) , cos(500*0.1*0.2)
+
+DuffyTriangle
 
 ncoefficients(f)
 

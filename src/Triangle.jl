@@ -130,7 +130,8 @@ end
 
 DuffyTriangle(s::S, d) where S = DuffyTriangle{S,ApproxFun.rangetype(S)}(s, d)
 DuffyTriangle() = DuffyTriangle(Chebyshev(0..1)^2, Triangle())
-DuffyTriangle(d::Triangle) = DuffyTriangle(Chebyshev()^2, d)
+DuffyTriangle(d::Triangle) = DuffyTriangle(Chebyshev(0..1)^2, d)
+DuffyTriangle(S::KoornwinderTriangle) = DuffyTriangle(Chebyshev(0..1)*Jacobi(S.γ,S.β,0..1), domain(S))
 
 function points(S::DuffyTriangle, N)
     pts = points(S.space, N)
@@ -208,13 +209,13 @@ struct FastKoornwinderTriangleTransformPlan{DUF,CHEB}
     tri2cheb::CHEB
 end
 
-FastKoornwinderTriangleTransformPlan(v::AbstractVector, V::AbstractMatrix) =
-    FastKoornwinderTriangleTransformPlan(plan_transform(DuffyTriangle(), v),
+FastKoornwinderTriangleTransformPlan(S::KoornwinderTriangle, v::AbstractVector, V::AbstractMatrix) =
+    FastKoornwinderTriangleTransformPlan(plan_transform(DuffyTriangle(S), v),
                                      plan_tri2cheb(V,0.0,-0.5,-0.5))
 
-function FastKoornwinderTriangleTransformPlan(v::AbstractVector{T}) where T
+function FastKoornwinderTriangleTransformPlan(S::KoornwinderTriangle, v::AbstractVector{T}) where T
     n = floor(Integer,sqrt(2length(v)) + 1/2)
-    FastKoornwinderTriangleTransformPlan(v, Array{T}(undef,n,n))
+    FastKoornwinderTriangleTransformPlan(S, v, Array{T}(undef,n,n))
 end
 
 function *(P::FastKoornwinderTriangleTransformPlan, v)
@@ -266,8 +267,8 @@ end
 
 
 function plan_transform(K::KoornwinderTriangle, v)
-    if K.α == 0 && K.β == K.γ == -0.5
-        FastKoornwinderTriangleTransformPlan(v)
+    if K.α == 0
+        FastKoornwinderTriangleTransformPlan(K, v)
     elseif isapproxinteger(K.α) && isapproxinteger(K.β+0.5) &&  isapproxinteger(K.γ+0.5)
         ShiftKoornwinderTriangleTransformPlan(K, v)
     else
