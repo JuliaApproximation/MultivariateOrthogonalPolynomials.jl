@@ -196,6 +196,7 @@ function tridevec(v::AbstractVector{T}) where T
     ret = zeros(T, N, N)
     j = 1
     for n=1:N,k=1:n
+        j > length(v) && return ret
         ret[n-k+1,k] = v[j]
         j += 1
     end

@@ -46,41 +46,6 @@ let P = (n,k,a,b,c,x,y) -> x == 1.0 ? ((1-x))^k*jacobip(n-k,2k+b+c+1,a,1.0)*jaco
     end
 end
 
-P = (n,k,a,b,c,x,y) -> x == 1.0 ? ((1-x))^k*jacobip(n-k,2k+b+c+1,a,1.0)*jacobip(k,c,b,-1.0) :
-        ((1-x))^k*jacobip(n-k,2k+b+c+1,a,2x-1)*jacobip(k,c,b,2y/(1-x)-1)
-
-f = Fun((x,y) -> P(0,0,0.,0.,0.,x,y), KoornwinderTriangle(0.,0.5,-0.5) )
-
-@time f = Fun((x,y) -> cos(500x*y), KoornwinderTriangle(0.,0.5,-0.5) )
-    f(0.1,0.2) , cos(500*0.1*0.2)
-
-ncoefficients(f)
-
-cjt
-
-@time f = Fun((x,y)->cos(100x*y),KoornwinderTriangle(0.0,-0.5,-0.5)); # 1.15s
-@time f = Fun((x,y)->cos(500x*y),KoornwinderTriangle(0.0,-0.5,-0.5),40_000); # 0.2
-@test f(0.1,0.2) ≈ cos(500*0.1*0.2)
-
-@time f = Fun((x,y)->cos(100x*y),KoornwinderTriangle(0.0,0.5,-0.5)); # 1.15s
-@time f = Fun((x,y)->cos(500x*y),KoornwinderTriangle(0.0,0.5,-0.5),40_000); # 0.2
-@test f(0.1,0.2) ≈ cos(500*0.1*0.2)
-
-f = Fun((x,y)->cos(100x*y),KoornwinderTriangle(0.0,0.5,0.5)); # 1.15s
-f = Fun((x,y)->cos(500x*y),KoornwinderTriangle(0.0,0.5,0.5),40_000); # 0.2
-@test f(0.1,0.2) ≈ cos(500*0.1*0.2)
-
-f = Fun((x,y)->cos(100x*y),KoornwinderTriangle(0.0,-0.5,0.5)); # 1.15s
-f = Fun((x,y)->cos(500x*y),KoornwinderTriangle(0.0,-0.5,0.5),40_000); # 0.2
-@test f(0.1,0.2) ≈ cos(500*0.1*0.2)
-
-C = Conversion(KoornwinderTriangle(0.,-0.5,-0.5),KoornwinderTriangle(0.,0.5,0.5))
-
-C = Conversion(KoornwinderTriangle(0.0,-0.5,-0.5),KoornwinderTriangle(0.0,-0.5,0.5))
-
-C[Block.(1:5),Block.(1:5)]
-
-
 @testset "ProductTriangle constructors" begin
     S = ProductTriangle(1,1,1)
     @test fromcanonical(S, 0,0) == Vec(0,0)
@@ -125,6 +90,53 @@ end
     @time f = Fun((x,y)->cos(x*y),KoornwinderTriangle(0.0,-0.5,0.5,d)); # 0.08s
     @test f(2,4) ≈ cos(2*4)
 end
+
+
+P = (n,k,a,b,c,x,y) -> x == 1.0 ? ((1-x))^k*jacobip(n-k,2k+b+c+1,a,1.0)*jacobip(k,c,b,-1.0) :
+        ((1-x))^k*jacobip(n-k,2k+b+c+1,a,2x-1)*jacobip(k,c,b,2y/(1-x)-1)
+
+f = Fun((x,y) -> P(5,1,0.,0.,0.,x,y), KoornwinderTriangle(0.,-0.5,-0.5) )
+    F = tridevec(f.coefficients)
+    F[:,2] = jjt(F[:,2], 2.0, 0.0, 3.0, 0.0) # correct
+    jjt(F[2,:], -0.5, -0.5, 0.0, 0.0) 
+F
+jjt(F[:,1], 0.0, 0.0, 1.0, 0.0) # correct
+
+
+
+
+
+jjt(jjt(F[:,1], 0.0, -0.5, 0.0, 0.0),0.0,0.0,1.0,0.0)
+
+jac2jac(Fun(Fun(Legendre(),[0,0,1.0]),Jacobi(0.0,0.5)).coefficients,
+    0.0, 0.0, 0.5, 0.0)
+
+jac2jac(Fun(x -> Fun(Jacobi(0.0,0.5),[0,0,1.0])(x),Legendre()).coefficients,
+    0.0, 0.0, 0.5, 0.0)
+
+jjt(Fun(x -> jacobip(2,0.5,0.0,x),Legendre()).coefficients,
+    0.0, 0.0, 0.5, 0.0)
+
+using SO
+Fun(Fun(Jacobi(-0.5,0.0), [0,0,0,0,1.0]), Jacobi(0.0,0.0))
+
+
+Fun(Fun(Jacobi(0.0,-0.5), [0,0,0,0,1.0]), Jacobi(0.0,0.0))
+
+
+v = f.coefficients
+    N = floor(Integer,sqrt(2length(v)) + 1/2)
+    ret = zeros(Float64, N, N)
+    j = 1
+    for n=1:N,k=1:n
+        j > length(v) && return
+        ret[n-k+1,k] = v[j]
+        j += 1
+    end
+    ret
+
+
+v
 
 
 @testset "old constructors" begin

@@ -62,6 +62,8 @@ import ApproxFun: Vec
 
 
 
+include("c_tri2cheb.jl")
+
 include("Triangle.jl")
 include("DirichletTriangle.jl")
 
