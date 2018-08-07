@@ -130,7 +130,8 @@ end
 
 DuffyTriangle(s::S, d) where S = DuffyTriangle{S,ApproxFun.rangetype(S)}(s, d)
 DuffyTriangle() = DuffyTriangle(Chebyshev(0..1)^2, Triangle())
-DuffyTriangle(d::Triangle) = DuffyTriangle(Chebyshev()^2, d)
+DuffyTriangle(d::Triangle) = DuffyTriangle(Chebyshev(0..1)^2, d)
+DuffyTriangle(S::KoornwinderTriangle) = DuffyTriangle(Chebyshev(0..1)*Jacobi(S.γ,S.β,0..1), domain(S))
 
 function points(S::DuffyTriangle, N)
     pts = points(S.space, N)
@@ -153,18 +154,41 @@ jacobinorm(n,a,b) = if n ≠ 0
     end
 
 # 2^k*jacobinorm(n-k,2k,0)jacobinorm(k,-0.5,-0.5)
-trinorm(n,k) = k == 0 ? sqrt((2n+1)) /sqrt(2π) : k*sqrt(2n+1)*exp(lgamma(k)-lgamma(k+0.5))
 
-function tridenormalize!(F̌)
+# 2^k*jacobinorm(n-k,2k+b+c+1,a)jacobinorm(k,c,b)
+# 2^k*jacobinorm(n-k,2k+b+c+1,a)jacobinorm(k,c,b)
+#
+# a,b,c,n,k=0.1,0.2,0.3,5,3
+# 2^k*jacobinorm(n-k,2k+b+c+1,a)jacobinorm(k,c,b)
+# 2^k* sqrt(2n+b+c+a+2)*exp((lgamma(n+k+b+c+a+2)+lgamma(n-k+1)-log(2)*(2k+a+b+c+2)-
+#         lgamma(n+k+b+c+2)-lgamma(n-k+a+1))/2) *
+#     sqrt((2k+c+b+1))*exp((lgamma(k+c+b+1)+lgamma(k+1)-log(2)*(c+b+1)-lgamma(k+c+1)-lgamma(k+b+1))/2)
+#
+#
+#
+
+
+
+function trinorm(n,k,a,b,c)
+    if a == 0 && b == c == -0.5
+        k == 0 ? sqrt((2n+1)) /sqrt(2π) : k*sqrt(2n+1)*exp(lgamma(k)-lgamma(k+0.5))
+    else
+        sqrt((2n+b+c+a+2)*(2k+c+b+1))*exp(k*log(2)+(lgamma(n+k+b+c+a+2)+lgamma(n-k+1)-log(2)*(2k+a+b+c+2)-
+                lgamma(n+k+b+c+2)-lgamma(n-k+a+1) + lgamma(k+c+b+1)+lgamma(k+1)-
+                    log(2)*(c+b+1)-lgamma(k+c+1)-lgamma(k+b+1))/2)
+    end
+end
+
+function tridenormalize!(F̌,a,b,c)
     for n = 0:size(F̌,1)-1, k = 0:n
-        F̌[n-k+1,k+1] *=trinorm(n,k)
+        F̌[n-k+1,k+1] *=trinorm(n,k,a,b,c)
     end
     F̌
 end
 
-function trinormalize!(F̌)
+function trinormalize!(F̌,a,b,c)
     for n = 0:size(F̌,1)-1, k = 0:n
-        F̌[n-k+1,k+1] /= trinorm(n,k)
+        F̌[n-k+1,k+1] /= trinorm(n,k,a,b,c)
     end
     F̌
 end
@@ -207,83 +231,85 @@ end
 struct FastKoornwinderTriangleTransformPlan{DUF,CHEB}
     duffyplan::DUF
     tri2cheb::CHEB
+    a::Float64
+    b::Float64
+    c::Float64
 end
 
-FastKoornwinderTriangleTransformPlan(v::AbstractVector, V::AbstractMatrix) =
-    FastKoornwinderTriangleTransformPlan(plan_transform(DuffyTriangle(), v),
-                                     plan_tri2cheb(V,0.0,-0.5,-0.5))
-
-function FastKoornwinderTriangleTransformPlan(v::AbstractVector{T}) where T
+function FastKoornwinderTriangleTransformPlan(S::KoornwinderTriangle, v::AbstractVector{T}) where T
     n = floor(Integer,sqrt(2length(v)) + 1/2)
-    FastKoornwinderTriangleTransformPlan(v, Array{T}(undef,n,n))
+    v = Array{T}(undef, sum(1:n))
+    FastKoornwinderTriangleTransformPlan(plan_transform(DuffyTriangle(), v),
+                                     CTri2ChebPlan(n,S.α,S.β,S.γ),S.α,S.β,S.γ)
 end
 
 function *(P::FastKoornwinderTriangleTransformPlan, v)
     v̂ = P.duffyplan*v
     F = tridevec_trans(v̂)
     F̌ = P.tri2cheb \ F
-    trivec(tridenormalize!(F̌))
+    trivec(tridenormalize!(F̌,P.a,P.b,P.c))
 end
 
-struct ShiftKoornwinderTriangleTransformPlan{FAST,CC}
-    fastplan::FAST
-    conversion::CC
-end
-
-
-function ShiftKoornwinderTriangleTransformPlan(S::KoornwinderTriangle, v::AbstractVector)
-    n = floor(Integer,sqrt(2length(v)) + 1/2)
-    C = Conversion(KoornwinderTriangle(0.0,-0.5,-0.5,domain(S)),S)
-    ShiftKoornwinderTriangleTransformPlan(FastKoornwinderTriangleTransformPlan(v),
-                                            C[Block.(1:n),Block.(1:n)])
-end
-
-
-*(P::ShiftKoornwinderTriangleTransformPlan, v) = P.conversion*(P.fastplan*v)
+# struct ShiftKoornwinderTriangleTransformPlan{FAST,CC}
+#     fastplan::FAST
+#     conversion::CC
+# end
+#
+#
+# function ShiftKoornwinderTriangleTransformPlan(S::KoornwinderTriangle, v::AbstractVector)
+#     n = floor(Integer,sqrt(2length(v)) + 1/2)
+#     C = Conversion(KoornwinderTriangle(0.0,-0.5,-0.5,domain(S)),S)
+#     ShiftKoornwinderTriangleTransformPlan(FastKoornwinderTriangleTransformPlan(v),
+#                                             C[Block.(1:n),Block.(1:n)])
+# end
+#
+#
+# *(P::ShiftKoornwinderTriangleTransformPlan, v) = P.conversion*(P.fastplan*v)
 
 struct FastKoornwinderTriangleITransformPlan{DUF,CHEB}
     iduffyplan::DUF
     tri2cheb::CHEB
+    a::Float64
+    b::Float64
+    c::Float64
 end
 
-FastKoornwinderTriangleITransformPlan(v::AbstractVector, V::AbstractMatrix) =
-    FastKoornwinderTriangleITransformPlan(plan_itransform(DuffyTriangle(), v),
-                                     plan_tri2cheb(V,0.0,-0.5,-0.5))
 
-function FastKoornwinderTriangleITransformPlan(v::AbstractVector{T}) where T
+function FastKoornwinderTriangleITransformPlan(S::KoornwinderTriangle, v::AbstractVector{T}) where T
     n = floor(Integer,sqrt(2length(v)) + 1/2)
-    v = pad(v, sum(1:n))
-    FastKoornwinderTriangleITransformPlan(v, Array{T}(undef,n,n))
+    v = Array{T}(undef, sum(1:n))
+    FastKoornwinderTriangleITransformPlan(plan_itransform(DuffyTriangle(), v),
+                                   CTri2ChebPlan(n,S.α,S.β,S.γ),S.α,S.β,S.γ)
 end
 
 function *(P::FastKoornwinderTriangleITransformPlan, v)
     n = floor(Integer,sqrt(2length(v)) + 1/2)
     v = pad(v, sum(1:n))
-    F̌ = trinormalize!(tridevec(v))
+    F̌ = trinormalize!(tridevec(v),P.a,P.b,P.c)
     F = P.tri2cheb * F̌
     v̂ = trivec(transpose(F))
     P.iduffyplan*v̂
 end
 
 
-function plan_transform(K::KoornwinderTriangle, v)
-    if K.α == 0 && K.β == K.γ == -0.5
-        FastKoornwinderTriangleTransformPlan(v)
-    elseif isapproxinteger(K.α) && isapproxinteger(K.β+0.5) &&  isapproxinteger(K.γ+0.5)
-        ShiftKoornwinderTriangleTransformPlan(K, v)
-    else
-        KoornwinderTriangleTransformPlan(v)
-    end
+function plan_transform(K::KoornwinderTriangle, v::AbstractVector)
+    # if K.α == 0
+        FastKoornwinderTriangleTransformPlan(K, v)
+    # elseif isapproxinteger(K.α) && isapproxinteger(K.β+0.5) &&  isapproxinteger(K.γ+0.5)
+    #     ShiftKoornwinderTriangleTransformPlan(K, v)
+    # else
+    #     KoornwinderTriangleTransformPlan(v)
+    # end
 end
 
-function plan_itransform(K::KoornwinderTriangle, v)
-    if K.α == 0 && K.β == K.γ == -0.5
-        FastKoornwinderTriangleITransformPlan(v)
-    elseif isapproxinteger(K.α) && isapproxinteger(K.β+0.5) &&  isapproxinteger(K.γ+0.5)
-        ShiftKoornwinderTriangleITransformPlan(K, v)
-    else
-        KoornwinderTriangleITransformPlan(v)
-    end
+function plan_itransform(K::KoornwinderTriangle, v::AbstractVector)
+    # if K.α == 0 && K.β == K.γ == -0.5
+        FastKoornwinderTriangleITransformPlan(K, v)
+    # elseif isapproxinteger(K.α) && isapproxinteger(K.β+0.5) &&  isapproxinteger(K.γ+0.5)
+    #     ShiftKoornwinderTriangleITransformPlan(K, v)
+    # else
+    #     KoornwinderTriangleITransformPlan(v)
+    # end
 end
 
 

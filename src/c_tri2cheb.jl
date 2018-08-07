@@ -31,12 +31,14 @@ end
 
 function *(C::CTri2ChebPlan, A::Matrix{Float64})
     size(A,1) == size(A,2) == C.n || throw(ArgumentError(A))
-    c_tri2cheb(C.plan, copy(A))
-    A
+    B = copy(A)
+    c_tri2cheb(C.plan, B)
+    B
 end
 
 function \(C::CTri2ChebPlan, A::Matrix{Float64})
     size(A,1) == size(A,2) == C.n || throw(ArgumentError(A))
-    c_cheb2tri(C.plan, copy(A))
-    A
+    B = copy(A)
+    c_cheb2tri(C.plan, B)
+    B
 end

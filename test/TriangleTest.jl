@@ -1,7 +1,9 @@
 using StaticArrays, Plots, BandedMatrices, FastTransforms,
         ApproxFun, MultivariateOrthogonalPolynomials, Compat.Test
-    import MultivariateOrthogonalPolynomials: Lowering, ProductTriangle, DuffyTriangle, clenshaw, block, TriangleWeight,plan_evaluate, weight
-    import ApproxFun: testbandedblockbandedoperator, Block, BandedBlockBandedMatrix, blockcolrange, blocksize, Vec, jacobip
+    import MultivariateOrthogonalPolynomials: Lowering, ProductTriangle, DuffyTriangle,
+                            clenshaw, block, TriangleWeight,plan_evaluate, weight
+    import ApproxFun: testbandedblockbandedoperator, Block, BandedBlockBandedMatrix, blockcolrange, blocksize,
+                    Vec, jacobip, plan_transform
 
 
 @testset "Triangle domain" begin
@@ -46,6 +48,82 @@ let P = (n,k,a,b,c,x,y) -> x == 1.0 ? ((1-x))^k*jacobip(n-k,2k+b+c+1,a,1.0)*jaco
     end
 end
 
+P = (n,k,a,b,c,x,y) -> x == 1.0 ? ((1-x))^k*jacobip(n-k,2k+b+c+1,a,1.0)*jacobip(k,c,b,-1.0) :
+        ((1-x))^k*jacobip(n-k,2k+b+c+1,a,2x-1)*jacobip(k,c,b,2y/(1-x)-1)
+
+        # f = Fun((x,y) -> P(0,0,0.,-0.5,-0.5,x,y), KoornwinderTriangle(0.,0.5,-0.5) )
+    b = -0.5; c=-0.5
+    ff = (xy) -> P(3,2,0.,b,c,xy...)
+    S = KoornwinderTriangle(0.,b,c)
+    @time f = Fun((x,y) -> cos(1000x*y), S)
+
+@time Fun((x,y) -> cos(1000x*y), KoornwinderTriangle(0.,0.,0.))
+ncoefficients(f)
+using SO
+P = (n,k,a,b,c,x,y) -> x == 1.0 ? ((1-x))^k*jacobip(n-k,2k+b+c+1,a,1.0)*jacobip(k,c,b,-1.0) :
+        ((1-x))^k*jacobip(n-k,2k+b+c+1,a,2x-1)*jacobip(k,c,b,2y/(1-x)-1)
+
+        # f = Fun((x,y) -> P(0,0,0.,-0.5,-0.5,x,y), KoornwinderTriangle(0.,0.5,-0.5) )
+    b = 0.0; c=0.0
+    ff = (xy) -> P(0,0,0.,b,c,xy...) + P(1,0,0.,b,c,xy...) + P(1,1,0.,b,c,xy...) +
+         P(2,0,0.,b,c,xy...) + P(2,1,0.,b,c,xy...) + P(2,2,0.,b,c,xy...)
+    S = KoornwinderTriangle(0.,b,c)
+    Fun(ff, S)
+p = points(S ,20)
+    v = ff.(p)
+    P = plan_transform(S,v)
+    v̂ = P.duffyplan*v
+    F = tridevec_trans(v̂)
+    F̌ = P.tri2cheb \ F
+    # F̌ |> chopm
+
+
+
+@which P.tri2cheb \ F
+
+using SO
+p = points(S ,20)
+    v = ff.(p)
+    P = plan_transform(S,v)
+    v̂ = P.duffyplan*v
+    F = tridevec_trans(v̂)
+    F |> chopm
+
+trivec(tridenormalize!(F̌))
+using SO
+@time f = Fun((x,y) -> cos(500x*y), KoornwinderTriangle(0.,0.5,-0.5) )
+    f(0.1,0.2) , cos(500*0.1*0.2)
+
+DuffyTriangle
+
+ncoefficients(f)
+
+cjt
+
+@time f = Fun((x,y)->cos(100x*y),KoornwinderTriangle(0.0,-0.5,-0.5)); # 1.15s
+@time f = Fun((x,y)->cos(500x*y),KoornwinderTriangle(0.0,-0.5,-0.5),40_000); # 0.2
+@test f(0.1,0.2) ≈ cos(500*0.1*0.2)
+
+@time f = Fun((x,y)->cos(100x*y),KoornwinderTriangle(0.0,0.5,-0.5)); # 1.15s
+@time f = Fun((x,y)->cos(500x*y),KoornwinderTriangle(0.0,0.5,-0.5),40_000); # 0.2
+@test f(0.1,0.2) ≈ cos(500*0.1*0.2)
+
+f = Fun((x,y)->cos(100x*y),KoornwinderTriangle(0.0,0.5,0.5)); # 1.15s
+f = Fun((x,y)->cos(500x*y),KoornwinderTriangle(0.0,0.5,0.5),40_000); # 0.2
+@test f(0.1,0.2) ≈ cos(500*0.1*0.2)
+
+f = Fun((x,y)->cos(100x*y),KoornwinderTriangle(0.0,-0.5,0.5)); # 1.15s
+f = Fun((x,y)->cos(500x*y),KoornwinderTriangle(0.0,-0.5,0.5),40_000); # 0.2
+@test f(0.1,0.2) ≈ cos(500*0.1*0.2)
+
+C = Conversion(KoornwinderTriangle(0.,-0.5,-0.5),KoornwinderTriangle(0.,0.5,0.5))
+
+C = Conversion(KoornwinderTriangle(0.0,-0.5,-0.5),KoornwinderTriangle(0.0,-0.5,0.5))
+
+C[Block.(1:5),Block.(1:5)]
+
+
+>>>>>>> 2764c54b20f46b8664b33cbd3008f44808ab104a
 @testset "ProductTriangle constructors" begin
     S = ProductTriangle(1,1,1)
     @test fromcanonical(S, 0,0) == Vec(0,0)
@@ -91,6 +169,64 @@ end
     @test f(2,4) ≈ cos(2*4)
 end
 
+@time f = Fun((x,y)->cos(10x*y),KoornwinderTriangle(0.0,-0.5,-0.5)); # 0.08s
+    @test f(0.1,0.2) ≈ cos(10*0.1*0.2)
+    ncoefficients(f)
+@time f = Fun((x,y) -> begin
+        # ret = 0.0
+        # for n = 18:18, k=8:8
+        #     ret += P(n,k,0.,-0.5,-0.5,x,y)
+        # end
+        # ret
+        P(18,8,0.,-0.5,-0.5,x,y)
+    end,
+    KoornwinderTriangle(0.0,-0.5,-0.5),600); # 0.08s
+    sum(f.coefficients)
+
+n = 600
+    S = KoornwinderTriangle(0.0,-0.5,-0.5)
+    ff = (xy) -> P(18,8,0.,-0.5,-0.5,xy...)
+    p = points(S,n)
+    v = ff.(p)
+    PP = plan_transform(S,v)
+    v̂ = PP.duffyplan*v
+    F = tridevec_trans(v̂)
+    F̌ = FastTransforms.cheb2tri(F,0.,-0.5,-0.5)
+    F̌₂ = PP.tri2cheb \ F
+    norm(F̌ - F̌₂)
+size(F)
+F̃ = copy(F)
+c_cheb2tri(c_plan_tri2cheb(size(F,1),0.0,-0.5,-0.5),F̃)
+F̃ |> chopm
+
+@which PP.tri2cheb \ F
+trivec(tridenormalize!(F̌,P.a,P.b,P.c))
+
+sum(1:18)
+
+
+using SO
+tridevec(f.coefficients) |> chopm
+
+
+sum(1:16)
+
+@test f(0.1,0.2) ≈ cos(0.1*0.2)
+
+p = points(space(f), 150)
+
+ff = (xy) -> cos(xy[1]*xy[2])
+ff.(p)
+
+using Compat.Test
+
+
+
+@time f = Fun((x,y)->cos(500x*y),KoornwinderTriangle(0.0,-0.5,-0.5),40_000); # 0.2
+@time f = Fun((x,y)->cos(500x*y),KoornwinderTriangle(0.0,-0.5,-0.5)); # 0.2
+
+plot(f)
+ncoefficients(f)
 
 P = (n,k,a,b,c,x,y) -> x == 1.0 ? ((1-x))^k*jacobip(n-k,2k+b+c+1,a,1.0)*jacobip(k,c,b,-1.0) :
         ((1-x))^k*jacobip(n-k,2k+b+c+1,a,2x-1)*jacobip(k,c,b,2y/(1-x)-1)
@@ -98,7 +234,7 @@ P = (n,k,a,b,c,x,y) -> x == 1.0 ? ((1-x))^k*jacobip(n-k,2k+b+c+1,a,1.0)*jacobip(
 f = Fun((x,y) -> P(5,1,0.,0.,0.,x,y), KoornwinderTriangle(0.,-0.5,-0.5) )
     F = tridevec(f.coefficients)
     F[:,2] = jjt(F[:,2], 2.0, 0.0, 3.0, 0.0) # correct
-    jjt(F[2,:], -0.5, -0.5, 0.0, 0.0) 
+    jjt(F[2,:], -0.5, -0.5, 0.0, 0.0)
 F
 jjt(F[:,1], 0.0, 0.0, 1.0, 0.0) # correct
 
