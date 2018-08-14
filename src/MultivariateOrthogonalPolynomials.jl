@@ -1,7 +1,7 @@
 __precompile__()
 
 module MultivariateOrthogonalPolynomials
-using Base, Compat, RecipesBase, ApproxFun, BandedMatrices, BlockArrays,
+using Base, RecipesBase, ApproxFun, BandedMatrices, BlockArrays,
     FastTransforms, FastGaussQuadrature, StaticArrays, FillArrays
 
 # package code goes here

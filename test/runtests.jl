@@ -1,4 +1,4 @@
-using ApproxFun, MultivariateOrthogonalPolynomials, Compat.Test
+using ApproxFun, MultivariateOrthogonalPolynomials, Test
 
 include("TriangleTest.jl")
 include("DirichletTriangleTest.jl")

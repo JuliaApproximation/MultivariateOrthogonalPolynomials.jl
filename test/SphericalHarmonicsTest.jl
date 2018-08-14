@@ -1,4 +1,4 @@
-using ApproxFun, MultivariateOrthogonalPolynomials, Compat.Test, FastTransforms
+using ApproxFun, MultivariateOrthogonalPolynomials, Test, FastTransforms
     import MultivariateOrthogonalPolynomials: isphericalcoordinates, DoubleWrappedSphere
 
 

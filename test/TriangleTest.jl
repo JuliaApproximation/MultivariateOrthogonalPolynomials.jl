@@ -1,5 +1,5 @@
 using StaticArrays, Plots, BandedMatrices, FastTransforms,
-        ApproxFun, MultivariateOrthogonalPolynomials, Compat.Test
+        ApproxFun, MultivariateOrthogonalPolynomials, Test
     import MultivariateOrthogonalPolynomials: Lowering, ProductTriangle, DuffyTriangle,
                             clenshaw, block, TriangleWeight,plan_evaluate, weight
     import ApproxFun: testbandedblockbandedoperator, Block, BandedBlockBandedMatrix, blockcolrange, blocksize,
@@ -218,7 +218,6 @@ p = points(space(f), 150)
 ff = (xy) -> cos(xy[1]*xy[2])
 ff.(p)
 
-using Compat.Test
 
 
 
