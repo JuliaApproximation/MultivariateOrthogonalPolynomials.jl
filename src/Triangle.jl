@@ -135,7 +135,7 @@ DuffyTriangle(S::KoornwinderTriangle) = DuffyTriangle(Chebyshev(0..1)*Jacobi(S.�
 
 function points(S::DuffyTriangle, N)
     pts = points(S.space, N)
-    fromcanonical.(S.domain, iduffy.(pts))
+    fromcanonical.(Ref(S.domain), iduffy.(pts))
 end
 
 plan_transform(S::DuffyTriangle, n::AbstractVector) = TransformPlan(S, plan_transform(S.space,n), Val{false})
@@ -195,7 +195,7 @@ end
 
 function trivec(F̌)
     N = size(F̌,1)
-    v = Array{eltype(F̌)}(N*(N+1) ÷2)
+    v = Array{eltype(F̌)}(undef, N*(N+1) ÷2)
     j = 1
     for n=0:N-1, k=0:n
         v[j] = F̌[n-k+1,k+1]
@@ -424,7 +424,7 @@ end
 # TODO: replace with RaggedMatrix
 function totree(S,f::Fun)
     N=block(S,ncoefficients(f))
-    ret = Array{Vector{eltype(f)}}(Int(N))
+    ret = Array{Vector{cfstype(f)}}(undef,Int(N))
     for K=Block(1):N
         ret[Int(K)]=coefficient(f,K)
     end
@@ -552,8 +552,8 @@ function Base.convert(::Type{BandedBlockBandedMatrix},
     D = parent(S)
     sp=domainspace(D)
     α,β,γ = sp.α,sp.β,sp.γ
-    K_sh = first(parentindexes(S)[1])-1
-    J_sh = first(parentindexes(S)[2])-1
+    K_sh = first(parentindices(S)[1])-1
+    J_sh = first(parentindices(S)[2])-1
     N,M=nblocks(ret)::Tuple{Int,Int}
 
     if D.order == [1,0]
@@ -715,8 +715,8 @@ function Base.convert(::Type{BandedBlockBandedMatrix},S::SubOperator{T,ConcreteC
     K1=domainspace(parent(S))
     K2=rangespace(parent(S))
     α,β,γ = K1.α,K1.β,K1.γ
-    K_sh = first(parentindexes(S)[1])-1
-    J_sh = first(parentindexes(S)[2])-1
+    K_sh = first(parentindices(S)[1])-1
+    J_sh = first(parentindices(S)[2])-1
     N,M=nblocks(ret)::Tuple{Int,Int}
 
     if K2.α == α+1 && K2.β == β && K2.γ == γ
@@ -855,8 +855,8 @@ struct Lowering{k,S,T} <: Operator{T}
     space::S
 end
 
-Base.convert(::Type{Lowering{k}},sp) where k = Lowering{k,typeof(sp),prectype(sp)}(sp)
-Base.convert(::Type{Operator{T}},J::Lowering{x,S}) where {x,T,S} = Lowering{x,S,T}(J.space)
+Lowering{k}(sp) where k = Lowering{k,typeof(sp),prectype(sp)}(sp)
+Base.convert(::Type{Operator{T}}, J::Lowering{x,S}) where {x,T,S} = Lowering{x,S,T}(J.space)
 
 
 domainspace(R::Lowering) = R.space
@@ -951,8 +951,8 @@ function Base.convert(::Type{BandedBlockBandedMatrix},S::SubOperator{T,Lowering{
     ret = BandedBlockBandedMatrix(Zeros, S)
     R = parent(S)
     α,β,γ=R.space.α,R.space.β,R.space.γ
-    K_sh = first(parentindexes(S)[1])-1
-    J_sh = first(parentindexes(S)[2])-1
+    K_sh = first(parentindices(S)[1])-1
+    J_sh = first(parentindices(S)[2])-1
     N,M=nblocks(ret)::Tuple{Int,Int}
 
     for KK=Block.(1:N)
@@ -984,8 +984,8 @@ function Base.convert(::Type{BandedBlockBandedMatrix},S::SubOperator{T,Lowering{
     ret = BandedBlockBandedMatrix(Zeros,S)
     R = parent(S)
     α,β,γ=R.space.α,R.space.β,R.space.γ
-    K_sh = first(parentindexes(S)[1])-1
-    J_sh = first(parentindexes(S)[2])-1
+    K_sh = first(parentindices(S)[1])-1
+    J_sh = first(parentindices(S)[2])-1
     N,M = nblocks(ret)::Tuple{Int,Int}
 
 
@@ -1022,8 +1022,8 @@ function Base.convert(::Type{BandedBlockBandedMatrix},S::SubOperator{T,Lowering{
     ret = BandedBlockBandedMatrix(Zeros,S)
     R = parent(S)
     α,β,γ=R.space.α,R.space.β,R.space.γ
-    K_sh = first(parentindexes(S)[1])-1
-    J_sh = first(parentindexes(S)[2])-1
+    K_sh = first(parentindices(S)[1])-1
+    J_sh = first(parentindices(S)[2])-1
     N,M=nblocks(ret)::Tuple{Int,Int}
 
     for KK=Block.(1:N)

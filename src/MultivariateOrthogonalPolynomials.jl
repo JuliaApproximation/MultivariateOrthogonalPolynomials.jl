@@ -3,7 +3,7 @@ __precompile__()
 module MultivariateOrthogonalPolynomials
 using Base, RecipesBase, ApproxFun, BandedMatrices, BlockArrays,
     FastTransforms, FastGaussQuadrature, StaticArrays, FillArrays,
-    Libdl
+    Libdl, SpecialFunctions
 
 # package code goes here
 import Base: values,getindex,setindex!,*,.*,+,.+,-,.-,==,<,<=,>,
@@ -40,7 +40,7 @@ import ApproxFun: PolynomialSpace, ConstantSpace, NoSpace, prectype,
                     isambiguous, fromcanonical, tocanonical, checkpoints, ∂, spacescompatible,
                     mappoint, UnivariateSpace, setdomain, setcanonicaldomain, canonicaldomain,
                     Space, points, space, conversion_rule, maxspace_rule,
-                    union_rule, coefficients, RealUnivariateSpace, PiecewiseSegment, rangetype
+                    union_rule, coefficients, RealUnivariateSpace, PiecewiseSegment, rangetype, cfstype
 
 # Multivariate import
 import ApproxFun: BivariateDomain,DirectSumSpace, AbstractProductSpace, factor,

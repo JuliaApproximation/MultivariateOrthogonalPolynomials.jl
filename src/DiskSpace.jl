@@ -4,7 +4,7 @@ export DiskSpace
 
 
 
-struct DiskSpace{m,a,b,JS,S} <: AbstractProductSpace{Tuple{JS,S},Complex128,2}
+struct DiskSpace{m,a,b,JS,S} <: AbstractProductSpace{Tuple{JS,S},ComplexF64,2}
     domain::Disk
     spacet::S
     DiskSpace(d,sp)=new(d,sp)
