@@ -2,7 +2,8 @@ __precompile__()
 
 module MultivariateOrthogonalPolynomials
 using Base, RecipesBase, ApproxFun, BandedMatrices, BlockArrays,
-    FastTransforms, FastGaussQuadrature, StaticArrays, FillArrays
+    FastTransforms, FastGaussQuadrature, StaticArrays, FillArrays,
+    Libdl
 
 # package code goes here
 import Base: values,getindex,setindex!,*,.*,+,.+,-,.-,==,<,<=,>,
@@ -10,8 +11,6 @@ import Base: values,getindex,setindex!,*,.*,+,.+,-,.-,==,<,<=,>,
 
 
 import BandedMatrices: mul!, inbands_getindex, inbands_setindex!
-
-importall ApproxFun
 
 # ApproxFun general import
 import ApproxFun: BandedMatrix, order, blocksize,

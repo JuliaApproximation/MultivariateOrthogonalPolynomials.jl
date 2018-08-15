@@ -70,7 +70,7 @@ Base.isnan(::Triangle) = false
 # P_{n-k}^{2k+β+γ+1,α}(2x-1)*(1-x)^k*P_k^{γ,β}(2y/(1-x)-1)
 
 
-immutable ProductTriangle <: AbstractProductSpace{Tuple{WeightedJacobi{Segment{Float64},Float64},
+struct ProductTriangle <: AbstractProductSpace{Tuple{WeightedJacobi{Segment{Float64},Float64},
                                                         Jacobi{Segment{Float64},Float64}},
                                                   Triangle,Float64}
     α::Float64
@@ -80,7 +80,7 @@ immutable ProductTriangle <: AbstractProductSpace{Tuple{WeightedJacobi{Segment{F
 end
 
 
-immutable KoornwinderTriangle <: Space{Triangle,Float64}
+struct KoornwinderTriangle <: Space{Triangle,Float64}
     α::Float64
     β::Float64
     γ::Float64
@@ -338,7 +338,7 @@ end
 columnspace(T::ProductTriangle,k::Integer) =
     JacobiWeight(0.,k-1.,Jacobi(T.α,2k-1+T.β+T.γ,Segment(0.,1.)))
 
-Base.sum{KT<:KoornwinderTriangle}(f::Fun{KT}) =
+Base.sum(f::Fun{<:KoornwinderTriangle}) =
     Fun(f,KoornwinderTriangle(0,0,0)).coefficients[1]/2
 
 # convert coefficients
@@ -350,17 +350,17 @@ Base.sum{KT<:KoornwinderTriangle}(f::Fun{KT}) =
 function coefficients(f::AbstractVector,K::KoornwinderTriangle,P::ProductTriangle)
     C=totensor(K,f)
     D=Float64[2.0^(-k) for k=0:size(C,1)-1]
-    fromtensor(K,(C.')*diagm(D))
+    fromtensor(K,transpose(C)*diagm(D))
 end
 
 function coefficients(f::AbstractVector,K::ProductTriangle,P::KoornwinderTriangle)
     C=totensor(K,f)
     D=Float64[2.0^(k) for k=0:size(C,1)-1]
-    fromtensor(P,(C*diagm(D)).')
+    fromtensor(P,transpose(C*diagm(D)))
 end
 
 
-function clenshaw2D{T}(Jx,Jy,cfs::Vector{Vector{T}},x,y)
+function clenshaw2D(Jx,Jy,cfs::Vector{Vector{T}},x,y) where T
     N=length(cfs)
     bk1=zeros(T,N+1)
     bk2=zeros(T,N+2)
@@ -545,9 +545,9 @@ function getindex(D::ConcreteDerivative{KoornwinderTriangle},k::Integer,j::Integ
     end
 end
 
-function Base.convert{T}(::Type{BandedBlockBandedMatrix},
+function Base.convert(::Type{BandedBlockBandedMatrix},
         S::SubOperator{T,ConcreteDerivative{KoornwinderTriangle,Vector{Int},T},
-                                                                        Tuple{BlockRange1,BlockRange1}})
+                                                                        Tuple{BlockRange1,BlockRange1}}) where T
     ret = BandedBlockBandedMatrix(Zeros,S)
     D = parent(S)
     sp=domainspace(D)
@@ -851,12 +851,12 @@ end
 ## Jacobi Operators
 
 # k is 1, 2, ... for x, y, z,...
-immutable Lowering{k,S,T} <: Operator{T}
+struct Lowering{k,S,T} <: Operator{T}
     space::S
 end
 
-Base.convert{k}(::Type{Lowering{k}},sp) = Lowering{k,typeof(sp),prectype(sp)}(sp)
-Base.convert{x,T,S}(::Type{Operator{T}},J::Lowering{x,S}) = Lowering{x,S,T}(J.space)
+Base.convert(::Type{Lowering{k}},sp) where k = Lowering{k,typeof(sp),prectype(sp)}(sp)
+Base.convert(::Type{Operator{T}},J::Lowering{x,S}) where {x,T,S} = Lowering{x,S,T}(J.space)
 
 
 domainspace(R::Lowering) = R.space
@@ -882,7 +882,7 @@ rangespace(R::Lowering{3,KoornwinderTriangle}) =
     KoornwinderTriangle(R.space.α,R.space.β,R.space.γ-1,domain(domainspace(R)))
 
 
-function getindex{T}(R::Lowering{1,KoornwinderTriangle,T},k::Integer,j::Integer)
+function getindex(R::Lowering{1,KoornwinderTriangle,T},k::Integer,j::Integer) where T
     α,β,γ=R.space.α,R.space.β,R.space.γ
     K = Int(block(rangespace(R),k))
     J = Int(block(domainspace(R),j))
@@ -979,8 +979,8 @@ function Base.convert(::Type{BandedBlockBandedMatrix},S::SubOperator{T,Lowering{
 end
 
 
-function Base.convert{T}(::Type{BandedBlockBandedMatrix},S::SubOperator{T,Lowering{2,KoornwinderTriangle,T},
-                                                                        Tuple{BlockRange1,BlockRange1}})
+function Base.convert(::Type{BandedBlockBandedMatrix},S::SubOperator{T,Lowering{2,KoornwinderTriangle,T},
+                                                                        Tuple{BlockRange1,BlockRange1}}) where T
     ret = BandedBlockBandedMatrix(Zeros,S)
     R = parent(S)
     α,β,γ=R.space.α,R.space.β,R.space.γ
@@ -1017,8 +1017,8 @@ function Base.convert{T}(::Type{BandedBlockBandedMatrix},S::SubOperator{T,Loweri
     ret
 end
 
-function Base.convert{T}(::Type{BandedBlockBandedMatrix},S::SubOperator{T,Lowering{3,KoornwinderTriangle,T},
-                                                                        Tuple{BlockRange1,BlockRange1}})
+function Base.convert(::Type{BandedBlockBandedMatrix},S::SubOperator{T,Lowering{3,KoornwinderTriangle,T},
+                                                                        Tuple{BlockRange1,BlockRange1}}) where T
     ret = BandedBlockBandedMatrix(Zeros,S)
     R = parent(S)
     α,β,γ=R.space.α,R.space.β,R.space.γ
@@ -1057,7 +1057,7 @@ end
 
 ### Weighted
 
-immutable TriangleWeight{S} <: WeightSpace{S,Triangle,Float64}
+struct TriangleWeight{S} <: WeightSpace{S,Triangle,Float64}
     α::Float64
     β::Float64
     γ::Float64
@@ -1082,12 +1082,12 @@ weight(S::TriangleWeight,xy::Vec) = weight(S,xy...)
 
 setdomain(K::TriangleWeight, d::Triangle) = TriangleWeight(K.α,K.β,K.γ,setdomain(K.space,d))
 
-immutable TriangleWeightEvaluatePlan{S,PP}
+struct TriangleWeightEvaluatePlan{S,PP}
     space::S
     plan::PP
 end
 
-plan_evaluate{SS}(f::Fun{TriangleWeight{SS}},xy...) =
+plan_evaluate(f::Fun{<:TriangleWeight},xy...) =
     TriangleWeightEvaluatePlan(space(f),
         plan_evaluate(Fun(space(f).space,coefficients(f)),xy...))
 
@@ -1325,7 +1325,7 @@ subblockbandinds(D::ConcreteDerivative{TriangleWeight{KoornwinderTriangle}},k::I
     k==1 ? -1 : 0  #TODO: subblockbandinds (-1,-1) for Dy
 
 
-function getindex{OT,T}(D::ConcreteDerivative{TriangleWeight{KoornwinderTriangle},OT,T},k::Integer,j::Integer)::T
+function getindex(D::ConcreteDerivative{TriangleWeight{KoornwinderTriangle},OT,T},k::Integer,j::Integer) where {OT,T}
     α,β,γ=D.space.α,D.space.β,D.space.γ
     K = Int(block(rangespace(D),k))
     J = Int(block(domainspace(D),j))
@@ -1349,7 +1349,7 @@ end
 
 
 ## Multiplication Operators
-function operator_clenshaw2D{T}(Jx,Jy,cfs::Vector{Vector{T}},x,y)
+function operator_clenshaw2D(Jx,Jy,cfs::Vector{Vector{T}},x,y) where T
     N=length(cfs)
     S = domainspace(x)
     Z=ZeroOperator(S,S)

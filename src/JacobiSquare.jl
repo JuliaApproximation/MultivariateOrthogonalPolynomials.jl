@@ -5,7 +5,7 @@ export WeightedSquare, JacobiSquare
 # as r^m P_k^{a,b}(1-2r^2)
 # when domain is Segment(1,0)
 
-immutable WeightedSquare{S} <: RealUnivariateSpace{Segment{Float64}}
+struct WeightedSquare{S} <: RealUnivariateSpace{Segment{Float64}}
     m::Float64
     space::S
 end

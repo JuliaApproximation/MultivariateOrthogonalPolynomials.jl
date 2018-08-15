@@ -1,6 +1,6 @@
 # this is TriangleWeight(a,b,c,KoornwinderTriangle(a,b,c)) with some extra columns to span
 # all the polynomials
-immutable DirichletTriangle{a,b,c} <: Space{Triangle,Float64}
+struct DirichletTriangle{a,b,c} <: Space{Triangle,Float64}
     domain::Triangle
 end
 
@@ -112,7 +112,7 @@ end
 
 
 
-function getindex{T}(R::ConcreteConversion{DirichletTriangle{0,1,0},KoornwinderTriangle,T},k::Integer,j::Integer)::T
+function getindex(R::ConcreteConversion{DirichletTriangle{0,1,0},KoornwinderTriangle,T},k::Integer,j::Integer) where T
     K = Int(block(rangespace(R),k))
     J = Int(block(domainspace(R),j))
     κ=k-blockstart(rangespace(R),K)+1
@@ -138,8 +138,7 @@ function getindex{T}(R::ConcreteConversion{DirichletTriangle{0,1,0},KoornwinderT
 end
 
 
-function getindex(R::ConcreteConversion{DirichletTriangle{0,0,1},KoornwinderTriangle},k::Integer,j::Integer)
-    T=eltype(R)
+function getindex(R::ConcreteConversion{DirichletTriangle{0,0,1},KoornwinderTriangle,T},k::Integer,j::Integer) where T
     K = Int(block(rangespace(R),k))
     J = Int(block(domainspace(R),j))
     κ=k-blockstart(rangespace(R),K)+1

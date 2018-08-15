@@ -4,7 +4,7 @@ export DiskSpace
 
 
 
-immutable DiskSpace{m,a,b,JS,S} <: AbstractProductSpace{Tuple{JS,S},Complex128,2}
+struct DiskSpace{m,a,b,JS,S} <: AbstractProductSpace{Tuple{JS,S},Complex128,2}
     domain::Disk
     spacet::S
     DiskSpace(d,sp)=new(d,sp)
@@ -65,7 +65,7 @@ function Base.real{JS,DD}(f::ProductFun{JS,Laurent{DD},DiskSpace{0,0,0,JS,Lauren
 
     ProductFun(ret,DiskSpace{0,0,0,JS,Fourier}(space(f).domain,Fourier()))
 end
-#Base.imag{S,T}(u::ProductFun{S,Larent,T})=real(TensorFun(imag(u.coefficients),space(u,2)).').'+imag(TensorFun(real(u.coefficients),space(u,2)).').'
+
 
 
 

@@ -4,7 +4,7 @@ struct ft_plan_struct end
 const PlanPtr = Ptr{ft_plan_struct}
 
 
-if Base.Libdl.find_library(libfasttransforms) ≡ libfasttransforms
+if Libdl.find_library(libfasttransforms) ≡ libfasttransforms
     c_plan_sph2fourier(n::Int) = ccall((:plan_sph2fourier, libfasttransforms), PlanPtr, (Int64, ), n)
     fc_sph2fourier(P::PlanPtr, A::Matrix{Float64}) = ccall((:execute_sph2fourier, libfasttransforms), Void, (PlanPtr, Ptr{Float64}, Int64, Int64), P, A, size(A, 1), size(A, 2))
 
