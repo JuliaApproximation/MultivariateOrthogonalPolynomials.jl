@@ -3,7 +3,7 @@ __precompile__()
 module MultivariateOrthogonalPolynomials
 using Base, RecipesBase, ApproxFun, BandedMatrices, BlockArrays,
     FastTransforms, FastGaussQuadrature, StaticArrays, FillArrays,
-    Libdl, SpecialFunctions
+    LinearAlgebra, Libdl, SpecialFunctions
 
 # package code goes here
 import Base: values,getindex,setindex!,*,.*,+,.+,-,.-,==,<,<=,>,

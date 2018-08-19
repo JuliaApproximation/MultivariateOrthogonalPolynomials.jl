@@ -100,6 +100,36 @@ ncoefficients(f)
 
 cjt
 
+f = Fun((x,y) -> cos(100x*y), KoornwinderTriangle(0.0,0.0,0.0))
+        plot(f)
+
+ncoefficients(f)
+
+
+@time f = Fun((x,y) -> cos(100x*y), Triangle(),100)
+    @time g = Laplacian()*f
+    34
+ncoefficients(f)
+
+@which Derivative([1,0])*f
+
+@which ApproxFun.mul_coefficients(view(L,1:ncoefficients(f), 1:ncoefficients(f)),
+    f.coefficients)
+
+using BlockBandedMatrices
+V = view(L,1:ncoefficients(f), 1:ncoefficients(f))
+    @which AbstractMatrix(V)
+
+
+L = Derivative([1,0]) : space(f); N = 100
+    @time L[Block.(1:N), Block.(1:N)]
+
+ncoefficients(f)
+plot(g)
+
+
+
+
 @time f = Fun((x,y)->cos(100x*y),KoornwinderTriangle(0.0,-0.5,-0.5)); # 1.15s
 @time f = Fun((x,y)->cos(500x*y),KoornwinderTriangle(0.0,-0.5,-0.5),40_000); # 0.2
 @test f(0.1,0.2) ≈ cos(500*0.1*0.2)

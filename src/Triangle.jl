@@ -388,8 +388,8 @@ function clenshaw2D(Jx,Jy,cfs::Vector{Vector{T}},x,y) where T
         resize!(Abk2x,Int(K))
         BLAS.blascopy!(Int(K),bk1,1,Abk2x,1)
         resize!(Abk2y,Int(K))
-        Abk2y[1:Int(K)-1]=0
-        Abk2y[end]=bk1[Int(K)+1]
+        Abk2y[1:Int(K)-1] .= 0
+        Abk2y[end] = bk1[Int(K)+1]
 
         Abk1x,Abk2x=Abk2x,Abk1x
         Abk1y,Abk2y=Abk2y,Abk1y
@@ -397,12 +397,12 @@ function clenshaw2D(Jx,Jy,cfs::Vector{Vector{T}},x,y) where T
         bk2 = bk1  ::Vector{T}
 
         bk1 = (x*Abk1x) ::Vector{T}
-        Base.axpy!(y,Abk1y,bk1)
+        LinearAlgebra.axpy!(y,Abk1y,bk1)
         mul!(bk1,Bx,Abk1x,-one(T),one(T))
         mul!(bk1,By,Abk1y,-one(T),one(T))
         mul!(bk1,Cx,Abk2x,-one(T),one(T))
         mul!(bk1,Cy,Abk2y,-one(T),one(T))
-        Base.axpy!(one(T),cfs[Int(K)],bk1)
+        LinearAlgebra.axpy!(one(T),cfs[Int(K)],bk1)
     end
 
     K = Block(1)
