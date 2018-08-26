@@ -6,8 +6,8 @@ using Base, RecipesBase, ApproxFun, BandedMatrices, BlockArrays,
     LinearAlgebra, Libdl, SpecialFunctions
 
 # package code goes here
-import Base: values,getindex,setindex!,*,.*,+,.+,-,.-,==,<,<=,>,
-                >=,./,/,.^,^,\,∪,transpose
+import Base: values,getindex,setindex!,*, +, -, ==,<,<=,>,
+                >=,/,^,\,∪,transpose
 
 
 import BandedMatrices: mul!, inbands_getindex, inbands_setindex!
