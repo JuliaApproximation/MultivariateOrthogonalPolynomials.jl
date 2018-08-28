@@ -8,6 +8,9 @@ function c_tri2cheb end
 function c_cheb2tri end
 
 if Libdl.find_library(libfasttransforms) ≡ libfasttransforms
+    ft_set_threads(n::Int) = ccall((:omp_set_num_threads, libfasttransforms), Nothing, (Int, ), n)
+    ft_set_threads(Sys.CPU_THREADS)
+
     c_plan_sph2fourier(n::Int) = ccall((:plan_sph2fourier, libfasttransforms), PlanPtr, (Int64, ), n)
     fc_sph2fourier(P::PlanPtr, A::Matrix{Float64}) = ccall((:execute_sph2fourier, libfasttransforms), Nothing, (PlanPtr, Ptr{Float64}, Int64, Int64), P, A, size(A, 1), size(A, 2))
 
