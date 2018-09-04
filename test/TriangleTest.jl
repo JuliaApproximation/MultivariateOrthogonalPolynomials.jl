@@ -48,6 +48,164 @@ let P = (n,k,a,b,c,x,y) -> x == 1.0 ? ((1-x))^k*jacobip(n-k,2k+b+c+1,a,1.0)*jaco
     end
 end
 
+N = 2000
+    @time f = Fun((x,y) -> cos(1000x*y), Triangle(), sum(1:N));
+    D_x = Derivative(space(f), [1,0])
+    @time M_x = D_x[Block.(1:N), Block.(1:N)]
+    @time (M_x*f.coefficients)
+
+D_x
+
+@time Fun(rangespace(D_x), (M_x*f.coefficients))(0.1,0.2)
+(M_x*f.coefficients)
+Fun(rangespace(D_x), (M_x*f.coefficients))(0.1,0.2) - (-1000*0.2*sin(1000*0.1*0.2))
+
+struct FastLap
+    D_x::BandedBlockBandedMatrix{Float64}
+    D̃_x::BandedBlockBandedMatrix{Float64}
+    R_x::BandedBlockBandedMatrix{Float64}
+    R̃_x::BandedBlockBandedMatrix{Float64}
+
+    D_y::BandedBlockBandedMatrix{Float64}
+    D̃_y::BandedBlockBandedMatrix{Float64}
+    R_y::BandedBlockBandedMatrix{Float64}
+    R̃_y::BandedBlockBandedMatrix{Float64}
+end
+
+
+function FastLap(N)
+    S = KoornwinderTriangle(0.,0.,0.)
+    D_x = Derivative(S, [1,0])
+    M_x = D_x[Block.(1:N), Block.(1:N)]
+    D̃_x = Derivative(rangespace(D_x), [1,0])
+    M̃_x = D̃_x[Block.(1:N), Block.(1:N)]
+    C_x = Conversion(rangespace(D̃_x) , KoornwinderTriangle(2.0, 1.0, 2.0))
+    R_x = C_x[Block.(1:N), Block.(1:N)]
+    C̃_x = Conversion( rangespace(C_x) , KoornwinderTriangle(2.0, 2.0, 2.0))
+    R̃_x = C̃_x[Block.(1:N), Block.(1:N)]
+
+    D_y = Derivative(S, [0,1])
+    M_y = D_y[Block.(1:N), Block.(1:N)]
+    D̃_y = Derivative(rangespace(D_y), [0,1])
+    M̃_y = D̃_y[Block.(1:N), Block.(1:N)]
+    C_y = Conversion(rangespace(D̃_y) , KoornwinderTriangle(1.0, 2.0, 2.0))
+    R_y = C_y[Block.(1:N), Block.(1:N)]
+    C̃_y = Conversion( rangespace(C_y) , KoornwinderTriangle(2.0, 2.0, 2.0))
+    R̃_y = C̃_y[Block.(1:N), Block.(1:N)]
+
+    FastLap(M_x, M̃_x, R_x, R̃_x, M_y, M̃_y, R_y, R̃_y)
+end
+
+function Base.:*(L::FastLap, f)
+    Fun(KoornwinderTriangle(2.,2.,2.), L.R̃_x*(L.R_x*(L.D̃_x*(L.D_x*f.coefficients))) + L.R̃_y*(L.R_y*(L.D̃_y*(L.D_y*f.coefficients))))
+end
+
+
+N = 50
+    n = sum(1:N)
+    ω = n/40
+    @time f = Fun((x,y) -> cos(ω*x*y), Triangle(), n);
+    plot(abs.(f.coefficients) .+ eps(); yscale=:log10)
+@time L = FastLap(N)
+@time L*f
+
+x,y = 0.1,0.2
+    (-ω^2*(x^2+y^2)*cos(ω*x*y) - (L*f)(0.1,0.2))/(L*f)(0.1,0.2)
+
+err = Dict{Int,Float64}()
+tim_tran = Dict{Int,Float64}()
+tim_lapset = Dict{Int,Float64}()
+tim_lap = Dict{Int,Float64}()
+
+
+Ns = 100:100:2000
+for N in Ns
+    @show N
+    n = sum(1:N)
+    ω = N/10
+    tim_tran[N] = @elapsed(f = Fun((x,y) -> cos(ω*x*y), Triangle(), n))
+    tim_lapset[N] = @elapsed(L = FastLap(N))
+    tim_lap[N] = @elapsed(v = L*f)
+    err[N] = abs((-ω^2*(x^2+y^2)*cos(ω*x*y) - v(x,y))/(-ω^2*(x^2+y^2)*cos(ω*x*y)))
+end
+
+
+plot([sum(1:N) for N in Ns], [err[N] for N in Ns]; legend=false, title="Relative error of laplacian evaluated at (0.1,0.2)",
+            linewidth=2.0, xscale=:log10, yscale=:log10)
+        savefig("trianglelaplacianerror.pdf")
+
+plot([sum(1:N) for N in Ns], [tim_tran[N] for N in Ns]; legend=:bottomright, title = "Time to calculate Laplacian coefficients",
+            label="transform",
+            linewidth=2.0, xscale=:log10, yscale=:log10)
+    plot!([sum(1:N) for N in Ns], [tim_lapset[N] for N in Ns]; label="setup",
+                linewidth=2.0, xscale=:log10, yscale=:log10)
+    plot!([sum(1:N) for N in Ns], [tim_lap[N] for N in Ns]; label="apply",
+                linewidth=2.0, xscale=:log10, yscale=:log10)
+    savefig("trianglelaplaciantimes.pdf")
+
+
+sum(1:2000)
+
+v(0.1,0.2)
+plot(abs.(v.coefficients).+eps(); yscale=:log10)
+
+
+
+sum(1:2000)
+
+
+
+
+
+
+f.coefficients
+
+
+D_x = Derivative(space(f), [1,0])
+    M_x = D_x[Block.(1:N), Block.(1:N)]
+    D̃_x = Derivative(rangespace(D_x), [1,0])
+    M̃_x = D̃_x[Block.(1:N), Block.(1:N)]
+    C_x = Conversion(rangespace(D̃_x) , KoornwinderTriangle(2.0, 1.0, 2.0))
+    R_x = C_x[Block.(1:N), Block.(1:N)]
+    C̃_x = Conversion( rangespace(C_x) , KoornwinderTriangle(2.0, 2.0, 2.0))
+    R̃_x = C̃_x[Block.(1:N), Block.(1:N)]
+    @time R̃_x*(R_x*(M̃_x*(M_x*f.coefficients)))
+
+typeof(M_x)
+
+rangespace(D̃_x)
+
+
+L = Laplacian(space(f))
+
+@time L.op.ops[1][Block.(1:100), Block.(1:100)]
+
+
+@time  points(Triangle(), 4_000_000);
+
+@time p = points(Chebyshev()^2, 1_000_000);
+S = Chebyshev()^2
+N = 1_000_000
+    T = Float64
+    d = domain(S)
+    @time pts = ApproxFun.squarepoints(T, N)
+    @time for k=1:length(pts)
+        pts[k] = fromcanonical(d,pts[k])
+    end
+
+@which fromcanonical(S,pts[1])
+
+@time points(S, 1_000_000)
+
+
+(1,2) .+ Vec(1,2)
+d.domains
+fromcanonical.(d.domains, Vec(0.1,0.2))
+
+@time pts .= iduffy.(pts)
+    # fromcanonical.(Ref(S.domain), )
+
+
 P = (n,k,a,b,c,x,y) -> x == 1.0 ? ((1-x))^k*jacobip(n-k,2k+b+c+1,a,1.0)*jacobip(k,c,b,-1.0) :
         ((1-x))^k*jacobip(n-k,2k+b+c+1,a,2x-1)*jacobip(k,c,b,2y/(1-x)-1)
 
