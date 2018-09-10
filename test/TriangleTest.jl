@@ -49,164 +49,37 @@ let P = (n,k,a,b,c,x,y) -> x == 1.0 ? ((1-x))^k*jacobip(n-k,2k+b+c+1,a,1.0)*jaco
 end
 
 @testset "JacobiTriangle constructors" begin
-@time f = Fun((x,y)->cos(100x*y),JacobiTriangle(0.0,-0.5,-0.5)); # 0.08s
-@test f(0.1,0.2) ≈ cos(100*0.1*0.2)
-P = plan_evaluate(f)
-@test values(f) ≈ P.(points(f))
+    @time f = Fun((x,y)->cos(100x*y),JacobiTriangle(0.0,-0.5,-0.5)); # 0.08s
+    @test f(0.1,0.2) ≈ cos(100*0.1*0.2)
+    P = plan_evaluate(f)
+    @test values(f) ≈ P.(points(f))
 
-@time f = Fun((x,y)->cos(500x*y),JacobiTriangle(0.0,-0.5,-0.5),40_000); # 0.2
-@test f(0.1,0.2) ≈ cos(500*0.1*0.2)
+    @time f = Fun((x,y)->cos(500x*y),JacobiTriangle(0.0,-0.5,-0.5),40_000); # 0.2
+    @test f(0.1,0.2) ≈ cos(500*0.1*0.2)
 
-@time f = Fun((x,y)->cos(100x*y),JacobiTriangle(0.0,0.5,-0.5)); # 0.08s
-@time f = Fun((x,y)->cos(500x*y),JacobiTriangle(0.0,0.5,-0.5),40_000); # 0.2
-@test f(0.1,0.2) ≈ cos(500*0.1*0.2)
+    @time f = Fun((x,y)->cos(100x*y),JacobiTriangle(0.0,0.5,-0.5)); # 0.08s
+    @time f = Fun((x,y)->cos(500x*y),JacobiTriangle(0.0,0.5,-0.5),40_000); # 0.2
+    @test f(0.1,0.2) ≈ cos(500*0.1*0.2)
 
-f = Fun((x,y)->cos(100x*y),JacobiTriangle(0.0,0.5,0.5)); # 1.15s
-f = Fun((x,y)->cos(500x*y),JacobiTriangle(0.0,0.5,0.5),40_000); # 0.2
-@test f(0.1,0.2) ≈ cos(500*0.1*0.2)
+    f = Fun((x,y)->cos(100x*y),JacobiTriangle(0.0,0.5,0.5)); # 1.15s
+    f = Fun((x,y)->cos(500x*y),JacobiTriangle(0.0,0.5,0.5),40_000); # 0.2
+    @test f(0.1,0.2) ≈ cos(500*0.1*0.2)
 
-f = Fun((x,y)->cos(100x*y),JacobiTriangle(0.0,-0.5,0.5)); # 1.15s
-f = Fun((x,y)->cos(500x*y),JacobiTriangle(0.0,-0.5,0.5),40_000); # 0.2
-@test f(0.1,0.2) ≈ cos(500*0.1*0.2)
+    f = Fun((x,y)->cos(100x*y),JacobiTriangle(0.0,-0.5,0.5)); # 1.15s
+    f = Fun((x,y)->cos(500x*y),JacobiTriangle(0.0,-0.5,0.5),40_000); # 0.2
+    @test f(0.1,0.2) ≈ cos(500*0.1*0.2)
 
-d = Triangle(Vec(0,0),Vec(3,4),Vec(1,6))
-@time f = Fun((x,y)->cos(x*y),JacobiTriangle(0.0,-0.5,-0.5,d)); # 0.08s
-@test f(2,4) ≈ cos(2*4)
-@time f = Fun((x,y)->cos(x*y),JacobiTriangle(0.0,-0.5,0.5,d)); # 0.08s
-@test f(2,4) ≈ cos(2*4)
+    d = Triangle(Vec(0,0),Vec(3,4),Vec(1,6))
+    @time f = Fun((x,y)->cos(x*y),JacobiTriangle(0.0,-0.5,-0.5,d)); # 0.08s
+    @test f(2,4) ≈ cos(2*4)
+    @time f = Fun((x,y)->cos(x*y),JacobiTriangle(0.0,-0.5,0.5,d)); # 0.08s
+    @test f(2,4) ≈ cos(2*4)
 end
-
-@time f = Fun((x,y)->1,JacobiTriangle(0.0,0.5,-0.5),10); # 0.2
-    p = points(JacobiTriangle(0.0,0.5,-0.5),10)
-    S = space(f)
-    P = plan_transform(S, f)
-v = (_ -> 1.0).(p)
-
-v̂ = P.duffyplan*v
-F = MultivariateOrthogonalPolynomials.tridevec_trans(v̂)
-@which P.tri2cheb \ F
-P = MultivariateOrthogonalPolynomials.c_plan_tri2cheb(4, 0.0, 0.5, -0.5)
-F = zeros(4,4); F[1]=1;
-MultivariateOrthogonalPolynomials.c_cheb2tri(P, F)
-
-P = MultivariateOrthogonalPolynomials.c_plan_tri2cheb(4, 0.0, -0.5, -0.5)
-F = zeros(4,4); F[1]=1;
-MultivariateOrthogonalPolynomials.c_cheb2tri(P, F)
-
-F
-
-n = floor(Integer,sqrt(2length(v)) + 1/2)
-F̌ = P.tri2cheb \ F
-trivec(tridenormalize!(F̌,P.a,P.b,P.c))
-
-@time P(0.1,0.2)
-
-
-@time f = Fun((x,y) -> begin
-        # ret = 0.0
-        # for n = 18:18, k=8:8
-        #     ret += P(n,k,0.,-0.5,-0.5,x,y)
-        # end
-        # ret
-        P(18,8,0.,-0.5,-0.5,x,y)
-    end,
-    JacobiTriangle(0.0,-0.5,-0.5),600); # 0.08s
-    sum(f.coefficients)
-
-n = 600
-    S = JacobiTriangle(0.0,-0.5,-0.5)
-    ff = (xy) -> P(18,8,0.,-0.5,-0.5,xy...)
-    p = points(S,n)
-    v = ff.(p)
-    PP = plan_transform(S,v)
-    v̂ = PP.duffyplan*v
-    F = tridevec_trans(v̂)
-    F̌ = FastTransforms.cheb2tri(F,0.,-0.5,-0.5)
-    F̌₂ = PP.tri2cheb \ F
-    norm(F̌ - F̌₂)
-size(F)
-F̃ = copy(F)
-c_cheb2tri(c_plan_tri2cheb(size(F,1),0.0,-0.5,-0.5),F̃)
-F̃ |> chopm
-
-@which PP.tri2cheb \ F
-trivec(tridenormalize!(F̌,P.a,P.b,P.c))
-
-sum(1:18)
-
-
-using SO
-tridevec(f.coefficients) |> chopm
-
-
-sum(1:16)
-
-@test f(0.1,0.2) ≈ cos(0.1*0.2)
-
-p = points(space(f), 150)
-
-ff = (xy) -> cos(xy[1]*xy[2])
-ff.(p)
-
-
-
-
-@time f = Fun((x,y)->cos(500x*y),JacobiTriangle(0.0,-0.5,-0.5),40_000); # 0.2
-@time f = Fun((x,y)->cos(500x*y),JacobiTriangle(0.0,-0.5,-0.5)); # 0.2
-
-plot(f)
-ncoefficients(f)
-
-P = (n,k,a,b,c,x,y) -> x == 1.0 ? ((1-x))^k*jacobip(n-k,2k+b+c+1,a,1.0)*jacobip(k,c,b,-1.0) :
-        ((1-x))^k*jacobip(n-k,2k+b+c+1,a,2x-1)*jacobip(k,c,b,2y/(1-x)-1)
-
-f = Fun((x,y) -> P(5,1,0.,0.,0.,x,y), JacobiTriangle(0.,-0.5,-0.5) )
-    F = tridevec(f.coefficients)
-    F[:,2] = jjt(F[:,2], 2.0, 0.0, 3.0, 0.0) # correct
-    jjt(F[2,:], -0.5, -0.5, 0.0, 0.0)
-F
-jjt(F[:,1], 0.0, 0.0, 1.0, 0.0) # correct
-
-
-
-
-
-jjt(jjt(F[:,1], 0.0, -0.5, 0.0, 0.0),0.0,0.0,1.0,0.0)
-
-jac2jac(Fun(Fun(Legendre(),[0,0,1.0]),Jacobi(0.0,0.5)).coefficients,
-    0.0, 0.0, 0.5, 0.0)
-
-jac2jac(Fun(x -> Fun(Jacobi(0.0,0.5),[0,0,1.0])(x),Legendre()).coefficients,
-    0.0, 0.0, 0.5, 0.0)
-
-jjt(Fun(x -> jacobip(2,0.5,0.0,x),Legendre()).coefficients,
-    0.0, 0.0, 0.5, 0.0)
-
-using SO
-Fun(Fun(Jacobi(-0.5,0.0), [0,0,0,0,1.0]), Jacobi(0.0,0.0))
-
-
-Fun(Fun(Jacobi(0.0,-0.5), [0,0,0,0,1.0]), Jacobi(0.0,0.0))
-
-
-v = f.coefficients
-    N = floor(Integer,sqrt(2length(v)) + 1/2)
-    ret = zeros(Float64, N, N)
-    j = 1
-    for n=1:N,k=1:n
-        j > length(v) && return
-        ret[n-k+1,k] = v[j]
-        j += 1
-    end
-    ret
-
-
-v
 
 
 @testset "old constructors" begin
     f = Fun((x,y)->exp(x*cos(y)),JacobiTriangle(1,1,1))
-    @test Fun(f,ProductTriangle(1,1,1))(0.1,0.2) ≈ exp(0.1*cos(0.2))
+    @test f(0.1,0.2) ≈ exp(0.1*cos(0.2))
     f=Fun((x,y)->exp(x*cos(y)),JacobiTriangle(0,0,0))
     @test f(0.1,0.2) ≈ exp(0.1*cos(0.2))
     d = Triangle(Vec(0,0),Vec(3,4),Vec(1,6))
@@ -256,7 +129,6 @@ end
     f = Fun((x,y)->exp(x*cos(y)),JacobiTriangle(1,1,1))
     Jx = MultivariateOrthogonalPolynomials.Lowering{1}(space(f))
     testbandedblockbandedoperator(Jx)
-    @test Fun(Jx*f,ProductTriangle(0,1,1))(0.1,0.2) ≈ 0.1exp(0.1*cos(0.2))
 
     Jy = MultivariateOrthogonalPolynomials.Lowering{2}(space(f))
     testbandedblockbandedoperator(Jy)
@@ -269,12 +141,12 @@ end
     @test ApproxFun.colstop(Jy,4) == 8
 
 
-    @test Fun(Jy*f,ProductTriangle(1,0,1))(0.1,0.2) ≈ 0.2exp(0.1*cos(0.2))
+    @test (Jy*f)(0.1,0.2) ≈ 0.2exp(0.1*cos(0.2))
     @test norm((Jy*f-Fun((x,y)->y*exp(x*cos(y)),JacobiTriangle(1,0,1))).coefficients) < 1E-11
 
     Jz = MultivariateOrthogonalPolynomials.Lowering{3}(space(f))
     testbandedblockbandedoperator(Jz)
-    @test Fun(Jz*f,ProductTriangle(1,1,0))(0.1,0.2) ≈ (1-0.1-0.2)exp(0.1*cos(0.2))
+    @test (Jz*f)(0.1,0.2) ≈ (1-0.1-0.2)exp(0.1*cos(0.2))
 
     @test f(0.1,0.2) ≈ exp(0.1*cos(0.2))
 
@@ -494,7 +366,7 @@ end
 
     f=Fun(S,rand(3))
     h=0.01
-    QR=qrfact(I-h*Δ)
+    QR=qr(I-h*Δ)
     @time u=\(QR,f;tolerance=1E-7)
     @time g=Fun(f,rangespace(QR))
     @time \(QR,g;tolerance=1E-7)
@@ -530,7 +402,7 @@ end
     h=0.01
     Δ = Laplacian(S)
     @test maxspace(rangespace(Δ), S) == JacobiTriangle(1,1,1,d)
-    QR=qrfact(I-h*Δ)
+    QR=qr(I-h*Δ)
     @time u=\(QR,f;tolerance=1E-7)
     @time g=Fun(f,rangespace(QR))
     @time \(QR,g;tolerance=1E-7)
