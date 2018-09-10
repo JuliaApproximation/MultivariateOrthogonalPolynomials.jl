@@ -1,4 +1,4 @@
-# this is TriangleWeight(a,b,c,KoornwinderTriangle(a,b,c)) with some extra columns to span
+# this is TriangleWeight(a,b,c,JacobiTriangle(a,b,c)) with some extra columns to span
 # all the polynomials
 struct DirichletTriangle{a,b,c} <: Space{Triangle,Float64}
     domain::Triangle
@@ -6,7 +6,7 @@ end
 
 DirichletTriangle{a,b,c}() where {a,b,c} = DirichletTriangle{a,b,c}(Triangle())
 
-canonicalspace(D::DirichletTriangle) = KoornwinderTriangle(0,0,0,domain(D))
+canonicalspace(D::DirichletTriangle) = JacobiTriangle(0,0,0,domain(D))
 
 spacescompatible(A::DirichletTriangle{a,b,c}, B::DirichletTriangle{a,b,c}) where {a,b,c} =
     domainscompatible(A,B)
@@ -29,20 +29,20 @@ for OP in (:block,:blockstart,:blockstop)
 end
 
 
-function maxspace_rule(A::DirichletTriangle, B::KoornwinderTriangle)
+function maxspace_rule(A::DirichletTriangle, B::JacobiTriangle)
     domainscompatible(A,B) && return B
     NoSpace()
 end
 
-function conversion_rule(A::DirichletTriangle, B::KoornwinderTriangle)
+function conversion_rule(A::DirichletTriangle, B::JacobiTriangle)
     domainscompatible(A,B) && return A
     NoSpace()
 end
 
 
-Conversion(A::DirichletTriangle{1,0,0}, B::KoornwinderTriangle) = ConcreteConversion(A,B)
-Conversion(A::DirichletTriangle{0,1,0} ,B::KoornwinderTriangle) = ConcreteConversion(A,B)
-Conversion(A::DirichletTriangle{0,0,1}, B::KoornwinderTriangle) = ConcreteConversion(A,B)
+Conversion(A::DirichletTriangle{1,0,0}, B::JacobiTriangle) = ConcreteConversion(A,B)
+Conversion(A::DirichletTriangle{0,1,0} ,B::JacobiTriangle) = ConcreteConversion(A,B)
+Conversion(A::DirichletTriangle{0,0,1}, B::JacobiTriangle) = ConcreteConversion(A,B)
 function Conversion(A::DirichletTriangle{a,b,c}, B::DirichletTriangle{d,e,f}) where {a,b,c,d,e,f}
     @assert a ≥ d && b ≥ e && c ≥ f
     @assert domainscompatible(A,B)
@@ -53,7 +53,7 @@ function Conversion(A::DirichletTriangle{a,b,c}, B::DirichletTriangle{d,e,f}) wh
     #  c > f &&
     return Conversion(A,DirichletTriangle{a,b,c-1}(domain(A)),B)
 end
-function Conversion(A::DirichletTriangle{a,b,c}, B::KoornwinderTriangle) where {a,b,c}
+function Conversion(A::DirichletTriangle{a,b,c}, B::JacobiTriangle) where {a,b,c}
     @assert a ≥ 0 && b ≥ 0 && c ≥ 0
     @assert domainscompatible(A,B)
     # if only one is bigger, we can do a concrete conversion
@@ -69,26 +69,18 @@ isbandedblockbanded(::ConcreteConversion{<:DirichletTriangle,<:DirichletTriangle
 
 
 
-isbandedblockbanded(::ConcreteConversion{<:DirichletTriangle,KoornwinderTriangle})= true
+isbandedblockbanded(::ConcreteConversion{<:DirichletTriangle,JacobiTriangle})= true
 
-blockbandinds(::ConcreteConversion{DirichletTriangle{1,0,0},KoornwinderTriangle}) = (0,1)
-blockbandinds(::ConcreteConversion{DirichletTriangle{0,1,0},KoornwinderTriangle}) = (0,1)
-blockbandinds(::ConcreteConversion{DirichletTriangle{0,0,1},KoornwinderTriangle}) = (0,1)
+blockbandwidths(::ConcreteConversion{DirichletTriangle{1,0,0},JacobiTriangle}) = (0,1)
+blockbandwidths(::ConcreteConversion{DirichletTriangle{0,1,0},JacobiTriangle}) = (0,1)
+blockbandwidths(::ConcreteConversion{DirichletTriangle{0,0,1},JacobiTriangle}) = (0,1)
 
-
-
-
-subblockbandinds(::ConcreteConversion{DirichletTriangle{1,0,0},KoornwinderTriangle}) = (0,0)
-subblockbandinds(::ConcreteConversion{DirichletTriangle{1,0,0},KoornwinderTriangle},k::Integer) = 0
-
-subblockbandinds(::ConcreteConversion{DirichletTriangle{0,1,0},KoornwinderTriangle}) = (0,1)
-subblockbandinds(::ConcreteConversion{DirichletTriangle{0,1,0},KoornwinderTriangle},k::Integer) = k==1 ? 0 : 1
+subblockbandwidths(::ConcreteConversion{DirichletTriangle{1,0,0},JacobiTriangle}) = (0,0)
+subblockbandwidths(::ConcreteConversion{DirichletTriangle{0,1,0},JacobiTriangle}) = (0,1)
+subblockbandwidths(::ConcreteConversion{DirichletTriangle{0,0,1},JacobiTriangle}) = (0,1)
 
 
-subblockbandinds(::ConcreteConversion{DirichletTriangle{0,0,1},KoornwinderTriangle}) = (0,1)
-subblockbandinds(::ConcreteConversion{DirichletTriangle{0,0,1},KoornwinderTriangle},k::Integer) = k==1 ? 0 : 1
-
-function getindex(R::ConcreteConversion{DirichletTriangle{1,0,0},KoornwinderTriangle},k::Integer,j::Integer)
+function getindex(R::ConcreteConversion{DirichletTriangle{1,0,0},JacobiTriangle},k::Integer,j::Integer)
     T=eltype(R)
     K = Int(block(rangespace(R),k))
     J = Int(block(domainspace(R),j))
@@ -112,7 +104,7 @@ end
 
 
 
-function getindex(R::ConcreteConversion{DirichletTriangle{0,1,0},KoornwinderTriangle,T},k::Integer,j::Integer) where T
+function getindex(R::ConcreteConversion{DirichletTriangle{0,1,0},JacobiTriangle,T},k::Integer,j::Integer) where T
     K = Int(block(rangespace(R),k))
     J = Int(block(domainspace(R),j))
     κ=k-blockstart(rangespace(R),K)+1
@@ -138,7 +130,7 @@ function getindex(R::ConcreteConversion{DirichletTriangle{0,1,0},KoornwinderTria
 end
 
 
-function getindex(R::ConcreteConversion{DirichletTriangle{0,0,1},KoornwinderTriangle,T},k::Integer,j::Integer) where T
+function getindex(R::ConcreteConversion{DirichletTriangle{0,0,1},JacobiTriangle,T},k::Integer,j::Integer) where T
     K = Int(block(rangespace(R),k))
     J = Int(block(domainspace(R),j))
     κ=k-blockstart(rangespace(R),K)+1
@@ -164,35 +156,19 @@ function getindex(R::ConcreteConversion{DirichletTriangle{0,0,1},KoornwinderTria
 end
 
 
-blockbandinds(::ConcreteConversion{DirichletTriangle{1,1,0},DirichletTriangle{0,1,0}}) = (0,1)
-subblockbandinds(::ConcreteConversion{DirichletTriangle{1,1,0},DirichletTriangle{0,1,0}}) = (0,0)
-subblockbandinds(::ConcreteConversion{DirichletTriangle{1,1,0},DirichletTriangle{0,1,0}},k::Integer) = 0
+blockbandwidths(::ConcreteConversion{DirichletTriangle{1,1,0},DirichletTriangle{0,1,0}}) = (0,1)
+subblockbandwidths(::ConcreteConversion{DirichletTriangle{1,1,0},DirichletTriangle{0,1,0}}) = (0,0)
+blockbandwidths(::ConcreteConversion{DirichletTriangle{1,0,1},DirichletTriangle{0,0,1}}) = (0,1)
+subblockbandwidths(::ConcreteConversion{DirichletTriangle{1,0,1},DirichletTriangle{0,0,1}}) = (0,0)
+blockbandwidths(::ConcreteConversion{DirichletTriangle{1,1,0},DirichletTriangle{1,0,0}}) = (0,1)
+subblockbandwidths(::ConcreteConversion{DirichletTriangle{1,1,0},DirichletTriangle{1,0,0}}) = (0,1)
+blockbandwidths(::ConcreteConversion{DirichletTriangle{1,0,1},DirichletTriangle{1,0,0}}) = (0,1)
+subblockbandwidths(::ConcreteConversion{DirichletTriangle{1,0,1},DirichletTriangle{1,0,0}}) = (0,1)
+blockbandwidths(::ConcreteConversion{DirichletTriangle{0,1,1},DirichletTriangle{0,0,1}}) = (0,1)
+subblockbandwidths(::ConcreteConversion{DirichletTriangle{0,1,1},DirichletTriangle{0,0,1}}) = (0,1)
+blockbandwidths(::ConcreteConversion{DirichletTriangle{0,1,1},DirichletTriangle{0,1,0}}) = (0,1)
+subblockbandwidths(::ConcreteConversion{DirichletTriangle{0,1,1},DirichletTriangle{0,1,0}}) = (0,1)
 
-blockbandinds(::ConcreteConversion{DirichletTriangle{1,0,1},DirichletTriangle{0,0,1}}) = (0,1)
-subblockbandinds(::ConcreteConversion{DirichletTriangle{1,0,1},DirichletTriangle{0,0,1}}) = (0,0)
-subblockbandinds(::ConcreteConversion{DirichletTriangle{1,0,1},DirichletTriangle{0,0,1}},k::Integer) = 0
-
-
-
-
-blockbandinds(::ConcreteConversion{DirichletTriangle{1,1,0},DirichletTriangle{1,0,0}}) = (0,1)
-subblockbandinds(::ConcreteConversion{DirichletTriangle{1,1,0},DirichletTriangle{1,0,0}}) = (0,1)
-subblockbandinds(::ConcreteConversion{DirichletTriangle{1,1,0},DirichletTriangle{1,0,0}},k::Integer) = k==1 ? 0 : 1
-
-blockbandinds(::ConcreteConversion{DirichletTriangle{1,0,1},DirichletTriangle{1,0,0}}) = (0,1)
-subblockbandinds(::ConcreteConversion{DirichletTriangle{1,0,1},DirichletTriangle{1,0,0}}) = (0,1)
-subblockbandinds(::ConcreteConversion{DirichletTriangle{1,0,1},DirichletTriangle{1,0,0}},k::Integer) = k==1 ? 0 : 1
-
-
-blockbandinds(::ConcreteConversion{DirichletTriangle{0,1,1},DirichletTriangle{0,0,1}}) = (0,1)
-subblockbandinds(::ConcreteConversion{DirichletTriangle{0,1,1},DirichletTriangle{0,0,1}}) = (0,1)
-subblockbandinds(::ConcreteConversion{DirichletTriangle{0,1,1},DirichletTriangle{0,0,1}},k::Integer) = k==1 ? 0 : 1
-
-
-
-blockbandinds(::ConcreteConversion{DirichletTriangle{0,1,1},DirichletTriangle{0,1,0}}) = (0,1)
-subblockbandinds(::ConcreteConversion{DirichletTriangle{0,1,1},DirichletTriangle{0,1,0}}) = (0,1)
-subblockbandinds(::ConcreteConversion{DirichletTriangle{0,1,1},DirichletTriangle{0,1,0}},k::Integer) = k==1 ? 0 : 1
 
 
 
@@ -396,27 +372,12 @@ function getindex(R::ConcreteConversion{DirichletTriangle{0,1,1},DirichletTriang
 end
 
 
-
-
-
-blockbandinds(::ConcreteConversion{DirichletTriangle{1,1,1},DirichletTriangle{0,1,1}}) = (0,1)
-subblockbandinds(::ConcreteConversion{DirichletTriangle{1,1,1},DirichletTriangle{0,1,1}}) = (0,0)
-subblockbandinds(::ConcreteConversion{DirichletTriangle{1,1,1},DirichletTriangle{0,1,1}},k::Integer) = 0
-
-
-blockbandinds(::ConcreteConversion{DirichletTriangle{1,1,1},DirichletTriangle{1,0,1}}) = (0,1)
-subblockbandinds(::ConcreteConversion{DirichletTriangle{1,1,1},DirichletTriangle{1,0,1}}) = (0,1)
-subblockbandinds(::ConcreteConversion{DirichletTriangle{1,1,1},DirichletTriangle{1,0,1}},k::Integer) = k==1 ? 0 : 1
-
-
-blockbandinds(::ConcreteConversion{DirichletTriangle{1,1,1},DirichletTriangle{1,1,0}}) = (0,1)
-subblockbandinds(::ConcreteConversion{DirichletTriangle{1,1,1},DirichletTriangle{1,1,0}}) = (0,1)
-subblockbandinds(::ConcreteConversion{DirichletTriangle{1,1,1},DirichletTriangle{1,1,0}},k::Integer) = k==1 ? 0 : 1
-
-
-
-
-
+blockbandwidths(::ConcreteConversion{DirichletTriangle{1,1,1},DirichletTriangle{0,1,1}}) = (0,1)
+subblockbandwidths(::ConcreteConversion{DirichletTriangle{1,1,1},DirichletTriangle{0,1,1}}) = (0,0)
+blockbandwidths(::ConcreteConversion{DirichletTriangle{1,1,1},DirichletTriangle{1,0,1}}) = (0,1)
+subblockbandwidths(::ConcreteConversion{DirichletTriangle{1,1,1},DirichletTriangle{1,0,1}}) = (0,1)
+blockbandwidths(::ConcreteConversion{DirichletTriangle{1,1,1},DirichletTriangle{1,1,0}}) = (0,1)
+subblockbandwidths(::ConcreteConversion{DirichletTriangle{1,1,1},DirichletTriangle{1,1,0}}) = (0,1)
 
 function getindex(R::ConcreteConversion{DirichletTriangle{1,1,1},DirichletTriangle{0,1,1},T},k::Integer,j::Integer)::T where {T}
     K = Int(block(rangespace(R),k))
@@ -628,7 +589,7 @@ end
 
 isblockbanded(::ConcreteConversion{<:DirichletTriangle,<:Jacobi}) = true
 
-blockbandinds(::ConcreteConversion{<:DirichletTriangle,<:Jacobi}) = (0,0)
+blockbandwidths(::ConcreteConversion{<:DirichletTriangle,<:Jacobi}) = (0,0)
 function getindex(R::ConcreteConversion{DirichletTriangle{1,0,0},<:Jacobi},k::Integer,j::Integer)
     T=eltype(R)
     J = Int(block(domainspace(R),j))
@@ -669,7 +630,7 @@ end
 Dirichlet(d::Triangle) = Dirichlet(DirichletTriangle{1,1,1}(d))
 
 
-Base.sum(f::Fun{<:DirichletTriangle}) = sum(Fun(f,KoornwinderTriangle(0,0,0,domain(f))))
+Base.sum(f::Fun{<:DirichletTriangle}) = sum(Fun(f,JacobiTriangle(0,0,0,domain(f))))
 
 
 
@@ -683,11 +644,11 @@ function Derivative(A::DirichletTriangle{1,0,1}, order)
         if d == Triangle()
             ConcreteDerivative(A,order)
         else
-            S = KoornwinderTriangle(0,0,0,d)
+            S = JacobiTriangle(0,0,0,d)
             DerivativeWrapper(Derivative(S,order)*Conversion(A,S),order)
         end
     elseif order == [0,1]
-        S = KoornwinderTriangle(0,0,0,d)
+        S = JacobiTriangle(0,0,0,d)
         DerivativeWrapper(Derivative(S,order)*Conversion(A,S),order)
     elseif order[1] ≥ 1
         D = Derivative(A,[1,0])
@@ -705,11 +666,11 @@ function Derivative(A::DirichletTriangle{0,1,1}, order)
         if d == Triangle()
             ConcreteDerivative(A,order)
         else
-            S = KoornwinderTriangle(0,0,0,d)
+            S = JacobiTriangle(0,0,0,d)
             DerivativeWrapper(Derivative(S,order)*Conversion(A,S),order)
         end
     elseif order == [1,0]
-        S = KoornwinderTriangle(0,0,0,d)
+        S = JacobiTriangle(0,0,0,d)
         DerivativeWrapper(Derivative(S,order)*Conversion(A,S),order)
     elseif order[1] > 1
         D = Derivative(A,[1,0])
@@ -752,21 +713,18 @@ function Derivative(A::DirichletTriangle{1,1,1}, order)
 end
 
 
-rangespace(D::ConcreteDerivative{DirichletTriangle{1,0,1}}) = KoornwinderTriangle(0,0,0)
-rangespace(D::ConcreteDerivative{DirichletTriangle{0,1,1}}) = KoornwinderTriangle(0,0,0)
+rangespace(D::ConcreteDerivative{DirichletTriangle{1,0,1}}) = JacobiTriangle(0,0,0)
+rangespace(D::ConcreteDerivative{DirichletTriangle{0,1,1}}) = JacobiTriangle(0,0,0)
 
 isbandedblockbanded(::ConcreteDerivative{DirichletTriangle{1,0,1}}) = true
 isbandedblockbanded(::ConcreteDerivative{DirichletTriangle{0,1,1}}) = true
 
 
-blockbandinds(::ConcreteDerivative{DirichletTriangle{1,0,1}}) = (-1,1)
-blockbandinds(::ConcreteDerivative{DirichletTriangle{0,1,1}}) = (-1,1)
+blockbandwidths(::ConcreteDerivative{DirichletTriangle{1,0,1}}) = (1,1)
+blockbandwidths(::ConcreteDerivative{DirichletTriangle{0,1,1}}) = (1,1)
+subblockbandwidths(::ConcreteDerivative{DirichletTriangle{1,0,1}}) = (0,1)
+subblockbandwidths(::ConcreteDerivative{DirichletTriangle{0,1,1}}) = (1,1)
 
-subblockbandinds(::ConcreteDerivative{DirichletTriangle{1,0,1}}) = (0,1)
-subblockbandinds(::ConcreteDerivative{DirichletTriangle{1,0,1}}, k::Integer) = k == 1 ? 0 : 1
-
-subblockbandinds(::ConcreteDerivative{DirichletTriangle{0,1,1}}) = (-1,1)
-subblockbandinds(::ConcreteDerivative{DirichletTriangle{0,1,1}}, k::Integer) = k == 1 ? -1 : 1
 
 
 function getindex(R::ConcreteDerivative{DirichletTriangle{1,0,1}}, k::Integer, j::Integer)

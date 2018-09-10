@@ -3,14 +3,14 @@ __precompile__()
 module MultivariateOrthogonalPolynomials
 using Base, RecipesBase, ApproxFun, BandedMatrices, BlockArrays,
     FastTransforms, FastGaussQuadrature, StaticArrays, FillArrays,
-    LinearAlgebra, Libdl, SpecialFunctions
+    LinearAlgebra, Libdl, SpecialFunctions, LazyArrays
 
 # package code goes here
 import Base: values,getindex,setindex!,*, +, -, ==,<,<=,>,
                 >=,/,^,\,∪,transpose
 
 
-import BandedMatrices: mul!, inbands_getindex, inbands_setindex!
+import BandedMatrices: inbands_getindex, inbands_setindex!
 
 # ApproxFun general import
 import ApproxFun: BandedMatrix, order, blocksize,
@@ -22,7 +22,7 @@ import ApproxFun: BandedMatrix, order, blocksize,
 import ApproxFun: fromcanonical, tocanonical, domainscompatible
 
 # Operator import
-import ApproxFun:    bandinds,SpaceOperator, ConversionWrapper, DerivativeWrapper,
+import ApproxFun:    bandwidths,SpaceOperator, ConversionWrapper, DerivativeWrapper,
                   rangespace, domainspace, InterlaceOperator,
                   promotedomainspace,  CalculusOperator, interlace, Multiplication,
                    choosedomainspace, SubOperator, ZeroOperator,
@@ -45,7 +45,7 @@ import ApproxFun: PolynomialSpace, ConstantSpace, NoSpace, prectype,
 # Multivariate import
 import ApproxFun: BivariateDomain,DirectSumSpace, AbstractProductSpace, factor,
                     BivariateFun,  ProductFun, LowRankFun, lap, columnspace,
-                    blockbandinds, subblockbandinds, fromtensor, totensor, isbandedblockbanded,
+                    blockbandwidths, subblockbandwidths, fromtensor, totensor, isbandedblockbanded,
                     Tensorizer, tensorizer, block, blockstart, blockstop, blocklengths,
                     domaintensorizer, rangetensorizer, blockrange, Block, BlockRange1
 

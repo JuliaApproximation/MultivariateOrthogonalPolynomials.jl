@@ -69,12 +69,12 @@ plot(u[4])
 ncoefficients(u[4])
 @which points(u[4].space,210)
 points(u[4].space,ncoefficients(u[4]))
-pts=points(KoornwinderTriangle(0,0,0),210)
+pts=points(JacobiTriangle(0,0,0),210)
 fromcanonical(S,pts[1])
 K = S
 n = 210
 map(Vec,map(vec,points(ProductTriangle(K),round(Int,sqrt(n)),round(Int,sqrt(n))))...)
-S = KoornwinderTriangle(0,0,0,d[2])
+S = JacobiTriangle(0,0,0,d[2])
 fromcanonical(S, Vec(0.1,0.2))
 u[1](0.1,0.2)-real(exp(0.1+0.2im)) # ~ 4.5E-16
 u[4](0.6,0.7)-real(exp(0.6+0.7im)) # ~ 6.7E-16

@@ -1,9 +1,9 @@
 Base.show(io::IO,d::Triangle) = print(io, "Triangle($(d.a),$(d.b),$(d.c))")
-function Base.show(io::IO,s::KoornwinderTriangle)
+function Base.show(io::IO,s::JacobiTriangle)
     if domain(s) == Triangle()
-        print(io, "KoornwinderTriangle($(s.α),$(s.β),$(s.γ))")
+        print(io, "JacobiTriangle($(s.α),$(s.β),$(s.γ))")
     else
-        print(io, "KoornwinderTriangle($(s.α),$(s.β),$(s.γ),$(domain(s)))")
+        print(io, "JacobiTriangle($(s.α),$(s.β),$(s.γ),$(domain(s)))")
     end
 end
 

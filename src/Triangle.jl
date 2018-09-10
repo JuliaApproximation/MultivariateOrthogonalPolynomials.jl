@@ -1,4 +1,4 @@
-export Triangle, KoornwinderTriangle, ProductTriangle, TriangleWeight, WeightedTriangle
+export Triangle, JacobiTriangle, TriangleWeight, WeightedTriangle
 
 
 ## Triangle Def
@@ -70,52 +70,32 @@ Base.isnan(::Triangle) = false
 # P_{n-k}^{2k+β+γ+1,α}(2x-1)*(1-x)^k*P_k^{γ,β}(2y/(1-x)-1)
 
 
-struct ProductTriangle <: AbstractProductSpace{Tuple{WeightedJacobi{Segment{Float64},Float64},
-                                                        Jacobi{Segment{Float64},Float64}},
-                                                  Triangle,Float64}
+struct JacobiTriangle <: Space{Triangle,Float64}
     α::Float64
     β::Float64
     γ::Float64
     domain::Triangle
 end
 
+JacobiTriangle() = JacobiTriangle(0,0,0)
 
-struct KoornwinderTriangle <: Space{Triangle,Float64}
-    α::Float64
-    β::Float64
-    γ::Float64
-    domain::Triangle
-end
-
-KoornwinderTriangle() = KoornwinderTriangle(0,0,0)
-
-points(K::KoornwinderTriangle, n::Integer) =
+points(K::JacobiTriangle, n::Integer) =
     fromcanonical.(Ref(K), points(DuffyTriangle(), n))
 
-points(K::Triangle,n::Integer) = points(KoornwinderTriangle(0,0,0,K),n)
-
-const TriangleSpace = Union{ProductTriangle,KoornwinderTriangle}
-
-ProductTriangle(K::KoornwinderTriangle) = ProductTriangle(K.α,K.β,K.γ,K.domain)
-
-canonicaldomain(sp::ProductTriangle) = Segment(0,1)^2
-tocanonical(sp::ProductTriangle, x...) = duffy(tocanonical(domain(sp),x...))
-fromcanonical(sp::ProductTriangle, x...) = fromcanonical(domain(sp),iduffy(x...))
-setdomain(K::KoornwinderTriangle, d::Triangle) = KoornwinderTriangle(K.α,K.β,K.γ,d)
+points(K::Triangle, n::Integer) = points(JacobiTriangle(0,0,0,K),n)
 
 
-for TYP in (:ProductTriangle,:KoornwinderTriangle)
-    @eval begin
-        $TYP(α,β,γ) = $TYP(α,β,γ,Triangle())
-        $TYP(T::Triangle) = $TYP(0.,0.,0.,T)
-        spacescompatible(K1::$TYP,K2::$TYP) =
-            K1.α==K2.α && K1.β==K2.β && K1.γ==K2.γ
-    end
-end
+setdomain(K::JacobiTriangle, d::Triangle) = JacobiTriangle(K.α,K.β,K.γ,d)
+
+
+JacobiTriangle(α,β,γ) = JacobiTriangle(α,β,γ,Triangle())
+JacobiTriangle(T::Triangle) = JacobiTriangle(0.,0.,0.,T)
+spacescompatible(K1::JacobiTriangle, K2::JacobiTriangle) =
+    K1.α==K2.α && K1.β==K2.β && K1.γ==K2.γ && domainscompatible(K1, K2)
 
 
 
-Space(T::Triangle) = KoornwinderTriangle(T)
+Space(T::Triangle) = JacobiTriangle(T)
 
 # Use DuffyMap with
 
@@ -128,10 +108,12 @@ struct DuffyTriangle{S,T} <: Space{Triangle,T}
     end
 end
 
+const TriangleSpace = Union{DuffyTriangle,JacobiTriangle}
+
 DuffyTriangle(s::S, d) where S = DuffyTriangle{S,ApproxFun.rangetype(S)}(s, d)
 DuffyTriangle() = DuffyTriangle(Chebyshev(0..1)^2, Triangle())
 DuffyTriangle(d::Triangle) = DuffyTriangle(Chebyshev(0..1)^2, d)
-DuffyTriangle(S::KoornwinderTriangle) = DuffyTriangle(Chebyshev(0..1)*Jacobi(S.γ,S.β,0..1), domain(S))
+DuffyTriangle(S::JacobiTriangle) = DuffyTriangle(Chebyshev(0..1)*Jacobi(S.γ,S.β,0..1), domain(S))
 
 function points(S::DuffyTriangle, N)
     pts = points(S.space, N)
@@ -228,7 +210,7 @@ function tridevec(v::AbstractVector{T}) where T
 end
 
 
-struct FastKoornwinderTriangleTransformPlan{DUF,CHEB}
+struct FastJacobiTriangleTransformPlan{DUF,CHEB}
     duffyplan::DUF
     tri2cheb::CHEB
     a::Float64
@@ -236,37 +218,47 @@ struct FastKoornwinderTriangleTransformPlan{DUF,CHEB}
     c::Float64
 end
 
-function FastKoornwinderTriangleTransformPlan(S::KoornwinderTriangle, v::AbstractVector{T}) where T
+function FastJacobiTriangleTransformPlan(S::JacobiTriangle, v::AbstractVector{T}) where T
     n = floor(Integer,sqrt(2length(v)) + 1/2)
     v = Array{T}(undef, sum(1:n))
-    FastKoornwinderTriangleTransformPlan(plan_transform(DuffyTriangle(), v),
+    FastJacobiTriangleTransformPlan(plan_transform(DuffyTriangle(), v),
                                      CTri2ChebPlan(n,S.α,S.β,S.γ),S.α,S.β,S.γ)
 end
 
-function *(P::FastKoornwinderTriangleTransformPlan, v)
+function *(P::FastJacobiTriangleTransformPlan, v)
     v̂ = P.duffyplan*v
     F = tridevec_trans(v̂)
     F̌ = P.tri2cheb \ F
     trivec(tridenormalize!(F̌,P.a,P.b,P.c))
 end
 
-# struct ShiftKoornwinderTriangleTransformPlan{FAST,CC}
+function plan_transform(K::JacobiTriangle, v::AbstractVector)
+    # if K.α == 0
+        FastJacobiTriangleTransformPlan(K, v)
+    # elseif isapproxinteger(K.α) && isapproxinteger(K.β+0.5) &&  isapproxinteger(K.γ+0.5)
+    #     ShiftJacobiTriangleTransformPlan(K, v)
+    # else
+    #     JacobiTriangleTransformPlan(v)
+    # end
+end
+
+# struct ShiftJacobiTriangleTransformPlan{FAST,CC}
 #     fastplan::FAST
 #     conversion::CC
 # end
 #
 #
-# function ShiftKoornwinderTriangleTransformPlan(S::KoornwinderTriangle, v::AbstractVector)
+# function ShiftJacobiTriangleTransformPlan(S::JacobiTriangle, v::AbstractVector)
 #     n = floor(Integer,sqrt(2length(v)) + 1/2)
-#     C = Conversion(KoornwinderTriangle(0.0,-0.5,-0.5,domain(S)),S)
-#     ShiftKoornwinderTriangleTransformPlan(FastKoornwinderTriangleTransformPlan(v),
+#     C = Conversion(JacobiTriangle(0.0,-0.5,-0.5,domain(S)),S)
+#     ShiftJacobiTriangleTransformPlan(FastJacobiTriangleTransformPlan(v),
 #                                             C[Block.(1:n),Block.(1:n)])
 # end
 #
 #
-# *(P::ShiftKoornwinderTriangleTransformPlan, v) = P.conversion*(P.fastplan*v)
+# *(P::ShiftJacobiTriangleTransformPlan, v) = P.conversion*(P.fastplan*v)
 
-struct FastKoornwinderTriangleITransformPlan{DUF,CHEB}
+struct FastJacobiTriangleITransformPlan{DUF,CHEB}
     iduffyplan::DUF
     tri2cheb::CHEB
     a::Float64
@@ -275,14 +267,14 @@ struct FastKoornwinderTriangleITransformPlan{DUF,CHEB}
 end
 
 
-function FastKoornwinderTriangleITransformPlan(S::KoornwinderTriangle, v::AbstractVector{T}) where T
+function FastJacobiTriangleITransformPlan(S::JacobiTriangle, v::AbstractVector{T}) where T
     n = floor(Integer,sqrt(2length(v)) + 1/2)
     v = Array{T}(undef, sum(1:n))
-    FastKoornwinderTriangleITransformPlan(plan_itransform(DuffyTriangle(), v),
+    FastJacobiTriangleITransformPlan(plan_itransform(DuffyTriangle(), v),
                                    CTri2ChebPlan(n,S.α,S.β,S.γ),S.α,S.β,S.γ)
 end
 
-function *(P::FastKoornwinderTriangleITransformPlan, v)
+function *(P::FastJacobiTriangleITransformPlan, v)
     n = floor(Integer,sqrt(2length(v)) + 1/2)
     v = pad(v, sum(1:n))
     F̌ = trinormalize!(tridevec(v),P.a,P.b,P.c)
@@ -292,30 +284,19 @@ function *(P::FastKoornwinderTriangleITransformPlan, v)
 end
 
 
-function plan_transform(K::KoornwinderTriangle, v::AbstractVector)
-    # if K.α == 0
-        FastKoornwinderTriangleTransformPlan(K, v)
-    # elseif isapproxinteger(K.α) && isapproxinteger(K.β+0.5) &&  isapproxinteger(K.γ+0.5)
-    #     ShiftKoornwinderTriangleTransformPlan(K, v)
-    # else
-    #     KoornwinderTriangleTransformPlan(v)
-    # end
-end
-
-function plan_itransform(K::KoornwinderTriangle, v::AbstractVector)
+function plan_itransform(K::JacobiTriangle, v::AbstractVector)
     # if K.α == 0 && K.β == K.γ == -0.5
-        FastKoornwinderTriangleITransformPlan(K, v)
+        FastJacobiTriangleITransformPlan(K, v)
     # elseif isapproxinteger(K.α) && isapproxinteger(K.β+0.5) &&  isapproxinteger(K.γ+0.5)
-    #     ShiftKoornwinderTriangleITransformPlan(K, v)
+    #     ShiftJacobiTriangleITransformPlan(K, v)
     # else
-    #     KoornwinderTriangleITransformPlan(v)
+    #     JacobiTriangleITransformPlan(v)
     # end
 end
 
 
 
-# TODO: @tensorspace
-tensorizer(K::TriangleSpace) = Tensorizer((ApproxFun.repeated(true),ApproxFun.repeated(true)))
+tensorizer(K::TriangleSpace) = Tensorizer((Ones{Int}(∞),Ones{Int}(∞)))
 
 # we have each polynomial
 blocklengths(K::TriangleSpace) = 1:∞
@@ -328,36 +309,9 @@ for OP in (:block,:blockstart,:blockstop)
 end
 
 
-# support for ProductFun constructor
+Base.sum(f::Fun{<:JacobiTriangle}) =
+    Fun(f,JacobiTriangle(0,0,0)).coefficients[1]/2
 
-function factor(T::ProductTriangle,k::Integer)
-    @assert k==2
-    Jacobi(T.β,T.γ,Segment(0.,1.))
-end
-
-columnspace(T::ProductTriangle,k::Integer) =
-    JacobiWeight(0.,k-1.,Jacobi(T.α,2k-1+T.β+T.γ,Segment(0.,1.)))
-
-Base.sum(f::Fun{<:KoornwinderTriangle}) =
-    Fun(f,KoornwinderTriangle(0,0,0)).coefficients[1]/2
-
-# convert coefficients
-
-# Fun(f::Function, S::KoornwinderTriangle) = Fun(Fun(ProductFun(f,ProductTriangle(S))),S)
-# Fun(f::Fun, S::KoornwinderTriangle) = Fun(S,coefficients(f,S))
-
-
-function coefficients(f::AbstractVector,K::KoornwinderTriangle,P::ProductTriangle)
-    C=totensor(K,f)
-    D=Float64[2.0^(-k) for k=0:size(C,1)-1]
-    fromtensor(K,transpose(C)*diagm(D))
-end
-
-function coefficients(f::AbstractVector,K::ProductTriangle,P::KoornwinderTriangle)
-    C=totensor(K,f)
-    D=Float64[2.0^(k) for k=0:size(C,1)-1]
-    fromtensor(P,transpose(C*diagm(D)))
-end
 
 
 function clenshaw2D(Jx,Jy,cfs::Vector{Vector{T}},x,y) where T
@@ -398,10 +352,10 @@ function clenshaw2D(Jx,Jy,cfs::Vector{Vector{T}},x,y) where T
 
         bk1 = (x*Abk1x) ::Vector{T}
         LinearAlgebra.axpy!(y,Abk1y,bk1)
-        mul!(bk1,Bx,Abk1x,-one(T),one(T))
-        mul!(bk1,By,Abk1y,-one(T),one(T))
-        mul!(bk1,Cx,Abk2x,-one(T),one(T))
-        mul!(bk1,Cy,Abk2y,-one(T),one(T))
+        bk1 .= (-one(T)).*Mul(Bx,Abk1x) .+ bk1
+        bk1 .= (-one(T)).*Mul(By,Abk1y) .+ bk1
+        bk1 .= (-one(T)).*Mul(Cx,Abk2x) .+ bk1
+        bk1 .= (-one(T)).*Mul(Cy,Abk2y) .+ bk1
         LinearAlgebra.axpy!(one(T),cfs[Int(K)],bk1)
     end
 
@@ -439,18 +393,18 @@ struct TriangleEvaluatePlan{S,RX,RY,T}
     Jy::RY
 end
 
-function canonicaljacobioperators(S::KoornwinderTriangle)
-    S₁ = KoornwinderTriangle(S.α+1,S.β,S.γ,domain(S))
+function canonicaljacobioperators(S::JacobiTriangle)
+    S₁ = JacobiTriangle(S.α+1,S.β,S.γ,domain(S))
     J₁ = Lowering{1}(S₁)*Conversion(S,S₁)
-    S₂ = KoornwinderTriangle(S.α,S.β+1,S.γ,domain(S))
+    S₂ = JacobiTriangle(S.α,S.β+1,S.γ,domain(S))
     J₂ = Lowering{2}(S₂)*Conversion(S,S₂)
     J₁, J₂
 end
 
-jacobioperators(S::KoornwinderTriangle) = fromcanonical(S, canonicaljacobioperators(S)...)
+jacobioperators(S::JacobiTriangle) = fromcanonical(S, canonicaljacobioperators(S)...)
 
 
-function plan_evaluate(f::Fun{KoornwinderTriangle},x...)
+function plan_evaluate(f::Fun{JacobiTriangle},x...)
     N = nblocks(f)
     S = space(f)
     # we cannot use true Jacobi operators because that changes the band
@@ -466,16 +420,14 @@ end
 
 (P::TriangleEvaluatePlan)(pt::Vec) = P(pt...)
 
-# evaluate(f::AbstractVector,K::KoornwinderTriangle,x...) =
-#     evaluate(coefficients(f,K,ProductTriangle(K)),ProductTriangle(K),x...)
 
-evaluate(f::AbstractVector,K::KoornwinderTriangle,x...) = plan_evaluate(Fun(K,f))(x...)
+evaluate(f::AbstractVector,K::JacobiTriangle,x...) = plan_evaluate(Fun(K,f))(x...)
 
 # Operators
 
 
 
-function Derivative(K::KoornwinderTriangle, order::Vector{Int})
+function Derivative(K::JacobiTriangle, order::Vector{Int})
     @assert length(order)==2
     d = domain(K)
     if order==[1,0] || order==[0,1]
@@ -503,21 +455,20 @@ function Derivative(K::KoornwinderTriangle, order::Vector{Int})
 end
 
 
-rangespace(D::ConcreteDerivative{KoornwinderTriangle}) =
-    KoornwinderTriangle(D.space.α+D.order[1],
+rangespace(D::ConcreteDerivative{JacobiTriangle}) =
+    JacobiTriangle(D.space.α+D.order[1],
                         D.space.β+D.order[2],
                         D.space.γ+sum(D.order),
                         domain(D))
 
 
-isbandedblockbanded(::ConcreteDerivative{KoornwinderTriangle}) = true
+isbandedblockbanded(::ConcreteDerivative{JacobiTriangle}) = true
 
 
-blockbandinds(D::ConcreteDerivative{KoornwinderTriangle}) = 0,sum(D.order)
-subblockbandinds(D::ConcreteDerivative{KoornwinderTriangle}) = (0,sum(D.order))
-subblockbandinds(D::ConcreteDerivative{KoornwinderTriangle},k::Integer) = k==1 ? 0 : sum(D.order)
+blockbandwidths(D::ConcreteDerivative{JacobiTriangle}) = 0,sum(D.order)
+subblockbandwidths(D::ConcreteDerivative{JacobiTriangle}) = (0,sum(D.order))
 
-function getindex(D::ConcreteDerivative{KoornwinderTriangle},k::Integer,j::Integer)
+function getindex(D::ConcreteDerivative{JacobiTriangle},k::Integer,j::Integer)
     T=eltype(D)
     S=domainspace(D)
     α,β,γ = S.α,S.β,S.γ
@@ -546,7 +497,7 @@ function getindex(D::ConcreteDerivative{KoornwinderTriangle},k::Integer,j::Integ
 end
 
 function Base.convert(::Type{BandedBlockBandedMatrix},
-        S::SubOperator{T,ConcreteDerivative{KoornwinderTriangle,Vector{Int},T},
+        S::SubOperator{T,ConcreteDerivative{JacobiTriangle,Vector{Int},T},
                                                                         Tuple{BlockRange1,BlockRange1}}) where T
     ret = BandedBlockBandedMatrix(Zeros,S)
     D = parent(S)
@@ -587,29 +538,29 @@ end
 
 ## Conversion
 
-function union_rule(K1::KoornwinderTriangle,K2::KoornwinderTriangle)
+function union_rule(K1::JacobiTriangle,K2::JacobiTriangle)
     if domain(K1) == domain(K2)
-        KoornwinderTriangle(min(K1.α,K2.α),min(K1.β,K2.β),min(K1.γ,K2.γ))
+        JacobiTriangle(min(K1.α,K2.α),min(K1.β,K2.β),min(K1.γ,K2.γ))
     else
         K1 ⊕ K2
     end
 end
-function conversion_rule(K1::KoornwinderTriangle,K2::KoornwinderTriangle)
+function conversion_rule(K1::JacobiTriangle,K2::JacobiTriangle)
     if domain(K1) == domain(K2)
-        KoornwinderTriangle(min(K1.α,K2.α),min(K1.β,K2.β),min(K1.γ,K2.γ),domain(K1))
+        JacobiTriangle(min(K1.α,K2.α),min(K1.β,K2.β),min(K1.γ,K2.γ),domain(K1))
     else
         NoSpace()
     end
 end
-function maxspace_rule(K1::KoornwinderTriangle, K2::KoornwinderTriangle)
+function maxspace_rule(K1::JacobiTriangle, K2::JacobiTriangle)
     if domain(K1) == domain(K2)
-        KoornwinderTriangle(max(K1.α,K2.α),max(K1.β,K2.β),max(K1.γ,K2.γ), domain(K1))
+        JacobiTriangle(max(K1.α,K2.α),max(K1.β,K2.β),max(K1.γ,K2.γ), domain(K1))
     else
         NoSpace()
     end
 end
 
-function Conversion(K1::KoornwinderTriangle,K2::KoornwinderTriangle)
+function Conversion(K1::JacobiTriangle,K2::JacobiTriangle)
     @assert K1.α≤K2.α && K1.β≤K2.β && K1.γ≤K2.γ &&
         isapproxinteger(K1.α-K2.α) && isapproxinteger(K1.β-K2.β) &&
         isapproxinteger(K1.γ-K2.γ)
@@ -622,30 +573,27 @@ function Conversion(K1::KoornwinderTriangle,K2::KoornwinderTriangle)
         ConcreteConversion(K1,K2)
     elseif K1.α+1<K2.α || (K1.α+1==K2.α && (K1.β+1≥K2.β || K1.γ+1≥K2.γ))
         # increment α if we have e.g. (α+2,β,γ) or  (α+1,β+1,γ)
-        Conversion(K1,KoornwinderTriangle(K1.α+1,K1.β,K1.γ),K2)
+        Conversion(K1,JacobiTriangle(K1.α+1,K1.β,K1.γ),K2)
     elseif K1.β+1<K2.β || (K1.β+1==K2.β && K1.γ+1≥K2.γ)
         # increment β
-        Conversion(K1,KoornwinderTriangle(K1.α,K1.β+1,K1.γ),K2)
+        Conversion(K1,JacobiTriangle(K1.α,K1.β+1,K1.γ),K2)
     elseif K1.γ+1<K2.γ
         # increment γ
-        Conversion(K1,KoornwinderTriangle(K1.α,K1.β,K1.γ+1),K2)
+        Conversion(K1,JacobiTriangle(K1.α,K1.β,K1.γ+1),K2)
     else
         error("There is a bug: cannot convert $K1 to $K2")
     end
 end
 
 
-isbandedblockbanded(::ConcreteConversion{KoornwinderTriangle,KoornwinderTriangle}) = true
-
-
-blockbandinds(C::ConcreteConversion{KoornwinderTriangle,KoornwinderTriangle}) = (0,1)
-
-subblockbandinds(C::ConcreteConversion{KoornwinderTriangle,KoornwinderTriangle}) = (0,1)
-subblockbandinds(C::ConcreteConversion{KoornwinderTriangle,KoornwinderTriangle},k::Integer) = k==1 ? 0 : 1
+isbandedblockbanded(::ConcreteConversion{JacobiTriangle,JacobiTriangle}) = true
+blockbandwidths(C::ConcreteConversion{JacobiTriangle,JacobiTriangle}) = (0,1)
+subblockbandwidths(C::ConcreteConversion{JacobiTriangle,JacobiTriangle}) = (0,1)
 
 
 
-function getindex(C::ConcreteConversion{KoornwinderTriangle,KoornwinderTriangle,T},k::Integer,j::Integer) where T
+
+function getindex(C::ConcreteConversion{JacobiTriangle,JacobiTriangle,T},k::Integer,j::Integer) where T
     K1=domainspace(C);K2=rangespace(C)
     α,β,γ = K1.α,K1.β,K1.γ
     K = Int(block(K2,k))
@@ -709,7 +657,7 @@ function getindex(C::ConcreteConversion{KoornwinderTriangle,KoornwinderTriangle,
 end
 
 
-function Base.convert(::Type{BandedBlockBandedMatrix},S::SubOperator{T,ConcreteConversion{KoornwinderTriangle,KoornwinderTriangle,T},
+function Base.convert(::Type{BandedBlockBandedMatrix},S::SubOperator{T,ConcreteConversion{JacobiTriangle,JacobiTriangle,T},
                                                                         Tuple{BlockRange1,BlockRange1}}) where T
     ret = BandedBlockBandedMatrix(Zeros,S)
     K1=domainspace(parent(S))
@@ -863,26 +811,22 @@ domainspace(R::Lowering) = R.space
 
 isbandedblockbanded(::Lowering) = true
 
-blockbandinds(::Lowering) = (-1,0)
+blockbandwidths(::Lowering) = (1,0)
 
-subblockbandinds(::Lowering{1,KoornwinderTriangle}) = (0,0)
-subblockbandinds(::Lowering{2,KoornwinderTriangle}) = (-1,0)
-subblockbandinds(::Lowering{3,KoornwinderTriangle}) = (-1,0)
-
-subblockbandinds(::Lowering{1,KoornwinderTriangle},k::Integer) = 0
-subblockbandinds(::Lowering{2,KoornwinderTriangle},k::Integer) = k==1 ? -1 : 0
-subblockbandinds(::Lowering{3,KoornwinderTriangle},k::Integer) = k==1 ? -1 : 0
+subblockbandwidths(::Lowering{1,JacobiTriangle}) = (0,0)
+subblockbandwidths(::Lowering{2,JacobiTriangle}) = (1,0)
+subblockbandwidths(::Lowering{3,JacobiTriangle}) = (1,0)
 
 
-rangespace(R::Lowering{1,KoornwinderTriangle}) =
-    KoornwinderTriangle(R.space.α-1,R.space.β,R.space.γ,domain(domainspace(R)))
-rangespace(R::Lowering{2,KoornwinderTriangle}) =
-    KoornwinderTriangle(R.space.α,R.space.β-1,R.space.γ,domain(domainspace(R)))
-rangespace(R::Lowering{3,KoornwinderTriangle}) =
-    KoornwinderTriangle(R.space.α,R.space.β,R.space.γ-1,domain(domainspace(R)))
+rangespace(R::Lowering{1,JacobiTriangle}) =
+    JacobiTriangle(R.space.α-1,R.space.β,R.space.γ,domain(domainspace(R)))
+rangespace(R::Lowering{2,JacobiTriangle}) =
+    JacobiTriangle(R.space.α,R.space.β-1,R.space.γ,domain(domainspace(R)))
+rangespace(R::Lowering{3,JacobiTriangle}) =
+    JacobiTriangle(R.space.α,R.space.β,R.space.γ-1,domain(domainspace(R)))
 
 
-function getindex(R::Lowering{1,KoornwinderTriangle,T},k::Integer,j::Integer) where T
+function getindex(R::Lowering{1,JacobiTriangle,T},k::Integer,j::Integer) where T
     α,β,γ=R.space.α,R.space.β,R.space.γ
     K = Int(block(rangespace(R),k))
     J = Int(block(domainspace(R),j))
@@ -901,7 +845,7 @@ function getindex(R::Lowering{1,KoornwinderTriangle,T},k::Integer,j::Integer) wh
 end
 
 
-function getindex(R::Lowering{2,KoornwinderTriangle,T},k::Integer,j::Integer) where T
+function getindex(R::Lowering{2,JacobiTriangle,T},k::Integer,j::Integer) where T
     α,β,γ=R.space.α,R.space.β,R.space.γ
     K = Int(block(rangespace(R),k))
     J = Int(block(domainspace(R),j))
@@ -923,7 +867,7 @@ function getindex(R::Lowering{2,KoornwinderTriangle,T},k::Integer,j::Integer) wh
     end
 end
 
-function getindex(R::Lowering{3,KoornwinderTriangle,T},k::Integer,j::Integer) where T
+function getindex(R::Lowering{3,JacobiTriangle,T},k::Integer,j::Integer) where T
     α,β,γ=R.space.α,R.space.β,R.space.γ
     K = Int(block(rangespace(R),k))
     J = Int(block(domainspace(R),j))
@@ -946,7 +890,7 @@ function getindex(R::Lowering{3,KoornwinderTriangle,T},k::Integer,j::Integer) wh
 end
 
 
-function Base.convert(::Type{BandedBlockBandedMatrix},S::SubOperator{T,Lowering{1,KoornwinderTriangle,T},
+function Base.convert(::Type{BandedBlockBandedMatrix},S::SubOperator{T,Lowering{1,JacobiTriangle,T},
                                                                         Tuple{BlockRange1,BlockRange1}}) where T
     ret = BandedBlockBandedMatrix(Zeros, S)
     R = parent(S)
@@ -979,7 +923,7 @@ function Base.convert(::Type{BandedBlockBandedMatrix},S::SubOperator{T,Lowering{
 end
 
 
-function Base.convert(::Type{BandedBlockBandedMatrix},S::SubOperator{T,Lowering{2,KoornwinderTriangle,T},
+function Base.convert(::Type{BandedBlockBandedMatrix},S::SubOperator{T,Lowering{2,JacobiTriangle,T},
                                                                         Tuple{BlockRange1,BlockRange1}}) where T
     ret = BandedBlockBandedMatrix(Zeros,S)
     R = parent(S)
@@ -1017,7 +961,7 @@ function Base.convert(::Type{BandedBlockBandedMatrix},S::SubOperator{T,Lowering{
     ret
 end
 
-function Base.convert(::Type{BandedBlockBandedMatrix},S::SubOperator{T,Lowering{3,KoornwinderTriangle,T},
+function Base.convert(::Type{BandedBlockBandedMatrix},S::SubOperator{T,Lowering{3,JacobiTriangle,T},
                                                                         Tuple{BlockRange1,BlockRange1}}) where T
     ret = BandedBlockBandedMatrix(Zeros,S)
     R = parent(S)
@@ -1071,7 +1015,7 @@ TriangleWeight(α::Number,β::Number,γ::Number,sp::Space) =
     TriangleWeight{typeof(sp)}(α,β,γ,sp)
 
 WeightedTriangle(α::Number,β::Number,γ::Number) =
-    TriangleWeight(α,β,γ,KoornwinderTriangle(α,β,γ))
+    TriangleWeight(α,β,γ,JacobiTriangle(α,β,γ))
 
 triangleweight(S,x,y) = x.^S.α.*y.^S.β.*(1-x-y).^S.γ
 triangleweight(S,xy::Vec) = triangleweight(S,xy...)
@@ -1095,8 +1039,11 @@ plan_evaluate(f::Fun{<:TriangleWeight},xy...) =
     weight(P.space,xy...)*P.plan(xy...)
 
 
-itransform(S::TriangleWeight,cfs::Vector) =
-    plan_evaluate(Fun(S,cfs)).(points(S,length(cfs)))
+function itransform(S::TriangleWeight, cfs::Vector)
+    vals = itransform(S.space, cfs)
+    pts = points(S, length(vals))
+    weight.(Ref(S), pts) .* vals
+end
 
 #TODO: Move to Singulariaties.jl
 for func in (:blocklengths,:tensorizer)
@@ -1135,14 +1082,14 @@ function maxspace_rule(A::TriangleWeight,B::TriangleWeight)
     NoSpace()
 end
 
-function maxspace_rule(A::TriangleWeight{<:KoornwinderTriangle},B::TriangleWeight{<:KoornwinderTriangle})
+function maxspace_rule(A::TriangleWeight{<:JacobiTriangle},B::TriangleWeight{<:JacobiTriangle})
     if domain(A) == domain(B) && isapproxinteger(A.α-B.α) && isapproxinteger(A.β-B.β) && isapproxinteger(A.γ-B.γ)
         α = min(A.α,B.α)
         β = min(A.β,B.β)
         γ = min(A.γ,B.γ)
         d = domain(A)
-        A_lowered = KoornwinderTriangle(A.space.α+α-A.α, A.space.β+β-A.β, A.space.γ+γ-A.γ,d)
-        B_lowered = KoornwinderTriangle(B.space.α+α-B.α, B.space.β+β-B.β, B.space.γ+γ-B.γ,d)
+        A_lowered = JacobiTriangle(A.space.α+α-A.α, A.space.β+β-A.β, A.space.γ+γ-A.γ,d)
+        B_lowered = JacobiTriangle(B.space.α+α-B.α, B.space.β+β-B.β, B.space.γ+γ-B.γ,d)
         ms = maxspace(A_lowered,B_lowered)
         α == β == γ == 0 ? ms : TriangleWeight(α,β,γ,ms)
     else
@@ -1150,11 +1097,11 @@ function maxspace_rule(A::TriangleWeight{<:KoornwinderTriangle},B::TriangleWeigh
     end
 end
 
-maxspace_rule(A::TriangleWeight,B::KoornwinderTriangle) = maxspace(A,TriangleWeight(0.,0.,0.,B))
+maxspace_rule(A::TriangleWeight,B::JacobiTriangle) = maxspace(A,TriangleWeight(0.,0.,0.,B))
 
-conversion_rule(A::TriangleWeight,B::KoornwinderTriangle) = conversion_type(A,TriangleWeight(0.,0.,0.,B))
+conversion_rule(A::TriangleWeight,B::JacobiTriangle) = conversion_type(A,TriangleWeight(0.,0.,0.,B))
 
-function Conversion(A::TriangleWeight{<:KoornwinderTriangle}, B::TriangleWeight{<:KoornwinderTriangle})
+function Conversion(A::TriangleWeight{<:JacobiTriangle}, B::TriangleWeight{<:JacobiTriangle})
     @assert isapproxinteger(A.α-B.α) && isapproxinteger(A.β-B.β) && isapproxinteger(A.γ-B.γ)
     @assert A.α ≥ B.α && A.β ≥ B.β && A.γ ≥ B.γ
 
@@ -1183,19 +1130,19 @@ function Conversion(A::TriangleWeight{<:KoornwinderTriangle}, B::TriangleWeight{
         ConversionWrapper(SpaceOperator(C*Jz,A,B))
     elseif A.α ≥ B.α+1
         Conversion(A,TriangleWeight(A.α-1,A.β,A.γ,
-                                    KoornwinderTriangle(A.space.α-1,A.space.β,A.space.γ)),B)
+                                    JacobiTriangle(A.space.α-1,A.space.β,A.space.γ)),B)
     elseif A.β ≥ B.β+1
         Conversion(A,TriangleWeight(A.α,A.β-1,A.γ,
-                                        KoornwinderTriangle(A.space.α,A.space.β-1,A.space.γ)),B)
+                                        JacobiTriangle(A.space.α,A.space.β-1,A.space.γ)),B)
     elseif A.γ ≥ B.γ+1
         Conversion(A,TriangleWeight(A.α,A.β,A.γ-1,
-                                        KoornwinderTriangle(A.space.α,A.space.β,A.space.γ-1)),B)
+                                        JacobiTriangle(A.space.α,A.space.β,A.space.γ-1)),B)
     else
         error("Somethings gone wrong!")
     end
 end
 
-Conversion(A::TriangleWeight,B::KoornwinderTriangle) =
+Conversion(A::TriangleWeight,B::JacobiTriangle) =
     ConversionWrapper(SpaceOperator(
         Conversion(A,TriangleWeight(0.,0.,0.,B)),
         A,B))
@@ -1206,7 +1153,7 @@ function triangleweight_Derivative(S::TriangleWeight,order)
         D=Derivative(S.space,order)
         SpaceOperator(D,S,rangespace(D))
     elseif S.α == S.β == S.γ == S.space.α == S.space.β == S.space.γ == 1
-        C=Conversion(S,KoornwinderTriangle(0,0,0))
+        C=Conversion(S,JacobiTriangle(0,0,0))
         D = Derivative(rangespace(C),order)
         SpaceOperator(D*C,S,rangespace(D))
     elseif order[2] == 0 && S.α == 0 && S.γ == 0
@@ -1275,13 +1222,13 @@ function triangleweight_Derivative(S::TriangleWeight,order)
     end
 end
 
-function Derivative(S::TriangleWeight{KoornwinderTriangle},order)
+function Derivative(S::TriangleWeight{JacobiTriangle},order)
     if S.α == 0 && S.β == 0 && S.γ == 0
         D = Derivative(S.space,order)
         DerivativeWrapper(SpaceOperator(D,S,rangespace(D)),order)
     elseif (order[1] ≥ 1 &&  (S.α == 0 || S.γ == 0) ) ||
             (order[2] ≥ 1 &&  (S.β == 0 || S.γ == 0))
-        C = Conversion(S,KoornwinderTriangle(0,0,0))
+        C = Conversion(S,JacobiTriangle(0,0,0))
         DerivativeWrapper(Derivative(rangespace(C),order)*C,order)
     elseif S.α == S.space.α && S.β == S.space.β && S.γ == S.space.γ
         if order == [1,0] || order == [0,1]
@@ -1313,19 +1260,17 @@ end
 Derivative(S::TriangleWeight,order) = triangleweight_Derivative(S,order)
 
 
-rangespace(D::ConcreteDerivative{TriangleWeight{KoornwinderTriangle}}) =
+rangespace(D::ConcreteDerivative{TriangleWeight{JacobiTriangle}}) =
     WeightedTriangle(D.space.α-D.order[1],D.space.β-D.order[2],D.space.γ-1)
 
-isbandedblockbanded(::ConcreteDerivative{TriangleWeight{KoornwinderTriangle}}) = true
+isbandedblockbanded(::ConcreteDerivative{TriangleWeight{JacobiTriangle}}) = true
 
-blockbandinds(::ConcreteDerivative{TriangleWeight{KoornwinderTriangle}}) = (-1,0)
-subblockbandinds(D::ConcreteDerivative{TriangleWeight{KoornwinderTriangle}}) =
-    (-1,0)  #TODO: subblockbandinds (-1,-1) for Dy
-subblockbandinds(D::ConcreteDerivative{TriangleWeight{KoornwinderTriangle}},k::Integer) =
-    k==1 ? -1 : 0  #TODO: subblockbandinds (-1,-1) for Dy
+blockbandwidths(::ConcreteDerivative{TriangleWeight{JacobiTriangle}}) = (1,0)
+subblockbandwidths(D::ConcreteDerivative{TriangleWeight{JacobiTriangle}}) =
+    (1,0) #TODO: (1,-1)
 
 
-function getindex(D::ConcreteDerivative{TriangleWeight{KoornwinderTriangle},OT,T},k::Integer,j::Integer) where {OT,T}
+function getindex(D::ConcreteDerivative{TriangleWeight{JacobiTriangle},OT,T},k::Integer,j::Integer) where {OT,T}
     α,β,γ=D.space.α,D.space.β,D.space.γ
     K = Int(block(rangespace(D),k))
     J = Int(block(domainspace(D),j))
@@ -1342,11 +1287,6 @@ function getindex(D::ConcreteDerivative{TriangleWeight{KoornwinderTriangle},OT,T
 
     zero(T)
 end
-
-
-
-
-
 
 ## Multiplication Operators
 function operator_clenshaw2D(Jx,Jy,cfs::Vector{Vector{T}},x,y) where T
@@ -1413,7 +1353,7 @@ function operator_clenshaw2D(Jx,Jy,cfs::Vector{Vector{T}},x,y) where T
 end
 
 
-function Multiplication(f::Fun{KoornwinderTriangle},S::KoornwinderTriangle)
+function Multiplication(f::Fun{JacobiTriangle},S::JacobiTriangle)
     S1=space(f)
     op=operator_clenshaw2D(Lowering{1}(S1)→S1,Lowering{2}(S1)→S1,plan_evaluate(f).coefficients,Lowering{1}(S)→S,Lowering{2}(S)→S)
     MultiplicationWrapper(f,op)
