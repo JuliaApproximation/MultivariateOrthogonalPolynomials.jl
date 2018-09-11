@@ -16,7 +16,7 @@ canonicaldomain(sp::DirichletTriangle) = Triangle()
 setdomain(D::DirichletTriangle{a,b,c}, d::Triangle) where {a,b,c} = DirichletTriangle{a,b,c}(d)
 
 # TODO: @tensorspace
-tensorizer(K::DirichletTriangle) = Tensorizer((ApproxFun.repeated(true),ApproxFun.repeated(true)))
+tensorizer(K::DirichletTriangle) = Tensorizer((Ones{Int}(∞),Ones{Int}(∞)))
 
 # we have each polynomial
 blocklengths(K::DirichletTriangle) = 1:∞

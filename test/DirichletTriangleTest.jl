@@ -1,4 +1,4 @@
-using ApproxFun, MultivariateOrthogonalPolynomials, Base.Test, StaticArrays
+using ApproxFun, MultivariateOrthogonalPolynomials, Test, StaticArrays
     import MultivariateOrthogonalPolynomials: DirichletTriangle
     import ApproxFun: testbandedblockbandedoperator, testblockbandedoperator, Vec
     x,y=0.1,0.2

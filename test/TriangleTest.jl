@@ -1,4 +1,4 @@
-using StaticArrays, Plots, BandedMatrices, FastTransforms,
+using StaticArrays, BandedMatrices, FastTransforms,
         ApproxFun, MultivariateOrthogonalPolynomials, Test
     import MultivariateOrthogonalPolynomials: Lowering, DuffyTriangle,
                             clenshaw, block, TriangleWeight,plan_evaluate, weight
