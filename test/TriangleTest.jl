@@ -1,5 +1,5 @@
 using StaticArrays, BandedMatrices, FastTransforms,
-        ApproxFun, MultivariateOrthogonalPolynomials, Test
+        ApproxFun, MultivariateOrthogonalPolynomials, LinearAlgebra, Test
     import MultivariateOrthogonalPolynomials: Lowering, DuffyTriangle,
                             clenshaw, block, TriangleWeight,plan_evaluate, weight
     import ApproxFun: testbandedblockbandedoperator, Block, BandedBlockBandedMatrix, blockcolrange, blocksize,
@@ -50,8 +50,8 @@ end
 
 @testset "JacobiTriangle constructors" begin
     @time f = Fun((x,y)->cos(100x*y),JacobiTriangle(0.0,-0.5,-0.5)); # 0.08s
-    @test f(0.1,0.2) ≈ cos(100*0.1*0.2)
     P = plan_evaluate(f)
+    @test f(0.1,0.2) ≈ P(0.1,0.2) ≈ cos(100*0.1*0.2)
     @test values(f) ≈ P.(points(f))
 
     @time f = Fun((x,y)->cos(500x*y),JacobiTriangle(0.0,-0.5,-0.5),40_000); # 0.2
