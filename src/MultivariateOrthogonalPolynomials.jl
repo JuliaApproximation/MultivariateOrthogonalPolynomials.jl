@@ -66,7 +66,7 @@ include("c_tri2cheb.jl")
 include("Triangle.jl")
 include("DirichletTriangle.jl")
 
-include("SphericalHarmonics.jl")
+# include("SphericalHarmonics.jl")
 
 include("show.jl")
 include("plot.jl")
