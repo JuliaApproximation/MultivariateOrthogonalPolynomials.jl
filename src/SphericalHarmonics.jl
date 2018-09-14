@@ -9,7 +9,7 @@ checkpoints(::Sphere) = [Vec(-0.5751280945468711,-0.33435465685352894,-0.7466154
                          Vec(-0.7647193583394475,0.5439082568028465,0.3454969047076867)]
 # (1-x^2)^m/2*P
 struct ProductSphericalHarmonics <: AbstractProductSpace{Tuple{WeightedJacobi{Segment{Float64},Float64},
-                                                        Laurent{PeriodicInterval{Float64},ComplexF64}},
+                                                        Laurent{PeriodicSegment{Float64},ComplexF64}},
                                                   Sphere,ComplexF64} end
 
 
@@ -21,7 +21,7 @@ struct DoubleWrappedSphere <: Space{Sphere,Float64} end
 domain(::ProductSphericalHarmonics) = Sphere()
 domain(::DoubleWrappedSphere) = Sphere()
 
-canonicaldomain(sp::ProductSphericalHarmonics) = Segment(-1,1) * PeriodicInterval()
+canonicaldomain(sp::ProductSphericalHarmonics) = Segment(-1,1) * PeriodicSegment()
 
 
 # we want to represent as τ and φ where  τ = cos(θ), to use OPs
