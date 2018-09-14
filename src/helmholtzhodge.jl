@@ -12,8 +12,8 @@ struct HelmholtzHodge{T}
 end
 
 function HelmholtzHodge(::Type{T}, N::Int) where T
-    Q = Vector{BandedQ{T}}(N)
-    R = Vector{BandedMatrix{T, Matrix{T}}}(N)
+    Q = Vector{BandedQ{T}}(undef, N)
+    R = Vector{BandedMatrix{T, Matrix{T}}}(undef, N)
     for m = 1:N
         Q[m], R[m] = qr(helmholtzhodgeconversion(T, N, m))
     end
@@ -74,7 +74,7 @@ function solvehelmholtzhodge!(HH::HelmholtzHodge{T}, m::Int) where T
 
     # Step 2: backsolve with (square) R
 
-    BandedMatrices.tbsv!('U', 'N', 'N', size(R.data, 2), R.u, pointer(R.data), size(R.data, 1), pointer(X), 1)
+    hhdtbsv!('U', 'N', 'N', size(R.data, 2), R.u, pointer(R.data), size(R.data, 1), pointer(X), 1)
 
     X
 end
@@ -169,4 +169,30 @@ function writeout2!(X, U1, U2, N, m)
 		U2[ℓ, 2m] = -X[2ℓ]
 	end
     U2[N-m, 2m] = -X[2N-2m]
+end
+
+using LinearAlgebra
+import LinearAlgebra: BlasInt
+import LinearAlgebra.BLAS: libblas, @blasfunc
+
+for (fname, elty) in ((:dtbsv_,:Float64),
+                      (:stbsv_,:Float32),
+                      (:ztbsv_,:ComplexF64),
+                      (:ctbsv_,:ComplexF32))
+    @eval begin
+        function hhdtbsv!(uplo::Char, trans::Char, diag::Char,
+                          n::Int, k::Int, A::Ptr{$elty}, lda::Int,
+                          x::Ptr{$elty}, incx::Int)
+            ccall((@blasfunc($fname), libblas), Nothing,
+                (Ref{UInt8}, Ref{UInt8}, Ref{UInt8},
+                 Ref{BlasInt}, Ref{BlasInt},
+                 Ptr{$elty}, Ref{BlasInt},
+                 Ptr{$elty}, Ref{BlasInt}),
+                 uplo, trans, diag,
+                 n, k,
+                 A, lda,
+                 x, incx)
+            x
+        end
+    end
 end
