@@ -522,26 +522,26 @@ end
 ## Restriction Operators
 
 function Conversion(a::DirichletTriangle{1,0,0}, b::Jacobi)
-    @assert b == Legendre(domain(a).a .. domain(a).c)
+    @assert b == Legendre(Segment(domain(a).a , domain(a).c))
     ConcreteConversion(a,b)
 end
 
 function Conversion(a::DirichletTriangle{0,1,0}, b::Jacobi)
-    @assert b == Legendre(domain(a).a .. domain(a).b)
+    @assert b == Legendre(Segment(domain(a).a , domain(a).b))
     ConcreteConversion(a,b)
 end
 
 function Conversion(a::DirichletTriangle{0,0,1}, b::Jacobi)
-    @assert b == Legendre(domain(a).c .. domain(a).b)
+    @assert b == Legendre(Segment(domain(a).c , domain(a).b))
     ConcreteConversion(a,b)
 end
 
 
 function Conversion(a::DirichletTriangle{1,1,0}, b::Jacobi)
     d = domain(a)
-    if b == Legendre(d.a .. d.c)
+    if b == Legendre(Segment(d.a , d.c))
         Conversion(a, DirichletTriangle{1,0,0}(d), b)
-    elseif b == Legendre(d.a .. d.b)
+    elseif b == Legendre(Segment(d.a , d.b))
         Conversion(a, DirichletTriangle{0,1,0}(d), b)
     else
         throw(ArgumentError())
@@ -551,9 +551,9 @@ end
 
 function Conversion(a::DirichletTriangle{1,0,1}, b::Jacobi)
     d = domain(a)
-    if b == Legendre(d.a .. d.c)
+    if b == Legendre(Segment(d.a , d.c))
         Conversion(a, DirichletTriangle{1,0,0}(d), b)
-    elseif b == Legendre(d.c .. d.b)
+    elseif b == Legendre(Segment(d.c , d.b))
         Conversion(a, DirichletTriangle{0,0,1}(d), b)
     else
         throw(ArgumentError())
@@ -562,9 +562,9 @@ end
 
 function Conversion(a::DirichletTriangle{0,1,1}, b::Jacobi)
     d = domain(a)
-    if b == Legendre(d.a .. d.b)
+    if b == Legendre(Segment(d.a , d.b))
         Conversion(a, DirichletTriangle{0,1,0}(d), b)
-    elseif b == Legendre(d.c .. d.b)
+    elseif b == Legendre(Segment(d.c , d.b))
         Conversion(a, DirichletTriangle{0,0,1}(d), b)
     else
         throw(ArgumentError())
@@ -574,11 +574,11 @@ end
 
 function Conversion(a::DirichletTriangle{1,1,1}, b::Jacobi)
     d = domain(a)
-    if b == Legendre(d.a .. d.c)
+    if b == Legendre(Segment(d.a , d.c))
         Conversion(a, DirichletTriangle{1,0,1}(d), b)
-    elseif b == Legendre(d.a .. d.b)
+    elseif b == Legendre(Segment(d.a , d.b))
         Conversion(a, DirichletTriangle{0,1,1}(d), b)
-    elseif b == Legendre(d.c .. d.b)
+    elseif b == Legendre(Segment(d.c , d.b))
         Conversion(a, DirichletTriangle{0,1,1}(d), b)
     else
         throw(ArgumentError())
