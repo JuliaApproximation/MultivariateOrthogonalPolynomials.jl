@@ -7,7 +7,7 @@ using Base, RecipesBase, ApproxFun, BandedMatrices, BlockArrays,
 
 # package code goes here
 import Base: values,getindex,setindex!,*, +, -, ==,<,<=,>,
-                >=,/,^,\,∪,transpose
+                >=,/,^,\,∪,transpose, in
 
 
 import BandedMatrices: inbands_getindex, inbands_setindex!
@@ -33,7 +33,7 @@ import ApproxFun:    bandwidths,SpaceOperator, ConversionWrapper, DerivativeWrap
 
 # Spaces import
 import ApproxFun: PolynomialSpace, ConstantSpace, NoSpace, prectype,
-                    SumSpace,PiecewiseSpace, ArraySpace,
+                    SumSpace,PiecewiseSpace, ArraySpace, @containsconstants,
                     UnsetSpace, canonicalspace, canonicaldomain, domain, evaluate,
                     AnyDomain, plan_transform,plan_itransform,
                     transform,itransform,transform!,itransform!,

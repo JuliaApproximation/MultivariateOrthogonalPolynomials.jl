@@ -407,3 +407,13 @@ end
     @time g=Fun(f,rangespace(QR))
     @time \(QR,g;tolerance=1E-7)
 end
+
+@testset "Multiplication" begin
+    x,y = Fun(Triangle())
+    M_0 = Multiplication(one(x), space(x))
+    testbandedblockbandedoperator(M_0)
+    @test M_0*x ≈ x
+    @test space(1+x) isa JacobiTriangle
+    M = Multiplication(1+x, space(x))
+    @test (M*y)(0.1,0.2) ≈ (1+0.1)*0.2
+end

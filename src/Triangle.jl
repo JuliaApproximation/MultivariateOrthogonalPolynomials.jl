@@ -11,6 +11,11 @@ end
 
 Triangle() = Triangle(Vec(0,0), Vec(1,0), Vec(0,1))
 canonicaldomain(::Triangle) = Triangle()
+function in(p::Vec{2,Float64}, d::Triangle)
+    x,y = tocanonical(d, p)
+    0 ≤ x ≤ x + y ≤ 1
+end
+
 
 for op in (:-, :+)
     @eval begin
@@ -76,6 +81,8 @@ struct JacobiTriangle <: Space{Triangle,Float64}
     γ::Float64
     domain::Triangle
 end
+
+@containsconstants JacobiTriangle
 
 JacobiTriangle() = JacobiTriangle(0,0,0)
 
@@ -1301,7 +1308,9 @@ function operator_clenshaw2D(Jx,Jy,cfs::Vector{Vector{T}},x,y) where T
     Abk2x=Array{Operator{T}}(undef,N+1); fill!(Abk2x , Z)
     Abk2y=Array{Operator{T}}(undef,N+1); fill!(Abk2y , Z)
 
-    for K=Block(N):-1:Block(2)
+    for K̃ = N:-1:2
+        K = Block(K̃)
+
         Bx,By=view(Jx,K,K),view(Jy,K,K)
         Cx,Cy=view(Jx,K,K+1),view(Jy,K,K+1)
         JxK=view(Jx,K+1,K)
@@ -1355,6 +1364,6 @@ end
 
 function Multiplication(f::Fun{JacobiTriangle},S::JacobiTriangle)
     S1=space(f)
-    op=operator_clenshaw2D(Lowering{1}(S1)→S1,Lowering{2}(S1)→S1,plan_evaluate(f).coefficients,Lowering{1}(S)→S,Lowering{2}(S)→S)
+    op=operator_clenshaw2D(jacobioperators(S1)...,plan_evaluate(f).coefficients,jacobioperators(S)...)
     MultiplicationWrapper(f,op)
 end
