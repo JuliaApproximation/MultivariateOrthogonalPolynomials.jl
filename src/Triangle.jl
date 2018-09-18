@@ -1293,13 +1293,13 @@ function operator_clenshaw2D(Jx,Jy,cfs::Vector{Vector{T}},x,y) where T
     N=length(cfs)
     S = domainspace(x)
     Z=ZeroOperator(S,S)
-    bk1=Array(Operator{T},N+1);bk1[:]=Z
-    bk2=Array(Operator{T},N+2);bk2[:]=Z
+    bk1=Array{Operator{T}}(undef,N+1); fill!(bk1 , Z)
+    bk2=Array{Operator{T}}(undef,N+2); fill!(bk2 , Z)
 
-    Abk1x=Array(Operator{T},N+1);Abk1x[:]=Z
-    Abk1y=Array(Operator{T},N+1);Abk1y[:]=Z
-    Abk2x=Array(Operator{T},N+1);Abk2x[:]=Z
-    Abk2y=Array(Operator{T},N+1);Abk2y[:]=Z
+    Abk1x=Array{Operator{T}}(undef,N+1); fill!(Abk1x , Z)
+    Abk1y=Array{Operator{T}}(undef,N+1); fill!(Abk1y , Z)
+    Abk2x=Array{Operator{T}}(undef,N+1); fill!(Abk2x , Z)
+    Abk2y=Array{Operator{T}}(undef,N+1); fill!(Abk2y , Z)
 
     for K=Block(N):-1:Block(2)
         Bx,By=view(Jx,K,K),view(Jy,K,K)
@@ -1317,7 +1317,7 @@ function operator_clenshaw2D(Jx,Jy,cfs::Vector{Vector{T}},x,y) where T
         resize!(Abk2x,Int(K))
         Abk2x[:]=bk1[1:Int(K)]
         resize!(Abk2y,Int(K))
-        Abk2y[1:Int(K)-1]=Z
+        Abk2y[1:Int(K)-1] .= Ref(Z)
         Abk2y[end]=bk1[Int(K)+1]
 
         Abk1x,Abk2x=Abk2x,Abk1x
