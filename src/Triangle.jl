@@ -573,7 +573,7 @@ function Conversion(K1::JacobiTriangle,K2::JacobiTriangle)
         isapproxinteger(K1.γ-K2.γ)
 
     if (K1.α==K2.α && K1.β==K2.β && K1.γ==K2.γ)
-        ConversionWrapper(eye(K1))
+        ConversionWrapper(Operator(I,K1))
     elseif (K1.α+1==K2.α && K1.β==K2.β && K1.γ==K2.γ) ||
             (K1.α==K2.α && K1.β+1==K2.β && K1.γ==K2.γ) ||
             (K1.α==K2.α && K1.β==K2.β && K1.γ+1==K2.γ)

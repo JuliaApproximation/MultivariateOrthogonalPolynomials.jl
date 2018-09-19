@@ -522,66 +522,86 @@ end
 ## Restriction Operators
 
 function Conversion(a::DirichletTriangle{1,0,0}, b::Jacobi)
-    @assert b == Legendre(Segment(domain(a).a , domain(a).c))
-    ConcreteConversion(a,b)
+    S = Legendre(Segment(domain(a).a , domain(a).c))
+    if b == S
+        ConcreteConversion(a,b)
+    else
+        Conversion(a, S, b)
+    end
 end
 
 function Conversion(a::DirichletTriangle{0,1,0}, b::Jacobi)
-    @assert b == Legendre(Segment(domain(a).a , domain(a).b))
-    ConcreteConversion(a,b)
+    S = Legendre(Segment(domain(a).a , domain(a).b))
+    if b == S
+        ConcreteConversion(a,b)
+    else
+        Conversion(a, S, b)
+    end
 end
 
 function Conversion(a::DirichletTriangle{0,0,1}, b::Jacobi)
-    @assert b == Legendre(Segment(domain(a).c , domain(a).b))
-    ConcreteConversion(a,b)
+    S = Legendre(Segment(domain(a).c , domain(a).b))
+    if b == S
+        ConcreteConversion(a,b)
+    else
+        Conversion(a, S, b)
+    end
 end
 
 
 function Conversion(a::DirichletTriangle{1,1,0}, b::Jacobi)
     d = domain(a)
-    if b == Legendre(Segment(d.a , d.c))
+    d_b = domain(b)
+    d_bR = reverseorientation(d_b)
+    if d_b == Segment(d.a , d.c) || d_bR == Segment(d.a , d.c)
         Conversion(a, DirichletTriangle{1,0,0}(d), b)
-    elseif b == Legendre(Segment(d.a , d.b))
+    elseif d_b == Segment(d.a , d.b) || d_bR == Segment(d.a , d.b)
         Conversion(a, DirichletTriangle{0,1,0}(d), b)
     else
-        throw(ArgumentError())
+        throw(ArgumentError("Cannot create Conversion($a, $b)"))
     end
 end
 
 
 function Conversion(a::DirichletTriangle{1,0,1}, b::Jacobi)
     d = domain(a)
-    if b == Legendre(Segment(d.a , d.c))
+    d_b = domain(b)
+    d_bR = reverseorientation(d_b)
+    if d_b == Segment(d.a , d.c) || d_bR == Segment(d.a , d.c)
         Conversion(a, DirichletTriangle{1,0,0}(d), b)
-    elseif b == Legendre(Segment(d.c , d.b))
+    elseif d_b == Segment(d.c , d.b) ||  d_bR == Segment(d.c , d.b)
         Conversion(a, DirichletTriangle{0,0,1}(d), b)
     else
-        throw(ArgumentError())
+        throw(ArgumentError("Cannot create Conversion($a, $b)"))
     end
 end
 
 function Conversion(a::DirichletTriangle{0,1,1}, b::Jacobi)
     d = domain(a)
-    if b == Legendre(Segment(d.a , d.b))
+    d_b = domain(b)
+    d_bR = reverseorientation(d_b)
+    if d_b == Segment(d.a , d.b) || d_bR == Segment(d.a , d.b)
         Conversion(a, DirichletTriangle{0,1,0}(d), b)
-    elseif b == Legendre(Segment(d.c , d.b))
+    elseif d_b == Segment(d.c , d.b) || d_bR == Segment(d.c , d.b)
         Conversion(a, DirichletTriangle{0,0,1}(d), b)
     else
-        throw(ArgumentError())
+        throw(ArgumentError("Cannot create Conversion($a, $b)"))
     end
 end
 
 
 function Conversion(a::DirichletTriangle{1,1,1}, b::Jacobi)
     d = domain(a)
-    if b == Legendre(Segment(d.a , d.c))
+    d_b = domain(b)
+    d_bR = reverseorientation(d_b)
+    if d_b == Segment(d.a , d.c) || d_bR == Segment(d.a , d.c)
         Conversion(a, DirichletTriangle{1,0,1}(d), b)
-    elseif b == Legendre(Segment(d.a , d.b))
+    elseif d_b == Segment(d.a , d.b) || d_bR == Segment(d.a , d.b)
         Conversion(a, DirichletTriangle{0,1,1}(d), b)
-    elseif b == Legendre(Segment(d.c , d.b))
+    elseif d_b == Segment(d.c , d.b) || d_bR == Segment(d.c , d.b)
         Conversion(a, DirichletTriangle{0,1,1}(d), b)
     else
-        throw(ArgumentError())
+        throw(ArgumentError("Cannot create Conversion($a, $b)"))
     end
 end
 
