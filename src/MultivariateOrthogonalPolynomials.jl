@@ -12,6 +12,8 @@ import Base: values,getindex,setindex!,*, +, -, ==,<,<=,>,
 
 import BandedMatrices: inbands_getindex, inbands_setindex!
 
+import BlockArrays: blocksizes, BlockSizes, getblock, global2blockindex
+
 # ApproxFun general import
 import ApproxFun: BandedMatrix, order, blocksize,
                   linesum,complexlength, BandedBlockBandedMatrix,
@@ -65,6 +67,8 @@ include("c_tri2cheb.jl")
 
 include("Triangle.jl")
 include("DirichletTriangle.jl")
+
+# include("clenshaw.jl")
 
 # include("SphericalHarmonics.jl")
 
