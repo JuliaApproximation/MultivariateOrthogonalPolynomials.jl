@@ -7,7 +7,7 @@ using Base, RecipesBase, ApproxFun, BandedMatrices, BlockArrays,
 
 # package code goes here
 import Base: values,getindex,setindex!,*, +, -, ==,<,<=,>,
-                >=,/,^,\,∪,transpose, in
+                >=,/,^,\,∪,transpose, in, convert
 
 
 import BandedMatrices: inbands_getindex, inbands_setindex!
@@ -68,7 +68,7 @@ include("c_tri2cheb.jl")
 include("Triangle.jl")
 include("DirichletTriangle.jl")
 
-# include("clenshaw.jl")
+include("clenshaw.jl")
 
 # include("SphericalHarmonics.jl")
 

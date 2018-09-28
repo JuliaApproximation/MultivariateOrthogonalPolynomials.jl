@@ -664,7 +664,7 @@ function getindex(C::ConcreteConversion{JacobiTriangle,JacobiTriangle,T},k::Inte
 end
 
 
-function Base.convert(::Type{BandedBlockBandedMatrix},S::SubOperator{T,ConcreteConversion{JacobiTriangle,JacobiTriangle,T},
+function Base.convert(::Type{BandedBlockBandedMatrix}, S::SubOperator{T,ConcreteConversion{JacobiTriangle,JacobiTriangle,T},
                                                                         Tuple{BlockRange1,BlockRange1}}) where T
     ret = BandedBlockBandedMatrix(Zeros,S)
     K1=domainspace(parent(S))
@@ -1296,74 +1296,74 @@ function getindex(D::ConcreteDerivative{TriangleWeight{JacobiTriangle},OT,T},k::
 end
 
 ## Multiplication Operators
-function operator_clenshaw2D(Jx,Jy,cfs::Vector{Vector{T}},x,y) where T
-    N=length(cfs)
-    S = domainspace(x)
-    Z=ZeroOperator(S,S)
-    bk1=Array{Operator{T}}(undef,N+1); fill!(bk1 , Z)
-    bk2=Array{Operator{T}}(undef,N+2); fill!(bk2 , Z)
-
-    Abk1x=Array{Operator{T}}(undef,N+1); fill!(Abk1x , Z)
-    Abk1y=Array{Operator{T}}(undef,N+1); fill!(Abk1y , Z)
-    Abk2x=Array{Operator{T}}(undef,N+1); fill!(Abk2x , Z)
-    Abk2y=Array{Operator{T}}(undef,N+1); fill!(Abk2y , Z)
-
-    for K̃ = N:-1:2
-        K = Block(K̃)
-
-        Bx,By=view(Jx,K,K),view(Jy,K,K)
-        Cx,Cy=view(Jx,K,K+1),view(Jy,K,K+1)
-        JxK=view(Jx,K+1,K)
-        JyK=view(Jy,K+1,K)
-        @inbounds for k=1:Int(K)
-            bk1[k] /= JxK[k,k]
-        end
-
-        bk1[Int(K)-1] -= JyK[Int(K)-1,end]/(JxK[Int(K)-1,Int(K)-1]*JyK[end,end])*bk1[Int(K)+1]
-        bk1[Int(K)]   -= JyK[Int(K),end]/(JxK[Int(K),Int(K)]*JyK[end,end])*bk1[Int(K)+1]
-        bk1[Int(K)+1] /= JyK[Int(K)+1,end]
-
-        resize!(Abk2x,Int(K))
-        Abk2x[:]=bk1[1:Int(K)]
-        resize!(Abk2y,Int(K))
-        Abk2y[1:Int(K)-1] .= Ref(Z)
-        Abk2y[end]=bk1[Int(K)+1]
-
-        Abk1x,Abk2x=Abk2x,Abk1x
-        Abk1y,Abk2y=Abk2y,Abk1y
-
-
-        bk1,bk2 = bk2,bk1
-        resize!(bk1,Int(K))
-        bk1[:]=map((opx,opy)->x*opx+y*opy,Abk1x,Abk1y)
-        bk1[:]-=Matrix(Bx)*Abk1x+Matrix(By)*Abk1y
-        bk1[:]-=Matrix(Cx)*Abk2x+Matrix(Cy)*Abk2y
-        for k=1:length(bk1)
-            bk1[k]+=cfs[Int(K)][k]*I
-        end
-    end
-
-
-    K =Block(1)
-    Bx,By=view(Jx,K,K),view(Jy,K,K)
-    Cx,Cy=view(Jx,K,K+1),view(Jy,K,K+1)
-    JxK=view(Jx,K+1,K)
-    JyK=view(Jy,K+1,K)
-
-    bk1[1] /= JxK[1,1]
-    bk1[1]   -= JyK[1,end]/(JxK[1,1]*JyK[2,end])*bk1[2]
-    bk1[2] /= JyK[2,end]
-
-    Abk1x,Abk2x=bk1[1:1],Abk1x
-    Abk1y,Abk2y=[bk1[2]],Abk1y
-    cfs[1][1]*I + x*Abk1x[1] + y*Abk1y[1] -
-        Bx[1,1]*Abk1x[1] - By[1,1]*Abk1y[1] -
-        (Matrix(Cx)*Abk2x)[1] - (Matrix(Cy)*Abk2y)[1]
-end
-
-
-function Multiplication(f::Fun{JacobiTriangle},S::JacobiTriangle)
-    S1=space(f)
-    op=operator_clenshaw2D(jacobioperators(S1)...,plan_evaluate(f).coefficients,jacobioperators(S)...)
-    MultiplicationWrapper(f,op)
-end
+# function operator_clenshaw2D(Jx,Jy,cfs::Vector{Vector{T}},x,y) where T
+#     N=length(cfs)
+#     S = domainspace(x)
+#     Z=ZeroOperator(S,S)
+#     bk1=Array{Operator{T}}(undef,N+1); fill!(bk1 , Z)
+#     bk2=Array{Operator{T}}(undef,N+2); fill!(bk2 , Z)
+#
+#     Abk1x=Array{Operator{T}}(undef,N+1); fill!(Abk1x , Z)
+#     Abk1y=Array{Operator{T}}(undef,N+1); fill!(Abk1y , Z)
+#     Abk2x=Array{Operator{T}}(undef,N+1); fill!(Abk2x , Z)
+#     Abk2y=Array{Operator{T}}(undef,N+1); fill!(Abk2y , Z)
+#
+#     for K̃ = N:-1:2
+#         K = Block(K̃)
+#
+#         Bx,By=view(Jx,K,K),view(Jy,K,K)
+#         Cx,Cy=view(Jx,K,K+1),view(Jy,K,K+1)
+#         JxK=view(Jx,K+1,K)
+#         JyK=view(Jy,K+1,K)
+#         @inbounds for k=1:Int(K)
+#             bk1[k] /= JxK[k,k]
+#         end
+#
+#         bk1[Int(K)-1] -= JyK[Int(K)-1,end]/(JxK[Int(K)-1,Int(K)-1]*JyK[end,end])*bk1[Int(K)+1]
+#         bk1[Int(K)]   -= JyK[Int(K),end]/(JxK[Int(K),Int(K)]*JyK[end,end])*bk1[Int(K)+1]
+#         bk1[Int(K)+1] /= JyK[Int(K)+1,end]
+#
+#         resize!(Abk2x,Int(K))
+#         Abk2x[:]=bk1[1:Int(K)]
+#         resize!(Abk2y,Int(K))
+#         Abk2y[1:Int(K)-1] .= Ref(Z)
+#         Abk2y[end]=bk1[Int(K)+1]
+#
+#         Abk1x,Abk2x=Abk2x,Abk1x
+#         Abk1y,Abk2y=Abk2y,Abk1y
+#
+#
+#         bk1,bk2 = bk2,bk1
+#         resize!(bk1,Int(K))
+#         bk1[:]=map((opx,opy)->x*opx+y*opy,Abk1x,Abk1y)
+#         bk1[:]-=Matrix(Bx)*Abk1x+Matrix(By)*Abk1y
+#         bk1[:]-=Matrix(Cx)*Abk2x+Matrix(Cy)*Abk2y
+#         for k=1:length(bk1)
+#             bk1[k]+=cfs[Int(K)][k]*I
+#         end
+#     end
+#
+#
+#     K =Block(1)
+#     Bx,By=view(Jx,K,K),view(Jy,K,K)
+#     Cx,Cy=view(Jx,K,K+1),view(Jy,K,K+1)
+#     JxK=view(Jx,K+1,K)
+#     JyK=view(Jy,K+1,K)
+#
+#     bk1[1] /= JxK[1,1]
+#     bk1[1]   -= JyK[1,end]/(JxK[1,1]*JyK[2,end])*bk1[2]
+#     bk1[2] /= JyK[2,end]
+#
+#     Abk1x,Abk2x=bk1[1:1],Abk1x
+#     Abk1y,Abk2y=[bk1[2]],Abk1y
+#     cfs[1][1]*I + x*Abk1x[1] + y*Abk1y[1] -
+#         Bx[1,1]*Abk1x[1] - By[1,1]*Abk1y[1] -
+#         (Matrix(Cx)*Abk2x)[1] - (Matrix(Cy)*Abk2y)[1]
+# end
+#
+#
+# function Multiplication(f::Fun{JacobiTriangle},S::JacobiTriangle)
+#     S1=space(f)
+#     op=operator_clenshaw2D(jacobioperators(S1)...,plan_evaluate(f).coefficients,jacobioperators(S)...)
+#     MultiplicationWrapper(f,op)
+# end
