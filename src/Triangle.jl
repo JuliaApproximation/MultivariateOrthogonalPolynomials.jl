@@ -3,7 +3,7 @@ export Triangle, JacobiTriangle, TriangleWeight, WeightedTriangle
 
 ## Triangle Def
 # currently right trianglel
-struct Triangle <: BivariateDomain{Float64}
+struct Triangle <: Domain2d{Float64}
     a::Vec{2,Float64}
     b::Vec{2,Float64}
     c::Vec{2,Float64}

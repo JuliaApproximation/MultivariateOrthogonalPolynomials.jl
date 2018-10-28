@@ -45,7 +45,7 @@ import ApproxFun: PolynomialSpace, ConstantSpace, NoSpace, prectype,
                     union_rule, coefficients, RealUnivariateSpace, PiecewiseSegment, rangetype, cfstype
 
 # Multivariate import
-import ApproxFun: BivariateDomain,DirectSumSpace, AbstractProductSpace, factor,
+import ApproxFun: Domain2d, DirectSumSpace, AbstractProductSpace, factor,
                     BivariateFun,  ProductFun, LowRankFun, lap, columnspace,
                     blockbandwidths, subblockbandwidths, fromtensor, totensor, isbandedblockbanded,
                     Tensorizer, tensorizer, block, blockstart, blockstop, blocklengths,
