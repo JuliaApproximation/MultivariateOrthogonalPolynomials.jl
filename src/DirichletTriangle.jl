@@ -639,9 +639,9 @@ end
 function Dirichlet(D::DirichletTriangle{1,1,1}, k::Int)
     @assert k==0
     d = domain(D)
-    Rx=Conversion(DirichletTriangle{1,1,1}(d),DirichletTriangle{1,1,0}(d),DirichletTriangle{1,0,0}(d),Legendre(d.a .. d.c))
-    Ry=Conversion(DirichletTriangle{1,1,1}(d),DirichletTriangle{1,1,0}(d),DirichletTriangle{0,1,0}(d),Legendre(d.a .. d.b))
-    Rz=Conversion(DirichletTriangle{1,1,1}(d),DirichletTriangle{0,1,1}(d),DirichletTriangle{0,0,1}(d),Legendre(d.c .. d.b))
+    Rx=Conversion(DirichletTriangle{1,1,1}(d),DirichletTriangle{1,1,0}(d),DirichletTriangle{1,0,0}(d),Legendre(Segment(d.a,d.c)))
+    Ry=Conversion(DirichletTriangle{1,1,1}(d),DirichletTriangle{1,1,0}(d),DirichletTriangle{0,1,0}(d),Legendre(Segment(d.a,d.b)))
+    Rz=Conversion(DirichletTriangle{1,1,1}(d),DirichletTriangle{0,1,1}(d),DirichletTriangle{0,0,1}(d),Legendre(Segment(d.c,d.b)))
 
     DirichletWrapper(InterlaceOperator(Operator{Float64}[Rx;Ry;Rz],DirichletTriangle{1,1,1}(d),PiecewiseSpace((rangespace(Rx),rangespace(Ry),rangespace(Rz)))))
 end

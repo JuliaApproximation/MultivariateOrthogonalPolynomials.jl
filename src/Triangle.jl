@@ -1367,3 +1367,15 @@ end
 #     op=operator_clenshaw2D(jacobioperators(S1)...,plan_evaluate(f).coefficients,jacobioperators(S)...)
 #     MultiplicationWrapper(f,op)
 # end
+
+
+# temporary work around
+import ApproxFun: block, blockbandwidth, Block
+import Base: *
+function *(A_in::Operator, f::Fun{<:JacobiTriangle})
+    A = A_in : space(f)
+    N = Int(block(space(f), ncoefficients(f)))
+    M = A[Block.(1:N+blockbandwidth(A,1)),Block.(1:N)]
+    v = pad(coefficients(f),size(M,2))
+    Fun(rangespace(A),M*v)
+end
