@@ -7,7 +7,7 @@ using Base, RecipesBase, ApproxFun, BandedMatrices, BlockArrays,
 
 # package code goes here
 import Base: values,getindex,setindex!,*, +, -, ==,<,<=,>,
-                >=,/,^,\,∪,transpose, in, convert
+                >=,/,^,\,∪,transpose, in, convert, issubset
 
 
 import BandedMatrices: inbands_getindex, inbands_setindex!

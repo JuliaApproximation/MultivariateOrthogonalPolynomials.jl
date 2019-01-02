@@ -16,6 +16,8 @@ function in(p::Vec{2,Float64}, d::Triangle)
     0 ≤ x ≤ x + y ≤ 1
 end
 
+issubset(a::Segment{<:Vec{2}}, b::Triangle) = error("Implement")
+
 
 for op in (:-, :+)
     @eval begin
