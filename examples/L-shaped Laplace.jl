@@ -56,7 +56,7 @@ uy = T -> 3 + (T-1)*3
 Dx = Derivative([1,0])
 Dy = Derivative([0,1])
 
-N = 100
+N = 30
 sprs = A -> (global N; sparse(A[Block.(1:N), Block.(1:N)]))
 
 A = Matrix{SparseMatrixCSC{Float64,Int}}(undef, length(rs), length(ds))
@@ -114,7 +114,7 @@ M = hvcat(ntuple(_ -> size(A,2),size(A,1)), permutedims(A)...)
 
 rhs = vcat(coefficients.(Fun.(Ref((x,y) -> real(exp(x+im*y))), rs[1:length(∂d)], N))...)
 
-rhs = vcat(coefficients.(Fun.(Ref((x,y) -> x^2), rs[1:length(∂d)], N))...)
+rhs = vcat(pad.(coefficients.(Fun.(Ref((x,y) -> x^2), rs[1:length(∂d)])),N)...)
 
 
 F = factorize(M)
@@ -122,6 +122,10 @@ u_cfs = F \ pad(rhs, size(M,1))
 
 u1 = Fun(ds[4], u_cfs[(4-1)*sum(1:N)+1:4*sum(1:N)])
 u1(0.99,0.99)
+plot(abs.(u_cfs); yscale=:log10)
+
+σ = svdvals(Matrix(M))
+plot(svdvals(Matrix(M)))
 
 u1.coefficients
 u1(0.1,1.2)-real(exp(0.1+im*1.2))
