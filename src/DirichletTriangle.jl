@@ -64,6 +64,12 @@ function Conversion(A::DirichletTriangle{a,b,c}, B::JacobiTriangle) where {a,b,c
     return Conversion(A,DirichletTriangle{a,b,c-1}(domain(A)),B)
 end
 
+function coefficients(u::AbstractVector, ds::DirichletTriangle, rs::JacobiTriangle)
+    N = nblocks(Fun(ds, u))
+    C = Conversion(ds, rs)[Block.(1:N), Block.(1:N)]
+    C * pad(u, size(C,2))
+end
+
 
 isbandedblockbanded(::ConcreteConversion{<:DirichletTriangle,<:DirichletTriangle}) = true
 
