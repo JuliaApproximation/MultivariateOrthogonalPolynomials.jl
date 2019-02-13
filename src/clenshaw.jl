@@ -129,6 +129,15 @@ end
 
 Multiplication(f::Fun{JacobiTriangle}, S::JacobiTriangle) = ClenshawMultiplication(f, S)
 
+
+function Base.getproperty(F::ClenshawMultiplication, d::Symbol)
+    if d == :f
+        return Fun(F.space, F.cfs)
+    else
+        getfield(F, d)
+    end
+end
+
 domainspace(M::ClenshawMultiplication) = M.space
 rangespace(M::ClenshawMultiplication) = M.space
 isbandedblockbanded(::ClenshawMultiplication) = true
@@ -150,7 +159,7 @@ function BandedBlockBandedMatrix(V::SubOperator{T,<:ClenshawMultiplication,Tuple
     Jx_∞, Jy_∞ = convert.(Operator{T}, jacobioperators(sp))
     Jx, Jy = Jx_∞[JKR, JKR], Jy_∞[JKR,JKR]
 
-    Q = BandedBlockBandedMatrix(Eye{eltype(Jx)}(size(Jx)), blocksizes(Jx), (0,0), (0,0))
+    Q = BandedBlockBandedMatrix(Eye{eltype(Jx)}(size(Jx)...), blocksizes(Jx), (0,0), (0,0))
     B2 = Fill(Q,N) .* view(cfs,Block(N))
     B1 = Fill(Q,N-1) .* view(cfs,Block(N-1)) .+ Fill(Jx,N-1) .* (C.B̃ˣ[N-1]*B2) .+ Fill(Jy,N-1) .* (C.B̃ʸ[N-1]*B2) .- C.B[N-1]*B2
     for K = N-2:-1:1
