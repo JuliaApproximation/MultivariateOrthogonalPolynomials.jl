@@ -24,7 +24,7 @@ function ClenshawRecurrenceData{T,S}(sp::S, N) where {T,S<:JacobiTriangle}
     B̃ˣ = Vector{BandedMatrix{T,Matrix{T}}}(undef, N-1)
     B̃ʸ = Vector{BandedMatrix{T,Matrix{T}}}(undef, N-1)
     B  = Vector{BandedMatrix{T,Matrix{T}}}(undef, N-1)
-    C  = Vector{BandedMatrix{T,Matrix{T}}}(undef, N-2)
+    C  = Vector{BandedMatrix{T,Matrix{T}}}(undef, max(N-2,0))
     Jx_∞, Jy_∞ = jacobioperators(sp)
     Jx, Jy = BandedBlockBandedMatrix(Jx_∞[Block.(1:N), Block.(1:N-1)]),
              BandedBlockBandedMatrix(Jy_∞[Block.(1:N), Block.(1:N-1)])
