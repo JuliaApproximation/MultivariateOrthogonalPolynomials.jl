@@ -1381,3 +1381,6 @@ function *(A_in::Operator, f::Fun{<:JacobiTriangle})
     v = pad(coefficients(f),size(M,2))
     Fun(rangespace(A),M*v)
 end
+
+
+include("DirichletTriangle.jl")
