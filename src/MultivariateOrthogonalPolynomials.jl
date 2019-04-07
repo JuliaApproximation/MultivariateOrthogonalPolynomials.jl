@@ -13,7 +13,7 @@ import BandedMatrices: inbands_getindex, inbands_setindex!
 import BlockArrays: blocksizes, BlockSizes, getblock, global2blockindex
 
 # ApproxFun general import
-import ApproxFunBase: BandedMatrix, order, blocksize,
+import ApproxFunBase: BandedMatrix, blocksize,
                   linesum,complexlength, BandedBlockBandedMatrix,
                   real, eps, isapproxinteger, FiniteRange, DFunction,
                   TransformPlan, ITransformPlan
@@ -43,7 +43,7 @@ import ApproxFunBase:   ConstantSpace, NoSpace, prectype,
                     union_rule, coefficients, RealUnivariateSpace, PiecewiseSegment, rangetype, cfstype
 
 # Multivariate import
-import ApproxFun: Domain2d, DirectSumSpace, AbstractProductSpace, factor,
+import ApproxFunBase: Domain2d, DirectSumSpace, AbstractProductSpace, factor,
                     BivariateFun,  ProductFun, LowRankFun, lap, columnspace,
                     blockbandwidths, subblockbandwidths, fromtensor, totensor, isbandedblockbanded,
                     Tensorizer, tensorizer, block, blockstart, blockstop, blocklengths,
@@ -56,7 +56,7 @@ import ApproxFunBase: WeightSpace, weight
 import ApproxFunBase: Vec
 
 # Jacobi import
-import ApproxFunOrthogonalPolynomials: jacobip, JacobiSD, PolynomialSpace
+import ApproxFunOrthogonalPolynomials: jacobip, JacobiSD, PolynomialSpace, order
 
 
 

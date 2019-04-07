@@ -1,6 +1,4 @@
-using ApproxFun
-f = (x,y) -> x*y+cos(y-0.1)+sin(x)+1; ff = Fun((r,θ) -> f(r*cos(θ),r*sin(θ)), (-1..1) × PeriodicSegment());
-ApproxFunBase.coefficientmatrix(ff)
+export ChebyshevDisk
 
 struct ChebyshevDisk{V,T} <: Space{Disk{V},T}
     domain::Disk{V}
@@ -17,14 +15,14 @@ function points(S::ChebyshevDisk, N)
     fromcanonical.(Ref(S.domain), polar.(pts))
 end
 
-plan_transform(S::DuffyTriangle, n::AbstractVector) = 
+plan_transform(S::ChebyshevDisk, n::AbstractVector) = 
     TransformPlan(S, plan_transform(rectspace(S),n), Val{false})
-plan_itransform(S::DuffyTriangle, n::AbstractVector) = 
+plan_itransform(S::ChebyshevDisk, n::AbstractVector) = 
     ITransformPlan(S, plan_itransform(rectspace(S),n), Val{false})
 
 
-*(P::TransformPlan{<:Any,<:DuffyTriangle}, v::AbstractArray) = checkerboard(P.plan*v)
-*(P::ITransformPlan{<:Any,<:DuffyTriangle}, v::AbstractArray) = P.plan*icheckerboard(v)
+*(P::TransformPlan{<:Any,<:ChebyshevDisk}, v::AbstractArray) = checkerboard(P.plan*v)
+*(P::ITransformPlan{<:Any,<:ChebyshevDisk}, v::AbstractArray) = P.plan*icheckerboard(v)
 
-evaluate(cfs::AbstractVector, S::DuffyTriangle, x) = evaluate(cfs, rectspace(S), ipolar(tocanonical(S.domain,x)))
+evaluate(cfs::AbstractVector, S::ChebyshevDisk, x) = evaluate(cfs, rectspace(S), ipolar(tocanonical(S.domain,x)))
 
