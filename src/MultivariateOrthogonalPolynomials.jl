@@ -58,6 +58,7 @@ import ApproxFunBase: Vec
 # Jacobi import
 import ApproxFunOrthogonalPolynomials: jacobip, JacobiSD, PolynomialSpace, order
 
+import ApproxFunFourier: polar, ipolar
 
 
 include("c_transforms.jl")
