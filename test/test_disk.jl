@@ -8,4 +8,3 @@ ff = Fun(f, ChebyshevDisk(), 1000)
 ff = Fun(f, ChebyshevDisk())
 @test ff(0.1,0.2) ≈ f(0.1,0.2)
 
-plot(ff)
