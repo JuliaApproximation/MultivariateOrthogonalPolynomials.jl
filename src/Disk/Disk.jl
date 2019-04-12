@@ -7,11 +7,15 @@ end
 ZernikeDisk(d::Disk{V}) where V = ZernikeDisk{V,complex(eltype(V))}(d)
 ZernikeDisk() = ZernikeDisk(Disk())
 
+spacescompatible(::ZernikeDisk, ::ZernikeDisk) = true
+
 @containsconstants ZernikeDisk
 
 points(K::ZernikeDisk, n::Integer) =
     fromcanonical.(Ref(K), points(ChebyshevDisk(), n))
 
+evaluate(cfs::AbstractVector, Z::ZernikeDisk, xy) = 
+    Fun(Fun(Z, cfs), ChebyshevDisk())(xy)
 
 struct ChebyshevDisk{V,T} <: Space{Disk{V},T}
     domain::Disk{V}
@@ -84,6 +88,33 @@ fromrectcfs(S, v) = fromtensor(S, checkerboard(totensor(rectspace(S),v)))
 evaluate(cfs::AbstractVector, S::ChebyshevDisk, x) = evaluate(torectcfs(S,cfs), rectspace(S), ipolar(x))
 
 
+function _coefficients(disk2cxf, v̂::AbstractVector, ::ChebyshevDisk, ::ZernikeDisk)
+    F = totensor(ChebyshevDisk(), v̂)
+    F *= sqrt(convert(T,π))
+    n = size(F,1)
+    F̌ = disk2cxf \ pad(F,n,4n-3)
+    trivec(F̌)
+end
+
+function _coefficients(disk2cxf, v::AbstractVector, ::ZernikeDisk,  ::ChebyshevDisk)
+    F̌ = tridevec(v)
+    F̌ /= sqrt(convert(T,π))
+    n = size(F,1)
+    F = disk2cxf \ pad(F̌,n,4n-3)
+    fromtensor(ChebyshevDisk(), F)
+end
+
+function coefficients(cfs::AbstractVector, CD::ChebyshevDisk, ZD::ZernikeDisk)
+    c = totensor(ChebyshevDisk(), cfs)            # TODO: wasteful
+    n = size(c,1)
+    _coefficients(CDisk2CxfPlan(n), cfs, CD, ZD)
+end
+
+function coefficients(cfs::AbstractVector, ZD::ZernikeDisk, CD::ChebyshevDisk)
+    c = tridevec(cfs)            # TODO: wasteful
+    n = size(c,1)
+    _coefficients(CDisk2CxfPlan(n), cfs, CD, ZD)
+end
 
 
 struct FastZernikeDiskTransformPlan{DUF,CHEB}
@@ -94,15 +125,14 @@ end
 function FastZernikeDiskTransformPlan(S::ZernikeDisk, v::AbstractVector{T}) where T
     # n = floor(Integer,sqrt(2length(v)) + 1/2)
     # v = Array{T}(undef, sum(1:n))
-    FastZernikeDiskTransformPlan(plan_transform(ChebyshevDisk(),v), CDisk2CxfPlan(n))
+    cxfplan = plan_transform(ChebyshevDisk(),v)
+    c = totensor(ChebyshevDisk(), cxfplan*v)            # TODO: wasteful
+    n = size(c,1)
+    FastZernikeDiskTransformPlan(cxfplan, CDisk2CxfPlan(n))
 end
 
-function *(P::FastZernikeDiskTransformPlan, v)
-    v̂ = P.cxfplan*v
-    F = tridevec_trans(v̂)
-    F̌ = P.disk2cheb \ F
-    trivec(tridenormalize!(F̌))
-end
+*(P::FastZernikeDiskTransformPlan, v::AbstractVector) = 
+    _coefficients(P.disk2cxf, P.cxfplan*v, ChebyshevDisk(), ZernikeDisk())
 
 plan_transform(K::ZernikeDisk, v::AbstractVector) = FastZernikeDiskTransformPlan(K, v)
 
