@@ -15,19 +15,19 @@ if Libdl.find_library(libfasttransforms) ≡ libfasttransforms
     ft_set_threads(Sys.CPU_THREADS)
 
     c_plan_sph2fourier(n::Int) = ccall((:ft_plan_sph2fourier, libfasttransforms), PlanPtr, (Int, ), n)
-    fc_sph2fourier(P::PlanPtr, A::Matrix{Float64}) = ccall((:ft_execute_sph2fourier, libfasttransforms), Nothing, (PlanPtr, Ptr{Float64}, Int, Int), P, A, size(A, 1), size(A, 2))
+    fc_sph2fourier(P::PlanPtr, A::Matrix{Float64}) = ccall((:ft_execute_sph2fourier, libfasttransforms), Nothing, (PlanPtr, Ref{Float64}, Int, Int), P, A, size(A, 1), size(A, 2))
 
     c_plan_rottriangle(n::Int, α::Float64, β::Float64, γ::Float64) = ccall((:ft_plan_rottriangle, libfasttransforms), PlanPtr, (Int, Float64, Float64, Float64), n, α, β, γ)
-    c_execute_tri_hi2lo(P::PlanPtr, A::Matrix{Float64}) = ccall((:ft_execute_tri_hi2lo, libfasttransforms), Nothing, (PlanPtr, Ptr{Float64}, Int), P, A, size(A, 2))
-    c_execute_tri_lo2hi(P::PlanPtr, A::Matrix{Float64}) = ccall((:ft_execute_tri_lo2hi, libfasttransforms), Nothing, (PlanPtr, Ptr{Float64}, Int), P, A, size(A, 2))
+    c_execute_tri_hi2lo(P::PlanPtr, A::Matrix{Float64}) = ccall((:ft_execute_tri_hi2lo, libfasttransforms), Nothing, (PlanPtr, Ref{Float64}, Int), P, A, size(A, 2))
+    c_execute_tri_lo2hi(P::PlanPtr, A::Matrix{Float64}) = ccall((:ft_execute_tri_lo2hi, libfasttransforms), Nothing, (PlanPtr, Ref{Float64}, Int), P, A, size(A, 2))
 
     c_plan_tri2cheb(n::Int, α::Float64, β::Float64, γ::Float64) = ccall((:ft_plan_tri2cheb, libfasttransforms), PlanPtr, (Int, Float64, Float64, Float64), n, α, β, γ)
-    c_tri2cheb(P::PlanPtr, A::Matrix{Float64}) = ccall((:ft_execute_tri2cheb, libfasttransforms), Nothing, (PlanPtr, Ptr{Float64}, Int, Int), P, A, size(A, 1), size(A, 2))
-    c_cheb2tri(P::PlanPtr, A::Matrix{Float64}) = ccall((:ft_execute_cheb2tri, libfasttransforms), Nothing, (PlanPtr, Ptr{Float64}, Int, Int), P, A, size(A, 1), size(A, 2))
+    c_tri2cheb(P::PlanPtr, A::Matrix{Float64}) = ccall((:ft_execute_tri2cheb, libfasttransforms), Nothing, (PlanPtr, Ref{Float64}, Int, Int), P, A, size(A, 1), size(A, 2))
+    c_cheb2tri(P::PlanPtr, A::Matrix{Float64}) = ccall((:ft_execute_cheb2tri, libfasttransforms), Nothing, (PlanPtr, Ref{Float64}, Int, Int), P, A, size(A, 1), size(A, 2))
 
     c_plan_disk2cxf(n::Int) = ccall((:ft_plan_disk2cxf, libfasttransforms), PlanPtr, (Int,), n)
-    c_disk2cxf(P::PlanPtr, A::Matrix{Float64}) = ccall((:ft_execute_disk2cxf, libfasttransforms), Nothing, (PlanPtr, Ptr{Float64}, Int, Int), P, A, size(A, 1), size(A, 2))
-    c_cxf2disk(P::PlanPtr, A::Matrix{Float64}) = ccall((:ft_execute_cxf2disk, libfasttransforms), Nothing, (PlanPtr, Ptr{Float64}, Int, Int), P, A, size(A, 1), size(A, 2))
+    c_disk2cxf(P::PlanPtr, A::Matrix{Float64}) = ccall((:ft_execute_disk2cxf, libfasttransforms), Nothing, (PlanPtr, Ref{Float64}, Int, Int), P, A, size(A, 1), size(A, 2))
+    c_cxf2disk(P::PlanPtr, A::Matrix{Float64}) = ccall((:ft_execute_cxf2disk, libfasttransforms), Nothing, (PlanPtr, Ref{Float64}, Int, Int), P, A, size(A, 1), size(A, 2))
 else
     @warn "Cannot load FastTransforms Dylib"
 end
