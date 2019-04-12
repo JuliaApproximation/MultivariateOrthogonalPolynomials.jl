@@ -66,7 +66,7 @@ end
 CDisk2CxfPlan(n::Int) = CDisk2CxfPlan(c_plan_disk2cxf(n), n)
 
 function *(C::CDisk2CxfPlan, A::Matrix{Float64})
-    (size(A,1) == C.n+1 && size(A,2) == 4C.n-3) || throw(ArgumentError(A))
+    (size(A,1) == C.n && size(A,2) == 4C.n-3) || throw(ArgumentError(A))
     B = copy(A)
     c_disk2cxf(C.plan, B)
     B
