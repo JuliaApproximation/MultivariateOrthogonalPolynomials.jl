@@ -1,8 +1,8 @@
-using Revise, ApproxFun, MultivariateOrthogonalPolynomials
+using Revise
+using  ApproxFun, MultivariateOrthogonalPolynomials
 import MultivariateOrthogonalPolynomials: checkerboard, icheckerboard, CDisk2CxfPlan
 import ApproxFunBase: totensor
 import ApproxFunOrthogonalPolynomials: jacobip
-
 
 
 function chebydiskeval(c::AbstractMatrix{T}, r, θ) where T
@@ -52,6 +52,7 @@ end
     P = CDisk2CxfPlan(n)
     d = P \ c
     @test d ≈ [1/sqrt(2)]
+    
     f = Fun((x,y) -> y, ChebyshevDisk()); n = 2;
     c = totensor(f.space, f.coefficients)
     c = pad(c, n, 4n-3)
@@ -80,7 +81,7 @@ end
         @test d[2,5] ≈ 1
     end
     @testset "different m and ℓ" begin
-        for (m,ℓ) in ((0,2), (1,1), (2,2), (2,6), (3,3))
+        for (m,ℓ) in ((0,0), (0,2), (1,1), (2,2), (2,6), (3,3))
             p1 = (r,θ) -> sqrt(2ℓ+2)*r^m*jacobip((ℓ-m)÷2, 0, m, 2r^2-1)*cos(m*θ)/sqrt(π)
             f = Fun((x,y) -> p1(sqrt(x^2+y^2), atan(y,x)), ChebyshevDisk());
             @test f(0.1*cos(0.2),0.1*sin(0.2)) ≈ p1(0.1,0.2)
@@ -99,3 +100,16 @@ end
     end
 end
 
+@testset "ChebyshevDisk-ZernikeDisk" begin
+    @test coefficients([sqrt(2/π)], ChebyshevDisk(), ZernikeDisk()) ≈ [1.0]
+    @test coefficients([1.0], ZernikeDisk(), ChebyshevDisk()) ≈ [sqrt(2/π)]
+end
+
+@testset "ZernikeDisk" begin
+    f = Fun((x,y) -> 1, ZernikeDisk(), 10)
+    @test f(0.1,0.2) ≈ 1.0
+    f = Fun((x,y) -> 1, ZernikeDisk())
+    @test f(0.1,0.2) ≈ 1.0
+    f = Fun((x,y) -> exp(x*cos(y-0.1)), ZernikeDisk())
+    @test f(0.1,0.2) ≈ exp(0.1*cos(0.1))
+end

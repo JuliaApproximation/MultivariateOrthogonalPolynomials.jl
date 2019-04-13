@@ -88,7 +88,7 @@ fromrectcfs(S, v) = fromtensor(S, checkerboard(totensor(rectspace(S),v)))
 evaluate(cfs::AbstractVector, S::ChebyshevDisk, x) = evaluate(torectcfs(S,cfs), rectspace(S), ipolar(x))
 
 
-function _coefficients(disk2cxf, v̂::AbstractVector, ::ChebyshevDisk, ::ZernikeDisk)
+function _coefficients(disk2cxf, v̂::AbstractVector{T}, ::ChebyshevDisk, ::ZernikeDisk) where T
     F = totensor(ChebyshevDisk(), v̂)
     F *= sqrt(convert(T,π))
     n = size(F,1)
@@ -96,11 +96,11 @@ function _coefficients(disk2cxf, v̂::AbstractVector, ::ChebyshevDisk, ::Zernike
     trivec(F̌)
 end
 
-function _coefficients(disk2cxf, v::AbstractVector, ::ZernikeDisk,  ::ChebyshevDisk)
+function _coefficients(disk2cxf, v::AbstractVector{T}, ::ZernikeDisk,  ::ChebyshevDisk) where T
     F̌ = tridevec(v)
-    F̌ /= sqrt(convert(T,π))
-    n = size(F,1)
-    F = disk2cxf \ pad(F̌,n,4n-3)
+    n = size(F̌,1)
+    F = disk2cxf * pad(F̌,n,4n-3)
+    F /= sqrt(convert(T,π))
     fromtensor(ChebyshevDisk(), F)
 end
 
@@ -113,7 +113,7 @@ end
 function coefficients(cfs::AbstractVector, ZD::ZernikeDisk, CD::ChebyshevDisk)
     c = tridevec(cfs)            # TODO: wasteful
     n = size(c,1)
-    _coefficients(CDisk2CxfPlan(n), cfs, CD, ZD)
+    _coefficients(CDisk2CxfPlan(n), cfs, ZD, CD)
 end
 
 
