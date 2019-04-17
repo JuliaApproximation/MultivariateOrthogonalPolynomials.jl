@@ -17,6 +17,8 @@ points(K::ZernikeDisk, n::Integer) =
 evaluate(cfs::AbstractVector, Z::ZernikeDisk, xy) = 
     Fun(Fun(Z, cfs), ChebyshevDisk())(xy)
 
+Space(d::Disk) = ZernikeDisk(d)    
+
 struct ChebyshevDisk{V,T} <: Space{Disk{V},T}
     domain::Disk{V}
 end
