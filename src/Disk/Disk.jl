@@ -37,7 +37,9 @@ function points(S::ChebyshevDisk, N)
     polar.(pts)
 end
 
-tensorizer(K::ChebyshevDisk) = Tensorizer((Ones{Int}(∞),Ones{Int}(∞)))
+DiskTensorizer() = Tensorizer((Ones{Int}(∞),Ones{Int}(∞)))
+
+tensorizer(K::ChebyshevDisk) = DiskTensorizer()
 
 # we have each polynomial
 blocklengths(K::ChebyshevDisk) = 1:∞

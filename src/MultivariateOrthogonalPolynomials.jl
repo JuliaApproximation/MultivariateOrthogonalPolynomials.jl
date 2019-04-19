@@ -65,6 +65,7 @@ include("c_transforms.jl")
 
 include("Triangle/Triangle.jl")
 include("Disk/Disk.jl")
+include("Cone/Cone.jl")
 
 include("clenshaw.jl")
 
