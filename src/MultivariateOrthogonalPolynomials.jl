@@ -1,7 +1,8 @@
 module MultivariateOrthogonalPolynomials
 using Base, RecipesBase, ApproxFun, BandedMatrices, BlockArrays,
     FastTransforms, FastGaussQuadrature, StaticArrays, FillArrays,
-    LinearAlgebra, Libdl, SpecialFunctions, LazyArrays, InfiniteArrays
+    LinearAlgebra, Libdl, SpecialFunctions, LazyArrays, InfiniteArrays,
+    DomainSets
 
 # package code goes here
 import Base: values,getindex,setindex!,*, +, -, ==,<,<=,>,
@@ -43,7 +44,7 @@ import ApproxFunBase:   ConstantSpace, NoSpace, prectype,
                     union_rule, coefficients, RealUnivariateSpace, PiecewiseSegment, rangetype, cfstype
 
 # Multivariate import
-import ApproxFunBase: Domain2d, DirectSumSpace, AbstractProductSpace, factor,
+import ApproxFunBase: DirectSumSpace, AbstractProductSpace, factor,
                     BivariateFun,  ProductFun, LowRankFun, lap, columnspace,
                     blockbandwidths, subblockbandwidths, fromtensor, totensor, isbandedblockbanded,
                     Tensorizer, tensorizer, block, blockstart, blockstop, blocklengths,

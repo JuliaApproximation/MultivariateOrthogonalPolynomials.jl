@@ -1,4 +1,3 @@
-using Revise
 using ApproxFun, MultivariateOrthogonalPolynomials, Test
 import MultivariateOrthogonalPolynomials: rectspace, totensor
 
