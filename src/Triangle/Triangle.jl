@@ -3,7 +3,7 @@ export Triangle, JacobiTriangle, TriangleWeight, WeightedTriangle
 
 ## Triangle Def
 # currently right trianglel
-struct Triangle <: Domain2d{Float64}
+struct Triangle <: EuclideanDomain{2,Float64}
     a::Vec{2,Float64}
     b::Vec{2,Float64}
     c::Vec{2,Float64}
@@ -1381,3 +1381,6 @@ function *(A_in::Operator, f::Fun{<:JacobiTriangle})
     v = pad(coefficients(f),size(M,2))
     Fun(rangespace(A),M*v)
 end
+
+
+include("DirichletTriangle.jl")

@@ -1,9 +1,8 @@
-__precompile__()
-
 module MultivariateOrthogonalPolynomials
 using Base, RecipesBase, ApproxFun, BandedMatrices, BlockArrays,
     FastTransforms, FastGaussQuadrature, StaticArrays, FillArrays,
-    LinearAlgebra, Libdl, SpecialFunctions, LazyArrays
+    LinearAlgebra, Libdl, SpecialFunctions, LazyArrays, InfiniteArrays,
+    DomainSets
 
 # package code goes here
 import Base: values,getindex,setindex!,*, +, -, ==,<,<=,>,
@@ -15,16 +14,16 @@ import BandedMatrices: inbands_getindex, inbands_setindex!
 import BlockArrays: blocksizes, BlockSizes, getblock, global2blockindex
 
 # ApproxFun general import
-import ApproxFun: BandedMatrix, order, blocksize,
+import ApproxFunBase: BandedMatrix, blocksize,
                   linesum,complexlength, BandedBlockBandedMatrix,
-                  real, eps, isapproxinteger, ∞, FiniteRange, DFunction,
+                  real, eps, isapproxinteger, FiniteRange, DFunction,
                   TransformPlan, ITransformPlan
 
 # Domains import
-import ApproxFun: fromcanonical, tocanonical, domainscompatible
+import ApproxFunBase: fromcanonical, tocanonical, domainscompatible
 
 # Operator import
-import ApproxFun:    bandwidths,SpaceOperator, ConversionWrapper, DerivativeWrapper,
+import ApproxFunBase:    bandwidths,SpaceOperator, ConversionWrapper, DerivativeWrapper,
                   rangespace, domainspace, InterlaceOperator,
                   promotedomainspace,  CalculusOperator, interlace, Multiplication,
                    choosedomainspace, SubOperator, ZeroOperator,
@@ -34,7 +33,7 @@ import ApproxFun:    bandwidths,SpaceOperator, ConversionWrapper, DerivativeWrap
 
 
 # Spaces import
-import ApproxFun: PolynomialSpace, ConstantSpace, NoSpace, prectype,
+import ApproxFunBase:   ConstantSpace, NoSpace, prectype,
                     SumSpace,PiecewiseSpace, ArraySpace, @containsconstants,
                     UnsetSpace, canonicalspace, canonicaldomain, domain, evaluate,
                     AnyDomain, plan_transform,plan_itransform,
@@ -45,32 +44,33 @@ import ApproxFun: PolynomialSpace, ConstantSpace, NoSpace, prectype,
                     union_rule, coefficients, RealUnivariateSpace, PiecewiseSegment, rangetype, cfstype
 
 # Multivariate import
-import ApproxFun: Domain2d, DirectSumSpace, AbstractProductSpace, factor,
+import ApproxFunBase: DirectSumSpace, AbstractProductSpace, factor,
                     BivariateFun,  ProductFun, LowRankFun, lap, columnspace,
                     blockbandwidths, subblockbandwidths, fromtensor, totensor, isbandedblockbanded,
                     Tensorizer, tensorizer, block, blockstart, blockstop, blocklengths,
                     domaintensorizer, rangetensorizer, blockrange, Block, BlockRange1
 
-
-# Jacobi import
-import ApproxFun: jacobip, JacobiSD
-
 # Singularities
-import ApproxFun: WeightSpace, weight
+import ApproxFunBase: WeightSpace, weight
 
 # Vec is for two points
-import ApproxFun: Vec
+import ApproxFunBase: Vec
+
+# Jacobi import
+import ApproxFunOrthogonalPolynomials: jacobip, JacobiSD, PolynomialSpace, order
+
+import ApproxFunFourier: polar, ipolar
 
 
+include("c_transforms.jl")
 
-include("c_tri2cheb.jl")
-
-include("Triangle.jl")
-include("DirichletTriangle.jl")
+include("Triangle/Triangle.jl")
+include("Disk/Disk.jl")
+include("Cone/Cone.jl")
 
 include("clenshaw.jl")
 
-# include("SphericalHarmonics.jl")
+# include("Sphere/SphericalHarmonics.jl")
 
 include("show.jl")
 include("plot.jl")
