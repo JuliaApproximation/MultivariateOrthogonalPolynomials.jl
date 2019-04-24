@@ -18,6 +18,24 @@ import MultivariateOrthogonalPolynomials: rectspace, totensor
 
     f = Fun((t,x,y) -> exp(cos(t*x)*y), DuffyCone())
     @test f(sqrt(0.1^2+0.2^2),0.1,0.2) ≈ exp(cos(sqrt(0.1^2+0.2^2)*0.1)*0.2)
+
+    m,ℓ = (1,1)
+    f = (txy) -> ((t,x,y) = txy;  θ = atan(y,x); Fun(NormalizedJacobi(0,2m+1,Segment(1,0)),[zeros(ℓ);1])(t) * 2^m * t^m * cos(m*θ))
+    g = Fun(f, DuffyCone())
+    t,x,y = sqrt(0.1^2+0.2^2),0.1,0.2
+    @test g(t,x,y) ≈ f((t,x,y))
+end
+
+@testset "LegendreConePlan" begin
+    m,ℓ = (1,1)
+    f = (txy) -> ((t,x,y) = txy;  θ = atan(y,x); Fun(NormalizedJacobi(0,2m+1,Segment(1,0)),[zeros(ℓ);1])(t) * 2^m * t^m * cos(m*θ))
+    p = points(LegendreCone(), 10)
+    P = plan_transform(LegendreCone(), f.(p))
+    @test P.duffyplan*f.(p) ≈ Fun(f, DuffyCone()).coefficients[1:12]
+    coefficients(g, LegendreCone())
+    g = Fun(f, LegendreCone(), 20)
+    t,x,y = sqrt(0.1^2+0.2^2),0.1,0.2
+    @test g(t,x,y) ≈ f((t,x,y))
 end
 
 @testset "Legendre<>DuffyCone" begin
