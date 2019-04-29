@@ -64,10 +64,7 @@ function evaluate(cfs::AbstractVector, S::DuffyConic, txy::Vec{3})
     Fun(rectspace(S), cfs)(t,θ)
 end
 
-
-function _coefficients(triangleplan, v::AbstractVector{T}, ::DuffyConic, ::LegendreConic) where T
-    F = totensor(rectspace(DuffyConic()), v)
-    F = pad(F, :, 2size(F,1)-1)
+function duffy2legendreconic!(triangleplan, F::AbstractMatrix)
     Fc = F[:,1:2:end]
     c_execute_tri_lo2hi(triangleplan, Fc)
     F[:,1:2:end] .= Fc
@@ -75,20 +72,33 @@ function _coefficients(triangleplan, v::AbstractVector{T}, ::DuffyConic, ::Legen
     Fc[:,2:end] .= F[:,2:2:end]
     c_execute_tri_lo2hi(triangleplan, Fc)
     F[:,2:2:end] .= Fc[:,2:end]
+    F
+end
+
+function legendre2duffyconic!(triangleplan, F::AbstractMatrix)
+    Fc = F[:,1:2:end]
+    c_execute_tri_hi2lo(triangleplan, Fc)
+    F[:,1:2:end] .= Fc
+    # ignore first column
+    Fc[:,2:end] .= F[:,2:2:end]
+    c_execute_tri_hi2lo(triangleplan, Fc)
+    F[:,2:2:end] .= Fc[:,2:end]
+    F
+end
+
+
+function _coefficients(triangleplan, v::AbstractVector{T}, ::DuffyConic, ::LegendreConic) where T
+    F = totensor(rectspace(DuffyConic()), v)
+    F = pad(F, :, 2size(F,1)-1)
+    duffy2legendreconic!(triangleplan, F)
     fromtensor(LegendreConic(), F)
 end
 
 function _coefficients(triangleplan, v::AbstractVector{T}, ::LegendreConic,  ::DuffyConic) where T
     F = totensor(LegendreConic(), v)
     F = pad(F, :, 2size(F,1)-1)
-    Fc = F[:,1:2:end]
-    c_execute_tri_hi2lo(triangleplan, Fc)
-    F[:,1:2:end] .= Fc
-    # ignore first column
-    Fc[:,2:end] .= F[:,2:2:end]
-    c_execute_tri_hi2lo(triangleplan, Fc)
-    F[:,2:2:end] .= Fc[:,2:end]
-    fromtensor(DuffyConic(), F)
+    legendre2duffyconic!(triangleplan, F)
+    fromtensor(rectspace(DuffyConic()), F)
 end
 
 function coefficients(cfs::AbstractVector{T}, CD::DuffyConic, ZD::LegendreConic) where T
