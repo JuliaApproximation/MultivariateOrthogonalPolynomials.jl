@@ -1,4 +1,4 @@
-using ApproxFun, MultivariateOrthogonalPolynomials, Test
+using ApproxFun, MultivariateOrthogonalPolynomials, StaticArrays, Test
 import MultivariateOrthogonalPolynomials: rectspace, totensor, duffy2legendreconic!, legendre2duffyconic!, c_plan_rottriangle, plan_transform
 
 @testset "Conic" begin
@@ -70,6 +70,8 @@ end
     @testset "rectspace" begin
         rs = rectspace(DuffyCone())
         @test points(rs,10) isa Vector{SVector{3,Float64}}
+        @test_broken @inferred(checkpoints(rs))
+        @test checkpoints(rs) isa Vector{SVector{3,Float64}}
     end
 
     @testset "DuffyCone" begin

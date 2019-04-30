@@ -182,8 +182,11 @@ points(::Cone, n) = conemap.(points(rectspace(DuffyCone()), n))
 checkpoints(::Cone) = conemap.(checkpoints(rectspace(DuffyCone())))
 
 
-plan_transform(S::DuffyCone, n::AbstractVector) = 
-    TransformPlan(S, plan_transform(rectspace(S),n), Val{false})
+function plan_transform(S::DuffyCone, n::AbstractVector) 
+    rs = rectspace(S)
+    P = TransformPlan(sp,((plan_transform(sp.spaces[1],T,N),N), (plan_transform(sp.spaces[2],T,M),M)), Val{false})
+    TransformPlan(S, P, Val{false})
+end
 plan_itransform(S::DuffyCone, n::AbstractVector) = 
     ITransformPlan(S, plan_itransform(rectspace(S),n), Val{false})
 
