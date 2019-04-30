@@ -1,4 +1,5 @@
 using ApproxFun, MultivariateOrthogonalPolynomials, StaticArrays, Test
+import ApproxFunBase: checkpoints
 import MultivariateOrthogonalPolynomials: rectspace, totensor, duffy2legendreconic!, legendre2duffyconic!, c_plan_rottriangle, plan_transform
 
 @testset "Conic" begin

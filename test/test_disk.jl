@@ -1,7 +1,7 @@
 using Revise
-using  ApproxFun, MultivariateOrthogonalPolynomials
+using  ApproxFun, MultivariateOrthogonalPolynomials, InfiniteArrays
 import MultivariateOrthogonalPolynomials: checkerboard, icheckerboard, CDisk2CxfPlan
-import ApproxFunBase: totensor
+import ApproxFunBase: totensor, blocklengths
 import ApproxFunOrthogonalPolynomials: jacobip
 
 
@@ -112,4 +112,6 @@ end
     @test f(0.1,0.2) ≈ 1.0
     f = Fun((x,y) -> exp(x*cos(y-0.1)), ZernikeDisk())
     @test f(0.1,0.2) ≈ exp(0.1*cos(0.1))
+
+    @test blocklengths(ZernikeDisk()) == Base.OneTo(∞)
 end

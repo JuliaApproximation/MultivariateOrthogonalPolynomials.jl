@@ -175,14 +175,33 @@ tensorizer(K::LegendreCone) = BallTensorizer()
 
 rectspace(::DuffyCone) = NormalizedJacobi(0,1,Segment(1,0))*ZernikeDisk()
 
+function points(sp::Cone,n)
+    pts=Array{float(eltype(domain(sp)))}(undef,0)
+    a,b = sp.spaces
+    if isfinite(dimension(a)) && isfinite(dimension(b))
+        N,M=dimension(a),dimension(b)
+    elseif isfinite(dimension(a))
+        N=dimension(a)
+        M=n÷N
+    elseif isfinite(dimension(b))
+        M=dimension(b)
+        N=n÷M
+    else
+        N=M=round(Int,sqrt(n))
+    end
 
+    for y in points(b,M), x in points(a,N)
+        push!(pts,Vec(x...,y...))
+    end
+    pts
+end
 
 
 points(::Cone, n) = conemap.(points(rectspace(DuffyCone()), n))
 checkpoints(::Cone) = conemap.(checkpoints(rectspace(DuffyCone())))
 
 
-function plan_transform(S::DuffyCone, n::AbstractVector) 
+function plan_transform(sp::DuffyCone, n::AbstractVector) 
     rs = rectspace(S)
     P = TransformPlan(sp,((plan_transform(sp.spaces[1],T,N),N), (plan_transform(sp.spaces[2],T,M),M)), Val{false})
     TransformPlan(S, P, Val{false})

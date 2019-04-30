@@ -42,7 +42,8 @@ DiskTensorizer() = Tensorizer((Ones{Int}(∞),Ones{Int}(∞)))
 tensorizer(K::ChebyshevDisk) = DiskTensorizer()
 
 # we have each polynomial
-blocklengths(K::ChebyshevDisk) = 1:∞
+blocklengths(K::ChebyshevDisk) = Base.OneTo(∞)
+blocklengths(K::ZernikeDisk) = Base.OneTo(∞)
 
 for OP in (:block,:blockstart,:blockstop)
     @eval begin
