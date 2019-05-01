@@ -170,46 +170,62 @@ spacescompatible(::LegendreCone, ::LegendreCone) = true
 domain(::DuffyCone) = Cone()
 domain(::LegendreCone) = Cone()
 
-tensorizer(K::DuffyCone) = BallTensorizer()
-tensorizer(K::LegendreCone) = BallTensorizer()
+ConeTensorizer() = Tensorizer((Ones{Int}(∞),Base.OneTo(∞)))
+
+tensorizer(K::DuffyCone) = ConeTensorizer()
+tensorizer(K::LegendreCone) = ConeTensorizer()
 
 rectspace(::DuffyCone) = NormalizedJacobi(0,1,Segment(1,0))*ZernikeDisk()
 
-function points(sp::Cone,n)
-    pts=Array{float(eltype(domain(sp)))}(undef,0)
-    a,b = sp.spaces
-    if isfinite(dimension(a)) && isfinite(dimension(b))
-        N,M=dimension(a),dimension(b)
-    elseif isfinite(dimension(a))
-        N=dimension(a)
-        M=n÷N
-    elseif isfinite(dimension(b))
-        M=dimension(b)
-        N=n÷M
-    else
-        N=M=round(Int,sqrt(n))
-    end
+blocklengths(d::DuffyCone) = blocklengths(rectspace(d))
 
-    for y in points(b,M), x in points(a,N)
+function points(sp::DuffyCone,n)
+    N = ceil(Int, n^(1/3))
+    pts=Array{float(eltype(domain(sp)))}(undef,0)
+    a,b = rectspace(sp).spaces
+    for y in points(a,N), x in points(b,N^2)
         push!(pts,Vec(x...,y...))
     end
-    pts
+    conemap.(pts)
 end
 
 
-points(::Cone, n) = conemap.(points(rectspace(DuffyCone()), n))
 checkpoints(::Cone) = conemap.(checkpoints(rectspace(DuffyCone())))
 
 
-function plan_transform(sp::DuffyCone, n::AbstractVector) 
-    rs = rectspace(S)
-    P = TransformPlan(sp,((plan_transform(sp.spaces[1],T,N),N), (plan_transform(sp.spaces[2],T,M),M)), Val{false})
-    TransformPlan(S, P, Val{false})
+function plan_transform(sp::DuffyCone, n::AbstractVector{T})  where T
+    rs = rectspace(sp)
+    N = ceil(Int, length(n)^(1/3))
+    M = length(points(rs.spaces[2], N^2))
+    @assert N*M == length(n)
+    TransformPlan(sp,((plan_transform(rs.spaces[1],T,N),N), (plan_transform(rs.spaces[2],T,M),M)), Val{false})
 end
 plan_itransform(S::DuffyCone, n::AbstractVector) = 
     ITransformPlan(S, plan_itransform(rectspace(S),n), Val{false})
 
-*(P::TransformPlan{<:Any,<:DuffyCone}, v::AbstractArray) = P.plan*v
+function *(T::TransformPlan{<:Any,<:DuffyCone,true}, M::AbstractMatrix)
+    n=size(M,1)
+
+    for k=1:size(M,2)
+        M[:,k]=T.plan[1][1]*M[:,k]
+    end
+    for k=1:n
+        M[k,:] = (T.plan[2][1]*M[k,:])[1:size(M,2)]
+    end
+    M
+end
+
+function *(T::TransformPlan{<:Any,<:DuffyCone,true},v::AbstractVector) 
+    N,M = T.plan[1][2],T.plan[2][2]
+    V=reshape(v,N,M)
+    fromtensor(T.space,T*V)
+end
+
+function *(T::TransformPlan{<:Any,SS,false},v::AbstractVector) where {SS<:DuffyCone}
+    P = TransformPlan(T.space,T.plan,Val{true})
+    P*AbstractVector{rangetype(SS)}(v)
+end
+
 *(P::ITransformPlan{<:Any,<:DuffyCone}, v::AbstractArray) = P.plan*v
 
 evaluate(cfs::AbstractVector, S::DuffyCone, txy) = evaluate(cfs, rectspace(S), ipolar(txy[Vec(2,3)]))

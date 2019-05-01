@@ -1,4 +1,4 @@
-using ApproxFun, MultivariateOrthogonalPolynomials, StaticArrays, Test
+using ApproxFun, MultivariateOrthogonalPolynomials, StaticArrays, FillArrays, Test
 import ApproxFunBase: checkpoints
 import MultivariateOrthogonalPolynomials: rectspace, totensor, duffy2legendreconic!, legendre2duffyconic!, c_plan_rottriangle, plan_transform
 
@@ -76,9 +76,15 @@ end
     end
 
     @testset "DuffyCone" begin
+        p = points(DuffyCone(), 10)
+        @test p isa Vector{SVector{3,Float64}}
+        P = plan_transform(DuffyCone(), Vector{Float64}(undef, length(p)))
+        
+        @test P * fill(1.0, length(p)) ≈ [1.2533141373154997; Zeros(164)] ≈ [Fun((x,y) -> 1, ZernikeDisk()).coefficients; Zeros(164)]
+
         f = Fun((t,x,y) -> 1, DuffyCone(), 10)
-        @test f.coefficients ≈ [1; zeros(ncoefficients(f)-1)]
-        @test f(sqrt(0.1^2+0.2^2),0.1,0.2) ≈ 1
+        @test f.coefficients ≈ [1.2533141373154997; Zeros(164)]
+        @test f(0.3,0.1,0.2) ≈ 1
 
         f = Fun((t,x,y) -> t, DuffyConic(), 10)
         @test f(sqrt(0.1^2+0.2^2),0.1,0.2) ≈ sqrt(0.1^2+0.2^2)

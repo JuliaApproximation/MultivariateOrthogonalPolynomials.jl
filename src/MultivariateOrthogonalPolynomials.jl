@@ -48,7 +48,8 @@ import ApproxFunBase: DirectSumSpace, AbstractProductSpace, factor,
                     BivariateFun,  ProductFun, LowRankFun, lap, columnspace,
                     blockbandwidths, subblockbandwidths, fromtensor, totensor, isbandedblockbanded,
                     Tensorizer, tensorizer, block, blockstart, blockstop, blocklengths,
-                    domaintensorizer, rangetensorizer, blockrange, Block, BlockRange1
+                    domaintensorizer, rangetensorizer, blockrange, Block, BlockRange1,
+                    float
 
 # Singularities
 import ApproxFunBase: WeightSpace, weight
