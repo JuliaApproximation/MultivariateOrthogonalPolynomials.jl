@@ -86,24 +86,20 @@ end
         @test f.coefficients ≈ [1.2533141373154997; Zeros(164)]
         @test f(0.3,0.1,0.2) ≈ 1
 
-        f = Fun((t,x,y) -> t, DuffyConic(), 10)
-        @test f(sqrt(0.1^2+0.2^2),0.1,0.2) ≈ sqrt(0.1^2+0.2^2)
+        f = Fun((t,x,y) -> t, DuffyCone(), 10)
+        @test f(0.3,0.1,0.2) ≈ 0.3
 
-        f = Fun((t,x,y) -> x, DuffyConic(), 10)
+        f = Fun((t,x,y) -> x, DuffyCone(), 10)
+        @test f(0.3,0.1,0.2) ≈ 0.1
 
-        @test f(sqrt(0.1^2+0.2^2),0.1,0.2) ≈ 0.1
+        f = Fun((t,x,y) -> y, DuffyCone(), 10)
+        @test f(0.3,0.1,0.2) ≈ 0.2
 
-        f = Fun((t,x,y) -> exp(cos(t*x)*y), DuffyConic(), 1000)
-        @test f(sqrt(0.1^2+0.2^2),0.1,0.2) ≈ exp(cos(sqrt(0.1^2+0.2^2)*0.1)*0.2)
+        f = Fun((t,x,y) -> exp(cos(t*x)*y), DuffyCone(), 2000)
+        @test f(0.3,0.1,0.2) ≈ exp(cos(0.3*0.1)*0.2)
 
-        f = Fun((t,x,y) -> exp(cos(t*x)*y), DuffyConic())
-        @test f(sqrt(0.1^2+0.2^2),0.1,0.2) ≈ exp(cos(sqrt(0.1^2+0.2^2)*0.1)*0.2)
-
-        m,ℓ = (1,1)
-        f = (txy) -> ((t,x,y) = txy;  θ = atan(y,x); Fun(NormalizedJacobi(0,2m+1,Segment(1,0)),[zeros(ℓ);1])(t) * 2^m * t^m * cos(m*θ))
-        g = Fun(f, DuffyConic())
-        t,x,y = sqrt(0.1^2+0.2^2),0.1,0.2
-        @test g(t,x,y) ≈ f((t,x,y))
+        f = Fun((t,x,y) -> exp(cos(t*x)*y), DuffyCone())
+        @test f(0.3,0.1,0.2) ≈ exp(cos(0.3*0.1)*0.2)
     end
 
     @testset "Legendre<>DuffyConic" begin

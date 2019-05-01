@@ -183,7 +183,7 @@ function points(sp::DuffyCone,n)
     N = ceil(Int, n^(1/3))
     pts=Array{float(eltype(domain(sp)))}(undef,0)
     a,b = rectspace(sp).spaces
-    for y in points(a,N), x in points(b,N^2)
+    for y in points(b,N^2), x in points(a,N)
         push!(pts,Vec(x...,y...))
     end
     conemap.(pts)
@@ -249,7 +249,13 @@ evaluate(cfs::AbstractVector, S::LegendreCone, txy) = evaluate(coefficients(cfs,
 function evaluate(cfs::AbstractVector, S::DuffyCone, txy::Vec{3})
     t,x,y = txy
     @assert x^2+y^2 ≤ t^2
-    Fun(rectspace(S), cfs)(t,x/t,y/t)
+    a,b = rectspace(S).spaces
+    mat = totensor(S, cfs)
+    for j = 1:size(mat,2)
+        # in place since totensor makes copy
+        mat[1,j] = Fun(a, view(mat,:,j))(t)
+    end
+    Fun(b, view(mat,1,:))(x/t,y/t)
 end
 
 function duffy2legendrecone!(triangleplan, F::AbstractMatrix)
