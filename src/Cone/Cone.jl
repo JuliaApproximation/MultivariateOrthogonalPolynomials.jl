@@ -179,10 +179,10 @@ rectspace(::DuffyCone) = NormalizedJacobi(0,1,Segment(1,0))*ZernikeDisk()
 
 blocklengths(d::DuffyCone) = blocklengths(rectspace(d))
 
-function points(sp::DuffyCone,n)
+function points(d::Cone,n)
     N = ceil(Int, n^(1/3))
-    pts=Array{float(eltype(domain(sp)))}(undef,0)
-    a,b = rectspace(sp).spaces
+    pts=Array{float(eltype(d))}(undef,0)
+    a,b = rectspace(DuffyCone()).spaces
     for y in points(b,N^2), x in points(a,N)
         push!(pts,Vec(x...,y...))
     end
@@ -258,52 +258,90 @@ function evaluate(cfs::AbstractVector, S::DuffyCone, txy::Vec{3})
     Fun(b, view(mat,1,:))(x/t,y/t)
 end
 
+function duffy2legendrecone_column_J!(P, Fc, F, Jin)
+    J = sum(1:Jin)
+    for j = Jin:size(Fc,2)
+        if 1 ≤ J ≤ size(F,2)
+            Fc[:,j] .= view(F,:,J)
+        else
+            Fc[:,j] .= 0
+        end
+        J += j
+    end
+    c_execute_tri_lo2hi(P, Fc)
+    J = sum(1:Jin)
+    for j = Jin:size(Fc,2)
+        J > size(F,2) && break
+        F[:,J] .= view(Fc,:,j)
+        J += j
+    end
+    F
+end
+
+function legendre2duffycone_column_J!(P, Fc, F, Jin)
+    J = sum(1:Jin)
+    for j = Jin:size(Fc,2)
+        if 1 ≤ J ≤ size(F,2)
+            Fc[:,j] .= view(F,:,J)
+        else
+            Fc[:,j] .= 0
+        end
+        J += j
+    end
+    c_execute_tri_hi2lo(P, Fc)
+    J = sum(1:Jin)
+    for j = Jin:size(Fc,2)
+        J > size(F,2) && break
+        F[:,J] .= view(Fc,:,j)
+        J += j
+    end
+    F
+end
+
 function duffy2legendrecone!(triangleplan, F::AbstractMatrix)
-    Fc = F[:,1:2:end]
-    c_execute_tri_lo2hi(triangleplan, Fc)
-    F[:,1:2:end] .= Fc
-    # ignore first column
-    Fc[:,2:end] .= F[:,2:2:end]
-    c_execute_tri_lo2hi(triangleplan, Fc)
-    F[:,2:2:end] .= Fc[:,2:end]
+    Fc = Matrix{Float64}(undef,size(F,1),size(F,1))
+    for J = 1:(isqrt(1 + 8size(F,2))-1)÷ 2 # actually div 
+        duffy2legendrecone_column_J!(triangleplan, Fc, F, J)
+    end
     F
 end
 
 function legendre2duffycone!(triangleplan, F::AbstractMatrix)
-    Fc = F[:,1:2:end]
-    c_execute_tri_hi2lo(triangleplan, Fc)
-    F[:,1:2:end] .= Fc
-    # ignore first column
-    Fc[:,2:end] .= F[:,2:2:end]
-    c_execute_tri_hi2lo(triangleplan, Fc)
-    F[:,2:2:end] .= Fc[:,2:end]
+    Fc = Matrix{Float64}(undef,size(F,1),size(F,1))
+    for J = 1:(isqrt(1 + 8size(F,2))-1)÷ 2 # actually div 
+        legendre2duffycone_column_J!(triangleplan, Fc, F, J)
+    end
     F
 end
 
 function _coefficients(triangleplan, v::AbstractVector{T}, ::DuffyCone, ::LegendreCone) where T
     F = totensor(rectspace(DuffyCone()), v)
-    F = pad(F, :, 2size(F,1)-1)
+    for j = 1:size(F,2)
+        F[:,j] = coefficients(F[:,j], NormalizedJacobi(0,1,Segment(1,0)), NormalizedJacobi(0,2,Segment(1,0)))
+    end
     duffy2legendrecone!(triangleplan, F)
     fromtensor(LegendreCone(), F)
 end
 
-function _coefficients(triangleplan, v::AbstractVector{T}, ::LegendreCone,  ::DuffyCone) where T
+function _coefficients(triangleplan, v::AbstractVector{T}, ::LegendreCone, ::DuffyCone) where T
     F = totensor(LegendreCone(), v)
-    F = pad(F, :, 2size(F,1)-1)
     legendre2duffycone!(triangleplan, F)
+    for j = 1:size(F,2)
+        F[:,j] = coefficients(F[:,j], NormalizedJacobi(0,2,Segment(1,0)), NormalizedJacobi(0,1,Segment(1,0)))
+    end
     fromtensor(rectspace(DuffyCone()), F)
 end
 
 function coefficients(cfs::AbstractVector{T}, CD::DuffyCone, ZD::LegendreCone) where T
     c = totensor(rectspace(DuffyCone()), cfs)            # TODO: wasteful
     n = size(c,1)
-    _coefficients(c_plan_rottriangle(n, zero(T), zero(T), zero(T)), cfs, CD, ZD)
+    _coefficients(c_plan_rottriangle(n, zero(T), zero(T), one(T)), cfs, CD, ZD)
 end
 
 function coefficients(cfs::AbstractVector{T}, ZD::LegendreCone, CD::DuffyCone) where T
-    c = tridevec(cfs)            # TODO: wasteful
+    c = totensor(LegendreCone(), cfs)            # TODO: wasteful
     n = size(c,1)
-    _coefficients(c_plan_rottriangle(n, zero(T), zero(T), zero(T)), cfs, ZD, CD)
+    _coefficients(c_plan_rottriangle(n, zero(T), zero(T), one(T)), cfs, ZD, CD)
 end
 
 struct LegendreConeTransformPlan{DUF,CHEB}
@@ -314,7 +352,7 @@ end
 function LegendreConeTransformPlan(S::LegendreCone, v::AbstractVector{T}) where T 
     D = plan_transform(DuffyCone(),v)
     F = totensor(rectspace(DuffyCone()), D*v) # wasteful, just use to figure out `size(F,1)`
-    P = c_plan_rottriangle(size(F,1), zero(T), zero(T), zero(T))
+    P = c_plan_rottriangle(size(F,1), zero(T), zero(T), one(T))
     LegendreConeTransformPlan(D,P)
 end
 
@@ -330,7 +368,7 @@ end
 
 function LegendreConeITransformPlan(S::LegendreCone, v::AbstractVector{T}) where T 
     F = fromtensor(LegendreCone(), v) # wasteful, just use to figure out `size(F,1)`
-    P = c_plan_rottriangle(size(F,1), zero(T), zero(T), zero(T))
+    P = c_plan_rottriangle(size(F,1), zero(T), zero(T), one(T))
     D = plan_itransform(DuffyCone(), _coefficients(P, v, S, DuffyCone()))
     LegendreConeITransformPlan(D,P)
 end
