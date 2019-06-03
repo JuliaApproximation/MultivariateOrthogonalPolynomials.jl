@@ -67,8 +67,6 @@ import MultivariateOrthogonalPolynomials: rectspace, totensor, duffy2legendrecon
     end
 end
 
-
-
 @testset "Cone" begin
     @testset "rectspace" begin
         rs = rectspace(DuffyCone())
@@ -164,7 +162,7 @@ end
     end
 
     @testset "LegendreCone" begin
-        f = Fun((t,x,y) -> 1, LegendreConic(), 10)
+        f = Fun((t,x,y) -> 1, LegendreCone(), 10)
         @test f.coefficients ≈ [1; zeros(ncoefficients(f)-1)]
         @test f(sqrt(0.1^2+0.2^2),0.1,0.2) ≈ 1
 
