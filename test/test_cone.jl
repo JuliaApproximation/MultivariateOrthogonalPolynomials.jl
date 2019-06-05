@@ -1,9 +1,39 @@
-using ApproxFun, MultivariateOrthogonalPolynomials, StaticArrays, FillArrays, Test
-import ApproxFunBase: checkpoints
+using ApproxFun, MultivariateOrthogonalPolynomials, StaticArrays, FillArrays, BlockArrays, Test
+import ApproxFunBase: checkpoints, plan_transform!, fromtensor
 import MultivariateOrthogonalPolynomials: rectspace, totensor, duffy2legendreconic!, legendre2duffyconic!, c_plan_rottriangle, plan_transform,
-                        c_execute_tri_hi2lo, c_execute_tri_lo2hi, duffy2legendrecone_column_J!, duffy2legendrecone!, legendre2duffycone!
+                        c_execute_tri_hi2lo, c_execute_tri_lo2hi, duffy2legendrecone_column_J!, duffy2legendrecone!, legendre2duffycone!,
+                        duffy2legendreconic!, ConicTensorizer
+
 
 @testset "Conic" begin
+    @testset "tensorizer derivation" begin
+        A = [1 2 3 5 6;
+             4 7 8 0 0;
+             9 0 0 0 0] 
+        B = PseudoBlockArray(A, Ones{Int}(3), [1; Fill(2,2)])
+
+        a = Vector{eltype(A)}()
+        for N = 1:nblocks(B,2), K=1:N
+            append!(a, vec(B[Block(K,N-K+1)]))
+        end
+
+        @test a == fromtensor(ConicTensorizer(),A) == fromtensor(LegendreConic(),A) == 1:9
+
+        N = isqrt(length(a))
+        M = 2N-1
+        Ã = zeros(eltype(a), N, M)
+        B = PseudoBlockArray(Ã, Ones{Int}(3), [1; Fill(2,2)])
+        k = 1
+        for N = 1:nblocks(B,2), K=1:N
+            V = view(B, Block(K,N-K+1))
+            for j = 1:length(V)
+                V[j] = a[k]
+                k += 1
+            end
+        end
+        @test Ã == totensor(ConicTensorizer(),a) == totensor(LegendreConic(),a) == A
+    end
+
     @testset "DuffyConic" begin
         f = Fun((t,x,y) -> 1, DuffyConic(), 10)
         @test f.coefficients ≈ [1; zeros(ncoefficients(f)-1)]
@@ -44,12 +74,25 @@ import MultivariateOrthogonalPolynomials: rectspace, totensor, duffy2legendrecon
     end
 
     @testset "LegendreConicPlan" begin
-        for (m,ℓ) in ((0,0), (0,1), (0,2), (1,1), (1,2), (2,2))
-            f = (txy) -> ((t,x,y) = txy;  θ = atan(y,x); Fun(NormalizedJacobi(0,2m+1,Segment(1,0)),[zeros(ℓ);1])(t) * 2^m * t^m * cos(m*θ))
-            g = Fun(f, LegendreConic())
-            t,x,y = sqrt(0.1^2+0.2^2),0.1,0.2
-            @test g(t,x,y) ≈ f((t,x,y))
-        end
+        p = points(LegendreConic(),10)
+        @test length(p) == 6
+        v = fill(1.0,length(p))
+        n = length(v)
+        N = (1 + isqrt(1+8n)) ÷ 4
+        M = 2N-1
+        D = plan_transform!(rectspace(DuffyConic()), reshape(v,N,M))
+        N,M = D.plan[1][2],D.plan[2][2]
+        V=reshape(v,N,M)
+        @test D*V ≈ [[1 zeros(1,2)]; zeros(1,3)]
+        T = Float64
+        P = c_plan_rottriangle(N, zero(T), zero(T), zero(T))
+        duffy2legendreconic!(P,V)
+        @test V ≈ [[1 zeros(1,2)]; zeros(1,3)]
+        @test fromtensor(DuffyConic(), V) ≈ [1; Zeros(5)]
+
+        v = fill(1.0,length(p))
+        @test plan_transform(LegendreConic(),v)*v ≈ [1; Zeros(3)]
+        @test v == fill(1.0,length(p))
     end
 
     @testset "LegendreConic" begin
@@ -62,8 +105,16 @@ import MultivariateOrthogonalPolynomials: rectspace, totensor, duffy2legendrecon
         f = Fun((t,x,y) -> 1+t+x+y, LegendreConic(), 10)
         @test f(sqrt(0.1^2+0.2^2),0.1,0.2) ≈ 1+sqrt(0.1^2+0.2^2)+0.1+0.2
 
-
         @time Fun((t,x,y) -> 1+t+x+y, LegendreConic(), 1000)
+
+        f = Fun((t,x,y) -> exp(x*cos(t+y)), LegendreConic())
+
+        for (m,ℓ) in ((0,0), (0,1), (0,2), (1,1), (1,2), (2,2))
+            f = (txy) -> ((t,x,y) = txy;  θ = atan(y,x); Fun(NormalizedJacobi(0,2m+1,Segment(1,0)),[zeros(ℓ);1])(t) * 2^m * t^m * cos(m*θ))
+            g = Fun(f, LegendreConic())
+            t,x,y = sqrt(0.1^2+0.2^2),0.1,0.2
+            @test g(t,x,y) ≈ f((t,x,y))
+        end
     end
 end
 
@@ -152,6 +203,31 @@ end
     
 
     @testset "LegendreConePlan" begin
+        for N = 1:10
+            n = N*sum(1:N)
+            @test round(Int,1/3*(-1 + 1/(-1 + 27n + 3sqrt(3)sqrt(n*(-2 + 27n)))^(1/3) + (-1 + 27n + 3sqrt(3)sqrt(n*(-2 + 27n)))^(1/3)),RoundUp) ≈ N
+        end
+        p = points(LegendreCone(),10)
+        @test length(p) == 12 == 3*sum(1:3)
+        v = fill(1.0,length(p))
+        n = length(v)
+        N = (1 + isqrt(1+8n)) ÷ 4
+        M = 2N-1
+        D = plan_transform!(rectspace(DuffyConic()), reshape(v,N,M))
+        N,M = D.plan[1][2],D.plan[2][2]
+        V=reshape(v,N,M)
+        @test D*V ≈ [[1 zeros(1,2)]; zeros(1,3)]
+        T = Float64
+        P = c_plan_rottriangle(N, zero(T), zero(T), zero(T))
+        duffy2legendreconic!(P,V)
+        @test V ≈ [[1 zeros(1,2)]; zeros(1,3)]
+        @test fromtensor(DuffyConic(), V) ≈ [1; Zeros(5)]
+
+        v = fill(1.0,length(p))
+        @test plan_transform(LegendreConic(),v)*v ≈ [1; Zeros(3)]
+        @test v == fill(1.0,length(p))
+    
+
         for (m,k,ℓ) in ((0,0,0), )
             Y = Fun(ZernikeDisk(), [Zeros(sum(1:m)+k); 1])
             f = (txy) -> ((t,x,y) = txy;  θ = atan(y,x); Fun(NormalizedJacobi(0,2m+2,Segment(1,0)),[zeros(ℓ);1])(t) * 2^m * t^m * Y(x,y))
@@ -162,7 +238,7 @@ end
     end
 
     @testset "LegendreCone" begin
-        f = Fun((t,x,y) -> 1, LegendreCone(), 10)
+        f = Fun((t,x,y) -> 1, LegendreConic(), 10)
         @test f.coefficients ≈ [1; zeros(ncoefficients(f)-1)]
         @test f(sqrt(0.1^2+0.2^2),0.1,0.2) ≈ 1
 
@@ -175,3 +251,4 @@ end
         @time Fun((t,x,y) -> 1+t+x+y, LegendreConic(), 1000)
     end
 end
+

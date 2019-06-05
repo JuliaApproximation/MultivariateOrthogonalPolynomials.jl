@@ -17,8 +17,46 @@ spacescompatible(::LegendreConic, ::LegendreConic) = true
 domain(::DuffyConic) = Conic()
 domain(::LegendreConic) = Conic()
 
+
+# groups by Fourier
+struct ConicTensorizer end
+
 tensorizer(K::DuffyConic) = DiskTensorizer()
-tensorizer(K::LegendreConic) = DiskTensorizer()
+tensorizer(K::LegendreConic) = ConicTensorizer()
+
+function isqrt_roundup(n)
+    N = isqrt(n)
+    N^2 == n ? N : N+1
+end
+
+function fromtensor(::ConicTensorizer, A::AbstractMatrix{T}) where T
+    N = size(A,1)
+    M = 2N-1
+    @assert size(A,2) == M
+    B = PseudoBlockArray(A, Ones{Int}(N), [1; Fill(2,N-1)])
+    a = Vector{T}()
+    for N = 1:nblocks(B,2), K=1:N
+        append!(a, vec(view(B,Block(K,N-K+1))))
+    end
+    a
+end
+
+function totensor(::ConicTensorizer, a::AbstractVector{T}) where T
+    N = isqrt_roundup(length(a))
+    M = 2N-1
+    Ã = zeros(eltype(a), N, M)
+    B = PseudoBlockArray(Ã, Ones{Int}(N), [1; Fill(2,N-1)])
+    k = 1
+    for N = 1:nblocks(B,2), K=1:N
+        V = view(B, Block(K,N-K+1))
+        for j = 1:length(V)
+            V[j] = a[k]
+            k += 1
+            k > length(a) && return Ã
+        end
+    end
+    Ã
+end
 
 rectspace(::DuffyConic) = NormalizedJacobi(0,1,Segment(1,0))*Fourier()
 
@@ -27,12 +65,32 @@ conemap(txy) = ((t,x,y) = txy; conemap(t,x,y))
 conicpolar(t,θ) = conemap(t, cos(θ), sin(θ))
 conicpolar(tθ) = ((t,θ) = tθ; conicpolar(t,θ))
 
-points(::Conic, n) = conicpolar.(points(rectspace(DuffyConic()), n))
+
+# M = 2N-1
+# N*M == 2N^2 -N == n
+# N = (1 + sqrt(1 + 8n)/4)
+function points(d::Conic, n)
+    a,b = rectspace(DuffyConic()).spaces
+    pts=Array{float(eltype(d))}(undef,0)
+    N = (1 + isqrt(1+8n)) ÷ 4
+    M = 2N-1
+
+    for y in points(b,M),
+        x in points(a,N)
+        push!(pts,conicpolar(Vec(x...,y...)))
+    end
+    pts
+end
 checkpoints(::Conic) = conicpolar.(checkpoints(rectspace(DuffyConic())))
 
 
-plan_transform(S::DuffyConic, n::AbstractVector) = 
-    TransformPlan(S, plan_transform(rectspace(S),n), Val{false})
+function plan_transform(S::DuffyConic, v::AbstractVector{T}) where T
+    n = length(v)
+    N = (1 + isqrt(1+8n)) ÷ 4
+    M = 2N-1
+    D = plan_transform!(rectspace(S), Array{T}(undef,N,M))
+    TransformPlan(S, D, Val{false})
+end
 plan_itransform(S::DuffyConic, n::AbstractVector) = 
     ITransformPlan(S, plan_itransform(rectspace(S),n), Val{false})
 
@@ -94,7 +152,7 @@ function _coefficients(triangleplan, v::AbstractVector{T}, ::DuffyConic, ::Legen
     fromtensor(LegendreConic(), F)
 end
 
-function _coefficients(triangleplan, v::AbstractVector{T}, ::LegendreConic,  ::DuffyConic) where T
+function _coefficients(triangleplan, v::AbstractVector{T}, ::LegendreConic, ::DuffyConic) where T
     F = totensor(LegendreConic(), v)
     F = pad(F, :, 2size(F,1)-1)
     legendre2duffyconic!(triangleplan, F)
@@ -108,8 +166,7 @@ function coefficients(cfs::AbstractVector{T}, CD::DuffyConic, ZD::LegendreConic)
 end
 
 function coefficients(cfs::AbstractVector{T}, ZD::LegendreConic, CD::DuffyConic) where T
-    c = tridevec(cfs)            # TODO: wasteful
-    n = size(c,1)
+    n = isqrt_roundup(length(cfs))
     _coefficients(c_plan_rottriangle(n, zero(T), zero(T), zero(T)), cfs, ZD, CD)
 end
 
@@ -119,14 +176,21 @@ struct LegendreConicTransformPlan{DUF,CHEB}
 end
 
 function LegendreConicTransformPlan(S::LegendreConic, v::AbstractVector{T}) where T 
-    D = plan_transform(DuffyConic(),v)
-    F = totensor(rectspace(DuffyConic()), D*v) # wasteful, just use to figure out `size(F,1)`
-    P = c_plan_rottriangle(size(F,1), zero(T), zero(T), zero(T))
+    n = length(v)
+    N = (1 + isqrt(1+8n)) ÷ 4
+    M = 2N-1
+    D = plan_transform!(rectspace(DuffyConic()), Array{T}(undef,N,M))
+    P = c_plan_rottriangle(N, zero(T), zero(T), zero(T))
     LegendreConicTransformPlan(D,P)
 end
 
 
-*(P::LegendreConicTransformPlan, v::AbstractVector) = _coefficients(P.triangleplan, P.duffyplan*v, DuffyConic(), LegendreConic())
+function *(P::LegendreConicTransformPlan, v::AbstractVector) 
+    N,M = P.duffyplan.plan[1][2],P.duffyplan.plan[2][2] 
+    V=reshape(v,N,M)
+    fromtensor(LegendreConic(),
+               duffy2legendreconic!(P.triangleplan,P.duffyplan*copy(V)))
+end
 
 plan_transform(K::LegendreConic, v::AbstractVector) = LegendreConicTransformPlan(K, v)
 
@@ -179,14 +243,18 @@ rectspace(::DuffyCone) = NormalizedJacobi(0,1,Segment(1,0))*ZernikeDisk()
 
 blocklengths(d::DuffyCone) = blocklengths(rectspace(d))
 
+# M = N(N+1)/2
+# N*M == N^2(N+1)/2 == n
+# N = 1/3 (-1 + 1/(-1 + 27n + 3sqrt(3)sqrt(n*(-2 + 27 n)))^(1/3) + (-1 + 27n + 3sqrt(3)sqrt(n*(-2 + 27n)))^(1/3))
+
 function points(d::Cone,n)
-    N = ceil(Int, n^(1/3))
-    pts=Array{float(eltype(d))}(undef,0)
+    N = round(Int,1/3*(-1 + 1/(-1 + 27n + 3sqrt(3)sqrt(n*(-2 + 27n)))^(1/3) + (-1 + 27n + 3sqrt(3)sqrt(n*(-2 + 27n)))^(1/3)),RoundUp)
+    pts = Array{float(eltype(d))}(undef,0)
     a,b = rectspace(DuffyCone()).spaces
-    for y in points(b,N^2), x in points(a,N)
-        push!(pts,Vec(x...,y...))
+    for y in points(b,M), x in points(a,N)
+        push!(pts,conemap(Vec(x...,y...)))
     end
-    conemap.(pts)
+    pts
 end
 
 

@@ -17,7 +17,7 @@ import BlockArrays: blocksizes, BlockSizes, getblock, global2blockindex
 import ApproxFunBase: BandedMatrix, blocksize,
                   linesum,complexlength, BandedBlockBandedMatrix,
                   real, eps, isapproxinteger, FiniteRange, DFunction,
-                  TransformPlan, ITransformPlan
+                  TransformPlan, ITransformPlan, plan_transform!
 
 # Domains import
 import ApproxFunBase: fromcanonical, tocanonical, domainscompatible

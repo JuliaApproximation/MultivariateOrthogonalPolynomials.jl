@@ -11,11 +11,27 @@ spacescompatible(::ZernikeDisk, ::ZernikeDisk) = true
 
 @containsconstants ZernikeDisk
 
-points(K::ZernikeDisk, n::Integer) =
-    fromcanonical.(Ref(K), points(ChebyshevDisk(), n))
+# M = 2N-1
+# N*M == 2N^2 -N == n
+# N = (1 + sqrt(1 + 8n)/4)
+function points(d::ZernikeDisk, n)
+    a,b = rectspace(ZernikeDisk()).spaces
+    pts=Array{float(eltype(domain(d)))}(undef,0)
+    N = (1 + isqrt(1+8n)) ÷ 4
+    M = 2N-1
 
-evaluate(cfs::AbstractVector, Z::ZernikeDisk, xy) = 
-    Fun(Fun(Z, cfs), ChebyshevDisk())(xy)
+    for y in points(b,M),
+        x in points(a,N)
+        push!(pts,polar(Vec(x...,y...)))
+    end
+    pts
+end
+
+function evaluate(cfs::AbstractVector, Z::ZernikeDisk, xy) 
+    C = totensor(ZernikeDisk(), cfs)
+    F = _coefficients(CDisk2CxfPlan(size(C,1)), C, ZernikeDisk(), ChebyshevDisk())
+    ProductFun(icheckerboard(F), rectspace(ChebyshevDisk()))(ipolar(xy...)...)
+end
 
 Space(d::Disk) = ZernikeDisk(d)    
 
@@ -37,9 +53,42 @@ function points(S::ChebyshevDisk, N)
     polar.(pts)
 end
 
-DiskTensorizer() = Tensorizer((Ones{Int}(∞),Ones{Int}(∞)))
+struct DiskTensorizer end
 
-tensorizer(K::ChebyshevDisk) = DiskTensorizer()
+function fromtensor(::DiskTensorizer, A::AbstractMatrix{T}) where T
+    N = size(A,1)
+    M = 4(N-1)+1
+    @assert size(A,2) == M
+    B = PseudoBlockArray(A, Ones{Int}(N), [1; Fill(2,2*(N-1))])
+    a = Vector{T}()
+    for N = 1:nblocks(B,2), K=1:(N+1)÷2
+        append!(a, vec(view(B,Block(K,N-2K+2))))
+    end
+    a
+end
+
+# N + 4 * sum(1:N-1)
+# N + 4 * N (N-1)/2 == n
+function totensor(::DiskTensorizer, a::AbstractVector{T}) where T
+    n = length(a)
+    N = round(Int,1/4*(1 + sqrt(1 + 8n)),RoundUp)
+    M = 4*(N-1)+1
+    Ã = zeros(eltype(a), N, M)
+    B = PseudoBlockArray(Ã, Ones{Int}(N), [1; Fill(2,2*(N-1))])
+    k = 1
+    for N = 1:nblocks(B,2), K=1:(N+1)÷2
+        V = view(B, Block(K,N-2K+2))
+        for j = 1:length(V)
+            V[j] = a[k]
+            k += 1
+            k > length(a) && return Ã
+        end
+    end
+    Ã
+end
+
+tensorizer(K::ZernikeDisk) = DiskTensorizer()
+tensorizer(K::ChebyshevDisk) = Tensorizer((Ones{Int}(∞),Ones{Int}(∞)))
 
 # we have each polynomial
 blocklengths(K::ChebyshevDisk) = Base.OneTo(∞)
@@ -61,7 +110,11 @@ plan_itransform(S::ChebyshevDisk, n::AbstractVector) =
 # drop every other entry
 function checkerboard(A::AbstractMatrix{T}) where T
     m,n = size(A)
-    C = zeros(T, (m+1)÷2, n)
+    #4(N-1) == n-1
+    N = (n-1)÷4+1
+    4(N-1)+1 == n || (N += 1) # round up
+    M = 4(N-1)+1
+    C = zeros(T, N, M)
     z = @view(A[1:2:end,1])
     e1,e2 = @view(A[1:2:end,4:4:end]),@view(A[1:2:end,5:4:end])
     o1,o2 = @view(A[2:2:end,2:4:end]),@view(A[2:2:end,3:4:end])
@@ -95,19 +148,18 @@ evaluate(cfs::AbstractVector, S::ChebyshevDisk, x) = evaluate(torectcfs(S,cfs), 
 
 function _coefficients(disk2cxf, v̂::AbstractVector{T}, ::ChebyshevDisk, ::ZernikeDisk) where T
     F = totensor(ChebyshevDisk(), v̂)
-    F *= sqrt(convert(T,π))
-    n = size(F,1)
+    n = disk2cxf.n
     F̌ = disk2cxf \ pad(F,n,4n-3)
-    trivec(F̌)
+    fromtensor(ZernikeDisk(), F̌)
 end
 
-function _coefficients(disk2cxf, v::AbstractVector{T}, ::ZernikeDisk,  ::ChebyshevDisk) where T
-    F̌ = tridevec(v)
-    n = size(F̌,1)
-    F = disk2cxf * pad(F̌,n,4n-3)
-    F /= sqrt(convert(T,π))
-    fromtensor(ChebyshevDisk(), F)
+function _coefficients(disk2cxf, F̌::AbstractMatrix{T}, ::ZernikeDisk,  ::ChebyshevDisk) where T
+    n = disk2cxf.n
+    disk2cxf * pad(F̌,n,4n-3)
 end
+
+_coefficients(disk2cxf, v::AbstractVector{T}, ::ZernikeDisk,  ::ChebyshevDisk) where T =
+    fromtensor(ChebyshevDisk(), _coefficients(disk2cxf, totensor(ZernikeDisk(), v), ZernikeDisk(), ChebyshevDisk()))
 
 function coefficients(cfs::AbstractVector, CD::ChebyshevDisk, ZD::ZernikeDisk)
     c = totensor(ChebyshevDisk(), cfs)            # TODO: wasteful
@@ -116,43 +168,48 @@ function coefficients(cfs::AbstractVector, CD::ChebyshevDisk, ZD::ZernikeDisk)
 end
 
 function coefficients(cfs::AbstractVector, ZD::ZernikeDisk, CD::ChebyshevDisk)
-    c = tridevec(cfs)            # TODO: wasteful
+    c = totensor(ZernikeDisk(), cfs)            # TODO: wasteful
     n = size(c,1)
     _coefficients(CDisk2CxfPlan(n), cfs, ZD, CD)
 end
 
 
-struct FastZernikeDiskTransformPlan{DUF,CHEB}
+struct ZernikeDiskTransformPlan{DUF,CHEB}
     cxfplan::DUF
     disk2cxf::CHEB
 end
 
-function FastZernikeDiskTransformPlan(S::ZernikeDisk, v::AbstractVector{T}) where T
-    # n = floor(Integer,sqrt(2length(v)) + 1/2)
-    # v = Array{T}(undef, sum(1:n))
-    cxfplan = plan_transform(ChebyshevDisk(),v)
-    c = totensor(ChebyshevDisk(), cxfplan*v)            # TODO: wasteful
-    n = size(c,1)
-    FastZernikeDiskTransformPlan(cxfplan, CDisk2CxfPlan(n))
+function ZernikeDiskTransformPlan(S::ZernikeDisk, v::AbstractVector{T}) where T
+    n = length(v)
+    N = (1 + isqrt(1+8n)) ÷ 4
+    M = 2N-1
+    D = plan_transform!(rectspace(ChebyshevDisk()), Array{T}(undef,N,M))
+    N = (M-1)÷4+1
+    4(N-1)+1 == M || (N += 1) # round up
+    ZernikeDiskTransformPlan(D, CDisk2CxfPlan(N))
 end
 
-*(P::FastZernikeDiskTransformPlan, v::AbstractVector) = 
-    _coefficients(P.disk2cxf, P.cxfplan*v, ChebyshevDisk(), ZernikeDisk())
+function *(P::ZernikeDiskTransformPlan, v::AbstractVector) 
+    N,M = P.cxfplan.plan[1][2],P.cxfplan.plan[2][2] 
+    V = P.cxfplan*reshape(copy(v),N,M)
+    C = checkerboard(V)
+    fromtensor(ZernikeDisk(),  P.disk2cxf\C)
+end
 
-plan_transform(K::ZernikeDisk, v::AbstractVector) = FastZernikeDiskTransformPlan(K, v)
+plan_transform(K::ZernikeDisk, v::AbstractVector) = ZernikeDiskTransformPlan(K, v)
 
-struct FastZernikeDiskITransformPlan{DUF,CHEB}
+struct ZernikeDiskITransformPlan{DUF,CHEB}
     icxfplan::DUF
     disk2cxf::CHEB
 end
 
-function FastZernikeDiskITransformPlan(S::ZernikeDisk, v::AbstractVector{T}) where T
+function ZernikeDiskITransformPlan(S::ZernikeDisk, v::AbstractVector{T}) where T
     # n = floor(Integer,sqrt(2length(v)) + 1/2)
     # v = Array{T}(undef, sum(1:n))
-    FastZernikeDiskITransformPlan(plan_itransform(ChebyshevDisk(), v), CDisk2CxfPlan(n))
+    ZernikeDiskITransformPlan(plan_itransform(ChebyshevDisk(), v), CDisk2CxfPlan(n))
 end
 
-function *(P::FastZernikeDiskITransformPlan, v)
+function *(P::ZernikeDiskITransformPlan, v)
     # n = floor(Integer,sqrt(2length(v)) + 1/2)
     # v = pad(v, sum(1:n))
     F̌ = trinormalize!(tridevec(v))
@@ -162,5 +219,5 @@ function *(P::FastZernikeDiskITransformPlan, v)
 end
 
 
-plan_itransform(K::ZernikeDisk, v::AbstractVector) = FastZernikeDiskITransformPlan(K, v)
+plan_itransform(K::ZernikeDisk, v::AbstractVector) = ZernikeDiskITransformPlan(K, v)
 Base.sum(f::Fun{<:ZernikeDisk}) = Fun(f,ZernikeDisk()).coefficients[1]/π
