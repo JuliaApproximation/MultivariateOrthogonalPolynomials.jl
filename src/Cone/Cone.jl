@@ -249,6 +249,7 @@ blocklengths(d::DuffyCone) = blocklengths(rectspace(d))
 
 function points(d::Cone,n)
     N = round(Int,1/3*(-1 + 1/(-1 + 27n + 3sqrt(3)sqrt(n*(-2 + 27n)))^(1/3) + (-1 + 27n + 3sqrt(3)sqrt(n*(-2 + 27n)))^(1/3)),RoundUp)
+    M = N(N+1)/2
     pts = Array{float(eltype(d))}(undef,0)
     a,b = rectspace(DuffyCone()).spaces
     for y in points(b,M), x in points(a,N)
