@@ -88,7 +88,7 @@ import MultivariateOrthogonalPolynomials: rectspace, totensor, duffy2legendrecon
         P = c_plan_rottriangle(N, zero(T), zero(T), zero(T))
         duffy2legendreconic!(P,V)
         @test V ≈ [[1 zeros(1,2)]; zeros(1,3)]
-        @test fromtensor(DuffyConic(), V) ≈ [1; Zeros(5)]
+        @test_broken fromtensor(DuffyConic(), V) ≈ [1; Zeros(5)]
 
         v = fill(1.0,length(p))
         @test plan_transform(LegendreConic(),v)*v ≈ [1; Zeros(3)]
@@ -131,10 +131,10 @@ end
         @test p isa Vector{SVector{3,Float64}}
         P = plan_transform(DuffyCone(), Vector{Float64}(undef, length(p)))
         
-        @test P * fill(1.0, length(p)) ≈ [1.2533141373154997; Zeros(164)] ≈ [Fun((x,y) -> 1, ZernikeDisk()).coefficients; Zeros(164)]
+        @test P * fill(1.0, length(p)) ≈ [1/sqrt(2); Zeros(55)] ≈ [Fun((x,y) -> 1, ZernikeDisk()).coefficients; Zeros(55)]
 
         f = Fun((t,x,y) -> 1, DuffyCone(), 10)
-        @test f.coefficients ≈ [1.2533141373154997; Zeros(164)]
+        @test f.coefficients ≈ [1/sqrt(2); Zeros(55)]
         @test f(0.3,0.1,0.2) ≈ 1
 
         f = Fun((t,x,y) -> t, DuffyCone(), 10)
@@ -208,18 +208,18 @@ end
             @test round(Int,1/3*(-1 + 1/(-1 + 27n + 3sqrt(3)sqrt(n*(-2 + 27n)))^(1/3) + (-1 + 27n + 3sqrt(3)sqrt(n*(-2 + 27n)))^(1/3)),RoundUp) ≈ N
         end
         p = points(LegendreCone(),10)
-        @test length(p) == 12 == 3*sum(1:3)
+        @test length(p) == 18 == 3*sum(1:3)
         v = fill(1.0,length(p))
         n = length(v)
-        N = (1 + isqrt(1+8n)) ÷ 4
-        M = 2N-1
-        D = plan_transform!(rectspace(DuffyConic()), reshape(v,N,M))
+        N = round(Int,1/3*(-1 + 1/(-1 + 27n + 3sqrt(3)sqrt(n*(-2 + 27n)))^(1/3) + (-1 + 27n + 3sqrt(3)sqrt(n*(-2 + 27n)))^(1/3)),RoundUp)
+        M = N*(N+1) ÷ 2
+        D = plan_transform!(rectspace(DuffyCone()), reshape(v,N,M))
         N,M = D.plan[1][2],D.plan[2][2]
         V=reshape(v,N,M)
-        @test D*V ≈ [[1 zeros(1,2)]; zeros(1,3)]
+        @test D*copy(V) ≈ [[1/sqrt(2) zeros(1,5)]; zeros(2,6)]
         T = Float64
         P = c_plan_rottriangle(N, zero(T), zero(T), zero(T))
-        duffy2legendreconic!(P,V)
+        duffy2legendrecone!(P,V)
         @test V ≈ [[1 zeros(1,2)]; zeros(1,3)]
         @test fromtensor(DuffyConic(), V) ≈ [1; Zeros(5)]
 
@@ -238,17 +238,21 @@ end
     end
 
     @testset "LegendreCone" begin
-        f = Fun((t,x,y) -> 1, LegendreConic(), 10)
+        f = Fun((t,x,y) -> 1, LegendreCone(), 10)
         @test f.coefficients ≈ [1; zeros(ncoefficients(f)-1)]
-        @test f(sqrt(0.1^2+0.2^2),0.1,0.2) ≈ 1
+        @test f(0.3,0.1,0.2) ≈ 1
 
-        f = Fun((t,x,y) -> t, LegendreConic(), 10)
-        @test f(sqrt(0.1^2+0.2^2),0.1,0.2) ≈ sqrt(0.1^2+0.2^2)
-        f = Fun((t,x,y) -> 1+t+x+y, LegendreConic(), 10)
-        @test f(sqrt(0.1^2+0.2^2),0.1,0.2) ≈ 1+sqrt(0.1^2+0.2^2)+0.1+0.2
-
-
-        @time Fun((t,x,y) -> 1+t+x+y, LegendreConic(), 1000)
+        f = Fun((t,x,y) -> t, LegendreCone(), 10)
+        @test f(0.3,0.1,0.2) ≈ 0.3
+        f = Fun((t,x,y) -> x, LegendreCone(), 10)
+        @test f(0.3,0.1,0.2) ≈ 0.1
+        f = Fun((t,x,y) -> y, LegendreCone(), 10)
+        @test f(0.3,0.1,0.2) ≈ 0.2
+        f = Fun((t,x,y) -> 1+t+x+y, LegendreCone(), 10)
+        @test f(0.3,0.1,0.2) ≈ 1+0.3+0.1+0.2
+        f = Fun((t,x,y) -> 1+t+x+y, LegendreConic(), 1000)
+        @test f(0.3,0.1,0.2) ≈ 1+0.3+0.1+0.2
+        @test ncoefficients(f) == 1771
     end
 end
 

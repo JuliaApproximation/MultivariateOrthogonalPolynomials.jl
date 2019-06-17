@@ -69,11 +69,16 @@ conicpolar(tθ) = ((t,θ) = tθ; conicpolar(t,θ))
 # M = 2N-1
 # N*M == 2N^2 -N == n
 # N = (1 + sqrt(1 + 8n)/4)
+function pointsize(::Conic, n) 
+    N = (1 + isqrt(1+8n)) ÷ 4
+    N,2N-1
+end
+
+
 function points(d::Conic, n)
     a,b = rectspace(DuffyConic()).spaces
     pts=Array{float(eltype(d))}(undef,0)
-    N = (1 + isqrt(1+8n)) ÷ 4
-    M = 2N-1
+    N,M = pointsize(d)
 
     for y in points(b,M),
         x in points(a,N)
@@ -246,10 +251,14 @@ blocklengths(d::DuffyCone) = blocklengths(rectspace(d))
 # M = N(N+1)/2
 # N*M == N^2(N+1)/2 == n
 # N = 1/3 (-1 + 1/(-1 + 27n + 3sqrt(3)sqrt(n*(-2 + 27 n)))^(1/3) + (-1 + 27n + 3sqrt(3)sqrt(n*(-2 + 27n)))^(1/3))
+function pointsize(::Cone, n) 
+    N = round(Int,1/3*(-1 + 1/(-1 + 27n + 3sqrt(3)sqrt(n*(-2 + 27n)))^(1/3) + (-1 + 27n + 3sqrt(3)sqrt(n*(-2 + 27n)))^(1/3)),RoundUp)
+    N, N*(N+1) ÷ 2
+end
+
 
 function points(d::Cone,n)
-    N = round(Int,1/3*(-1 + 1/(-1 + 27n + 3sqrt(3)sqrt(n*(-2 + 27n)))^(1/3) + (-1 + 27n + 3sqrt(3)sqrt(n*(-2 + 27n)))^(1/3)),RoundUp)
-    M = N(N+1)/2
+    N,M = pointsize(d,n)
     pts = Array{float(eltype(d))}(undef,0)
     a,b = rectspace(DuffyCone()).spaces
     for y in points(b,M), x in points(a,N)

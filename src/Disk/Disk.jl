@@ -11,14 +11,18 @@ spacescompatible(::ZernikeDisk, ::ZernikeDisk) = true
 
 @containsconstants ZernikeDisk
 
+function pointsize(::ZernikeDisk, n)
+    N = (1 + isqrt(1+8n)) ÷ 4
+    N,2N-1
+end
+
 # M = 2N-1
 # N*M == 2N^2 -N == n
 # N = (1 + sqrt(1 + 8n)/4)
 function points(d::ZernikeDisk, n)
     a,b = rectspace(ZernikeDisk()).spaces
     pts=Array{float(eltype(domain(d)))}(undef,0)
-    N = (1 + isqrt(1+8n)) ÷ 4
-    M = 2N-1
+    N,M = pointsize(d, n)
 
     for y in points(b,M),
         x in points(a,N)
