@@ -91,8 +91,7 @@ checkpoints(::Conic) = conicpolar.(checkpoints(rectspace(DuffyConic())))
 
 function plan_transform(S::DuffyConic, v::AbstractVector{T}) where T
     n = length(v)
-    N = (1 + isqrt(1+8n)) ÷ 4
-    M = 2N-1
+    N,M = pointsize(S,length(v))
     D = plan_transform!(rectspace(S), Array{T}(undef,N,M))
     TransformPlan(S, D, Val{false})
 end
@@ -182,8 +181,7 @@ end
 
 function LegendreConicTransformPlan(S::LegendreConic, v::AbstractVector{T}) where T 
     n = length(v)
-    N = (1 + isqrt(1+8n)) ÷ 4
-    M = 2N-1
+    N,M = pointsize(Conic(), n)
     D = plan_transform!(rectspace(DuffyConic()), Array{T}(undef,N,M))
     P = c_plan_rottriangle(N, zero(T), zero(T), zero(T))
     LegendreConicTransformPlan(D,P)
@@ -428,9 +426,10 @@ struct LegendreConeTransformPlan{DUF,CHEB}
 end
 
 function LegendreConeTransformPlan(S::LegendreCone, v::AbstractVector{T}) where T 
-    D = plan_transform(DuffyCone(),v)
-    F = totensor(rectspace(DuffyCone()), D*v) # wasteful, just use to figure out `size(F,1)`
-    P = c_plan_rottriangle(size(F,1), zero(T), zero(T), one(T))
+    n = length(v)
+    N,M = pointsize(Cone(), n)
+    D = plan_transform!(rectspace(DuffyCone()), Array{T}(undef,N,M))
+    P = c_plan_rottriangle(N, zero(T), zero(T), zero(T))
     LegendreConeTransformPlan(D,P)
 end
 
