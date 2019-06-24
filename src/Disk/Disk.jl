@@ -21,14 +21,10 @@ end
 # N = (1 + sqrt(1 + 8n)/4)
 function points(d::ZernikeDisk, n)
     a,b = rectspace(ZernikeDisk()).spaces
-    pts=Array{float(eltype(domain(d)))}(undef,0)
-    N,M = pointsize(d, n)
-
-    for y in points(b,M),
-        x in points(a,N)
-        push!(pts,polar(Vec(x...,y...)))
-    end
-    pts
+    M,N = pointsize(d, n)
+    p_b = points(b,N)
+    p_a = points(a,M)
+    polar.(Vec.(p_a, p_b'))
 end
 
 function evaluate(cfs::AbstractVector, Z::ZernikeDisk, xy) 
@@ -183,24 +179,22 @@ struct ZernikeDiskTransformPlan{DUF,CHEB}
     disk2cxf::CHEB
 end
 
-function ZernikeDiskTransformPlan(S::ZernikeDisk, v::AbstractVector{T}) where T
-    n = length(v)
-    N = (1 + isqrt(1+8n)) ÷ 4
-    M = 2N-1
+function ZernikeDiskTransformPlan(S::ZernikeDisk, V::AbstractMatrix{T}) where T
+    N,M = size(V)
+    @assert M == 2N-1
     D = plan_transform!(rectspace(ChebyshevDisk()), Array{T}(undef,N,M))
     N = (M-1)÷4+1
     4(N-1)+1 == M || (N += 1) # round up
     ZernikeDiskTransformPlan(D, CDisk2CxfPlan(N))
 end
 
-function *(P::ZernikeDiskTransformPlan, v::AbstractVector) 
-    N,M = P.cxfplan.plan[1][2],P.cxfplan.plan[2][2] 
-    V = P.cxfplan*reshape(copy(v),N,M)
+function *(P::ZernikeDiskTransformPlan, V::AbstractMatrix) 
+    V = P.cxfplan*copy(V)
     C = checkerboard(V)
     fromtensor(ZernikeDisk(),  P.disk2cxf\C)
 end
 
-plan_transform(K::ZernikeDisk, v::AbstractVector) = ZernikeDiskTransformPlan(K, v)
+plan_transform(K::ZernikeDisk, v::AbstractMatrix) = ZernikeDiskTransformPlan(K, v)
 
 struct ZernikeDiskITransformPlan{DUF,CHEB}
     icxfplan::DUF

@@ -141,13 +141,10 @@ end
     @testset "transform derivation" begin
         p = points(ZernikeDisk(),10)
         @test length(p) == 6
-        v = fill(1.0,length(p))
-        n = length(v)
-        N = (1 + isqrt(1+8n)) ÷ 4
-        M = 2N-1
-        D = plan_transform!(rectspace(ChebyshevDisk()), reshape(v,N,M))
+        @test size(p) == (2,3)
+        V = fill(1.0,size(p))
+        D = plan_transform!(rectspace(ChebyshevDisk()), V)
         N,M = D.plan[1][2],D.plan[2][2]
-        V=reshape(v,N,M)
         @test D*V ≈ [[1 zeros(1,2)]; zeros(1,3)]
         C = checkerboard(V)
         disk2cxf = CDisk2CxfPlan(size(C,1))
@@ -155,9 +152,9 @@ end
         @test C ≈ [[1/sqrt(2) zeros(1,4)]; zeros(1,5)]
         @test fromtensor(ZernikeDisk(), C) ≈ [1/sqrt(2); Zeros(5)]
 
-        v = fill(1.0,length(p))
+        v = fill(1.0,size(p))
         @test plan_transform(ZernikeDisk(),v)*v ≈ [1/sqrt(2); Zeros(5)]
-        @test v == fill(1.0,length(p))
+        @test v == fill(1.0,size(p))
     end
 
     @testset "ChebyshevDisk-ZernikeDisk" begin

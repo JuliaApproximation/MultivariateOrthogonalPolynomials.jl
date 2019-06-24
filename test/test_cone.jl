@@ -2,7 +2,7 @@ using ApproxFun, MultivariateOrthogonalPolynomials, StaticArrays, FillArrays, Bl
 import ApproxFunBase: checkpoints, plan_transform!, fromtensor
 import MultivariateOrthogonalPolynomials: rectspace, totensor, duffy2legendreconic!, legendre2duffyconic!, c_plan_rottriangle, plan_transform,
                         c_execute_tri_hi2lo, c_execute_tri_lo2hi, duffy2legendrecone_column_J!, duffy2legendrecone!, legendre2duffycone!,
-                        duffy2legendreconic!, ConicTensorizer
+                        duffy2legendreconic!, ConicTensorizer, pointsize
 
 
 @testset "Conic" begin
@@ -126,6 +126,11 @@ end
         @test checkpoints(rs) isa Vector{SVector{3,Float64}}
     end
 
+    @testset "ConeTensorizer" begin
+        ts = MultivariateOrthogonalPolynomials.ConeTensorizer()
+        @test totensor(ts,1:10) == [1 2 3 5 6 7; 4 8 9 0 0 0; 10 0 0 0 0 0]
+    end
+
     @testset "DuffyCone" begin
         p = points(DuffyCone(), 10)
         @test p isa Vector{SVector{3,Float64}}
@@ -205,27 +210,33 @@ end
     @testset "LegendreConePlan" begin
         for N = 1:10
             n = N*sum(1:N)
-            @test round(Int,1/3*(-1 + 1/(-1 + 27n + 3sqrt(3)sqrt(n*(-2 + 27n)))^(1/3) + (-1 + 27n + 3sqrt(3)sqrt(n*(-2 + 27n)))^(1/3)),RoundUp) ≈ N
+            @test round(Int, 1/6*(1 + 1/(1 + 54n + 6sqrt(3)sqrt(n + 27n^2))^(1/3) + (1 + 54n + 6sqrt(3)sqrt(n + 27n^2))^(1/3)), RoundUp)
         end
         p = points(LegendreCone(),10)
-        @test length(p) == 18 == 3*sum(1:3)
+        @test length(p) == 12 == 2*2*3
         v = fill(1.0,length(p))
         n = length(v)
-        N = round(Int,1/3*(-1 + 1/(-1 + 27n + 3sqrt(3)sqrt(n*(-2 + 27n)))^(1/3) + (-1 + 27n + 3sqrt(3)sqrt(n*(-2 + 27n)))^(1/3)),RoundUp)
-        M = N*(N+1) ÷ 2
+        M,N,O = pointsize(Cone(),n)
+        
+
         D = plan_transform!(rectspace(DuffyCone()), reshape(v,N,M))
         N,M = D.plan[1][2],D.plan[2][2]
         V=reshape(v,N,M)
-        @test D*copy(V) ≈ [[1/sqrt(2) zeros(1,5)]; zeros(2,6)]
+        @test D*V ≈ [[1/sqrt(2) zeros(1,5)]; zeros(2,6)]
         T = Float64
         P = c_plan_rottriangle(N, zero(T), zero(T), zero(T))
         duffy2legendrecone!(P,V)
-        @test V ≈ [[1 zeros(1,2)]; zeros(1,3)]
-        @test fromtensor(DuffyConic(), V) ≈ [1; Zeros(5)]
+        @test V ≈ [[1/sqrt(2) zeros(1,5)]; zeros(2,6)]
+        @test fromtensor(LegendreCone(), V) ≈ [1/sqrt(2); Zeros(55)]
 
         v = fill(1.0,length(p))
-        @test plan_transform(LegendreConic(),v)*v ≈ [1; Zeros(3)]
+        P = plan_transform(LegendreCone(),v)
+        @test P*v ≈ [1/sqrt(2); Zeros(55)]
         @test v == fill(1.0,length(p))
+
+        p = points(LegendreCone(),20)    
+        v = fill(1.0,length(p))
+        P = plan_transform(LegendreCone(),v)
     
 
         for (m,k,ℓ) in ((0,0,0), )

@@ -246,18 +246,18 @@ rectspace(::DuffyCone) = NormalizedJacobi(0,1,Segment(1,0))*ZernikeDisk()
 
 blocklengths(d::DuffyCone) = blocklengths(rectspace(d))
 
-# M = N(N+1)/2
-# N*M == N^2(N+1)/2 == n
-# N = 1/3 (-1 + 1/(-1 + 27n + 3sqrt(3)sqrt(n*(-2 + 27 n)))^(1/3) + (-1 + 27n + 3sqrt(3)sqrt(n*(-2 + 27n)))^(1/3))
+# M = N*(2N-1)
+# N*N*(2N-1) == N^2*(2N-1) == n
+# N =1/6*(1 + 1/(1 + 54n + 6sqrt(3)sqrt(n + 27n^2))^(1/3) + (1 + 54n + 6sqrt(3)sqrt(n + 27n^2))^(1/3))
 function pointsize(::Cone, n) 
-    N = round(Int,1/3*(-1 + 1/(-1 + 27n + 3sqrt(3)sqrt(n*(-2 + 27n)))^(1/3) + (-1 + 27n + 3sqrt(3)sqrt(n*(-2 + 27n)))^(1/3)),RoundUp)
-    N, N*(N+1) ÷ 2
+    N = round(Int, 1/6*(1 + 1/(1 + 54n + 6sqrt(3)sqrt(n + 27n^2))^(1/3) + (1 + 54n + 6sqrt(3)sqrt(n + 27n^2))^(1/3)), RoundUp)
+    N, N, 2N-1
 end
 
 
 function points(d::Cone,n)
     N,M = pointsize(d,n)
-    pts = Array{float(eltype(d))}(undef,0)
+    pts = Array{ApproxFunBase.float(eltype(d))}(undef,0)
     a,b = rectspace(DuffyCone()).spaces
     for y in points(b,M), x in points(a,N)
         push!(pts,conemap(Vec(x...,y...)))
@@ -434,7 +434,13 @@ function LegendreConeTransformPlan(S::LegendreCone, v::AbstractVector{T}) where 
 end
 
 
-*(P::LegendreConeTransformPlan, v::AbstractVector) = _coefficients(P.triangleplan, P.duffyplan*v, DuffyCone(), LegendreCone())
+function *(P::LegendreConeTransformPlan, v::AbstractVector) 
+    N,M = P.duffyplan.plan[1][2],P.duffyplan.plan[2][2]
+    V=reshape(v,N,M) 
+    cfs = P.duffyplan*copy(V)
+    duffy2legendrecone!(P.triangleplan,cfs)
+    fromtensor(LegendreCone(), cfs)
+end
 
 plan_transform(K::LegendreCone, v::AbstractVector) = LegendreConeTransformPlan(K, v)
 
