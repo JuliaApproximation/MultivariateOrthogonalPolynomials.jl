@@ -21,6 +21,8 @@ domain(::LegendreConic) = Conic()
 # groups by Fourier
 struct ConicTensorizer end
 
+
+
 tensorizer(K::DuffyConic) = DiskTensorizer()
 tensorizer(K::LegendreConic) = ConicTensorizer()
 
@@ -64,6 +66,8 @@ conemap(t,x,y) = Vec(t, t*x, t*y)
 conemap(txy) = ((t,x,y) = txy; conemap(t,x,y))
 conicpolar(t,θ) = conemap(t, cos(θ), sin(θ))
 conicpolar(tθ) = ((t,θ) = tθ; conicpolar(t,θ))
+conepolar(t,r,θ) = conemap(t, r*cos(θ), r*sin(θ))
+conepolar(v::Vec) = conepolar(v...)
 
 
 # M = 2N-1
@@ -74,11 +78,12 @@ function pointsize(::Conic, n)
     N,2N-1
 end
 
+pointsize(s::Space, n) = pointsize(domain(s), n)
 
 function points(d::Conic, n)
     a,b = rectspace(DuffyConic()).spaces
     pts=Array{float(eltype(d))}(undef,0)
-    N,M = pointsize(d)
+    N,M = pointsize(d,n)
 
     for y in points(b,M),
         x in points(a,N)
@@ -254,57 +259,65 @@ function pointsize(::Cone, n)
     N, N, 2N-1
 end
 
+function points(d::Cone, n)
+    a,_ = rectspace(DuffyCone()).spaces
+    b,c = rectspace(ZernikeDisk()).spaces
 
-function points(d::Cone,n)
-    N,M = pointsize(d,n)
-    pts = Array{ApproxFunBase.float(eltype(d))}(undef,0)
-    a,b = rectspace(DuffyCone()).spaces
-    for y in points(b,M), x in points(a,N)
-        push!(pts,conemap(Vec(x...,y...)))
-    end
-    pts
+    M,_,N = pointsize(d, n)
+    p_a = points(a,M)
+    p_b = points(b,M)
+    p_c = points(c,N)
+    
+    conepolar.(Vec.(p_a,reshape(p_b,1,M),reshape(p_c,1,1,N)))
 end
+
+
+
+# function points(d::Cone,n)
+#     N,M = pointsize(d,n)
+#     pts = Array{ApproxFunBase.float(eltype(d))}(undef,0)
+#     a,b = rectspace(DuffyCone()).spaces
+#     for y in points(b,M), x in points(a,N)
+#         push!(pts,conemap(Vec(x...,y...)))
+#     end
+#     pts
+# end
 
 
 checkpoints(::Cone) = conemap.(checkpoints(rectspace(DuffyCone())))
 
 
-function plan_transform(sp::DuffyCone, n::AbstractVector{T})  where T
-    rs = rectspace(sp)
-    N = ceil(Int, length(n)^(1/3))
-    M = length(points(rs.spaces[2], N^2))
-    @assert N*M == length(n)
-    TransformPlan(sp,((plan_transform(rs.spaces[1],T,N),N), (plan_transform(rs.spaces[2],T,M),M)), Val{false})
+function plan_transform(sp::DuffyCone, V::AbstractArray{T,3})  where T
+    M,M̃,N = size(V)
+    @assert M == M̃
+    a,b = rectspace(sp).spaces
+    TransformPlan(sp, (plan_transform(a, M), plan_transform(b, Array{T}(undef,M,N))), Val{false})
 end
+
 plan_itransform(S::DuffyCone, n::AbstractVector) = 
     ITransformPlan(S, plan_itransform(rectspace(S),n), Val{false})
 
-function *(T::TransformPlan{<:Any,<:DuffyCone,true}, M::AbstractMatrix)
-    n=size(M,1)
-
-    for k=1:size(M,2)
-        M[:,k]=T.plan[1][1]*M[:,k]
+function tensortransform(P::TransformPlan{<:Any,<:DuffyCone,false}, V::AbstractArray{<:Any,3})
+    M,_,N = size(V)
+    R = Array{Float64}(undef,M,sum(1:M))
+    for k = 1:M
+        R[k,:] = P.plan[2]*V[k,:,:]
     end
-    for k=1:n
-        M[k,:] = (T.plan[2][1]*M[k,:])[1:size(M,2)]
+    for j = 1:size(R,2)
+        R[:,j] = P.plan[1]*R[:,j]
     end
-    M
+    R
 end
 
-function *(T::TransformPlan{<:Any,<:DuffyCone,true},v::AbstractVector) 
-    N,M = T.plan[1][2],T.plan[2][2]
-    V=reshape(v,N,M)
-    fromtensor(T.space,T*V)
-end
-
-function *(T::TransformPlan{<:Any,SS,false},v::AbstractVector) where {SS<:DuffyCone}
-    P = TransformPlan(T.space,T.plan,Val{true})
-    P*AbstractVector{rangetype(SS)}(v)
-end
+*(P::TransformPlan{<:Any,<:DuffyCone,false}, V::AbstractArray{<:Any,3}) =
+    fromtensor(P.space,tensortransform(P, V))
 
 *(P::ITransformPlan{<:Any,<:DuffyCone}, v::AbstractArray) = P.plan*v
 
-evaluate(cfs::AbstractVector, S::DuffyCone, txy) = evaluate(cfs, rectspace(S), ipolar(txy[Vec(2,3)]))
+# function evaluate(cfs::AbstractVector, S::DuffyCone, txy) 
+#     t,x,y = txy
+#     evaluate(cfs, rectspace(S), Vec(t, 
+# end
 evaluate(cfs::AbstractVector, S::LegendreCone, txy) = evaluate(coefficients(cfs, S, DuffyCone()), DuffyCone(), txy)
 
 
@@ -375,7 +388,7 @@ function legendre2duffycone_column_J!(P, Fc, F, Jin)
 end
 
 function duffy2legendrecone!(triangleplan, F::AbstractMatrix)
-    Fc = Matrix{Float64}(undef,size(F,1),size(F,1))
+    Fc = Matrix{eltype(F)}(undef,size(F,1),size(F,1))
     for J = 1:(isqrt(1 + 8size(F,2))-1)÷ 2 # actually div 
         duffy2legendrecone_column_J!(triangleplan, Fc, F, J)
     end
@@ -383,20 +396,23 @@ function duffy2legendrecone!(triangleplan, F::AbstractMatrix)
 end
 
 function legendre2duffycone!(triangleplan, F::AbstractMatrix)
-    Fc = Matrix{Float64}(undef,size(F,1),size(F,1))
+    Fc = Matrix{eltype(F)}(undef,size(F,1),size(F,1))
     for J = 1:(isqrt(1 + 8size(F,2))-1)÷ 2 # actually div 
         legendre2duffycone_column_J!(triangleplan, Fc, F, J)
     end
     F
 end
 
-function _coefficients(triangleplan, v::AbstractVector{T}, ::DuffyCone, ::LegendreCone) where T
-    F = totensor(rectspace(DuffyCone()), v)
+function _coefficients!(triangleplan, F::AbstractMatrix{T}, ::DuffyCone, ::LegendreCone) where T
     for j = 1:size(F,2)
         F[:,j] = coefficients(F[:,j], NormalizedJacobi(0,1,Segment(1,0)), NormalizedJacobi(0,2,Segment(1,0)))
     end
     duffy2legendrecone!(triangleplan, F)
-    fromtensor(LegendreCone(), F)
+end
+
+function _coefficients(triangleplan, v::AbstractVector{T}, D::DuffyCone, L::LegendreCone) where T
+    F = totensor(rectspace(DuffyCone()), v)
+    fromtensor(LegendreCone(), _coefficients!(triangleplan, F, D, L))
 end
 
 function _coefficients(triangleplan, v::AbstractVector{T}, ::LegendreCone, ::DuffyCone) where T
@@ -425,24 +441,24 @@ struct LegendreConeTransformPlan{DUF,CHEB}
     triangleplan::CHEB
 end
 
-function LegendreConeTransformPlan(S::LegendreCone, v::AbstractVector{T}) where T 
-    n = length(v)
-    N,M = pointsize(Cone(), n)
-    D = plan_transform!(rectspace(DuffyCone()), Array{T}(undef,N,M))
-    P = c_plan_rottriangle(N, zero(T), zero(T), zero(T))
+function LegendreConeTransformPlan(S::LegendreCone, V::AbstractArray{T,3}) where T 
+    M,M̃,N = size(V)
+    @assert M̃ == M
+    D = plan_transform(DuffyCone(), V)
+    P = c_plan_rottriangle(M, zero(T), zero(T), one(T))
     LegendreConeTransformPlan(D,P)
 end
 
 
-function *(P::LegendreConeTransformPlan, v::AbstractVector) 
-    N,M = P.duffyplan.plan[1][2],P.duffyplan.plan[2][2]
-    V=reshape(v,N,M) 
-    cfs = P.duffyplan*copy(V)
-    duffy2legendrecone!(P.triangleplan,cfs)
-    fromtensor(LegendreCone(), cfs)
+function tensortransform(P::LegendreConeTransformPlan, V::AbstractArray{<:Any,3}) 
+    C = tensortransform(P.duffyplan,V)
+    _coefficients!(P.triangleplan,C, DuffyCone(), LegendreCone())
 end
 
-plan_transform(K::LegendreCone, v::AbstractVector) = LegendreConeTransformPlan(K, v)
+*(P::LegendreConeTransformPlan, V::AbstractArray{<:Any,3}) =
+    fromtensor(LegendreCone(), tensortransform(P,V))
+
+plan_transform(K::LegendreCone, V::AbstractArray{<:Any,3}) = LegendreConeTransformPlan(K, V)
 
 struct LegendreConeITransformPlan{DUF,CHEB}
     iduffyplan::DUF

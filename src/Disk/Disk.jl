@@ -191,7 +191,7 @@ end
 function *(P::ZernikeDiskTransformPlan, V::AbstractMatrix) 
     V = P.cxfplan*copy(V)
     C = checkerboard(V)
-    fromtensor(ZernikeDisk(),  P.disk2cxf\C)
+    fromtensor(ZernikeDisk(),  P.disk2cxf\C)[1:sum(1:size(V,1))]
 end
 
 plan_transform(K::ZernikeDisk, v::AbstractMatrix) = ZernikeDiskTransformPlan(K, v)

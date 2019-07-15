@@ -2,7 +2,7 @@ using ApproxFun, MultivariateOrthogonalPolynomials, StaticArrays, FillArrays, Bl
 import ApproxFunBase: checkpoints, plan_transform!, fromtensor
 import MultivariateOrthogonalPolynomials: rectspace, totensor, duffy2legendreconic!, legendre2duffyconic!, c_plan_rottriangle, plan_transform,
                         c_execute_tri_hi2lo, c_execute_tri_lo2hi, duffy2legendrecone_column_J!, duffy2legendrecone!, legendre2duffycone!,
-                        duffy2legendreconic!, ConicTensorizer, pointsize
+                        duffy2legendreconic!, ConicTensorizer, pointsize, tensortransform, _coefficients!
 
 
 @testset "Conic" begin
@@ -119,13 +119,6 @@ import MultivariateOrthogonalPolynomials: rectspace, totensor, duffy2legendrecon
 end
 
 @testset "Cone" begin
-    @testset "rectspace" begin
-        rs = rectspace(DuffyCone())
-        @test points(rs,10) isa Vector{SVector{3,Float64}}
-        @test_broken @inferred(checkpoints(rs))
-        @test checkpoints(rs) isa Vector{SVector{3,Float64}}
-    end
-
     @testset "ConeTensorizer" begin
         ts = MultivariateOrthogonalPolynomials.ConeTensorizer()
         @test totensor(ts,1:10) == [1 2 3 5 6 7; 4 8 9 0 0 0; 10 0 0 0 0 0]
@@ -133,17 +126,35 @@ end
 
     @testset "DuffyCone" begin
         p = points(DuffyCone(), 10)
-        @test p isa Vector{SVector{3,Float64}}
-        P = plan_transform(DuffyCone(), Vector{Float64}(undef, length(p)))
-        
-        @test P * fill(1.0, length(p)) ≈ [1/sqrt(2); Zeros(55)] ≈ [Fun((x,y) -> 1, ZernikeDisk()).coefficients; Zeros(55)]
+        @test p isa Array{SVector{3,Float64},3}
+        V = fill(1.0, size(p))
+        M,_,N = size(V)
+        R = Array{Float64}(undef,M,sum(1:M))
+        P = plan_transform(DuffyCone(), Array{Float64}(undef, size(p)))
+        for k = 1:M
+            R[k,:] = P.plan[2]*V[k,:,:]
+        end
+        for j = 1:size(M,2)
+            R[:,j] = P.plan[1]*R[:,j]
+        end
+        @test R ≈ [1/sqrt(2) 0 0; 0 0 0]
+
+        @test P * V ≈ [1/sqrt(2); Zeros(9)] ≈ [Fun((x,y) -> 1, ZernikeDisk()).coefficients; Zeros(9)]
 
         f = Fun((t,x,y) -> 1, DuffyCone(), 10)
-        @test f.coefficients ≈ [1/sqrt(2); Zeros(55)]
+        @test f.coefficients ≈ [1/sqrt(2); Zeros(9)]
         @test f(0.3,0.1,0.2) ≈ 1
 
         f = Fun((t,x,y) -> t, DuffyCone(), 10)
         @test f(0.3,0.1,0.2) ≈ 0.3
+
+        g = Fun(ZernikeDisk(),[0,1.0])
+        p = points(DuffyCone(), 10)
+
+        gg = txy -> ((t,x,y) = txy; g(x/t,y/t))
+        V = gg.(p)
+        P = plan_transform(DuffyCone(), V)
+        @test P*V ≈ [0;1;Zeros(8)] ≈ Fun((t,x,y) -> g(x/t,y/t), DuffyCone(), 10).coefficients
 
         f = Fun((t,x,y) -> x, DuffyCone(), 10)
         @test f(0.3,0.1,0.2) ≈ 0.1
@@ -208,49 +219,40 @@ end
     
 
     @testset "LegendreConePlan" begin
-        for N = 1:10
-            n = N*sum(1:N)
-            @test round(Int, 1/6*(1 + 1/(1 + 54n + 6sqrt(3)sqrt(n + 27n^2))^(1/3) + (1 + 54n + 6sqrt(3)sqrt(n + 27n^2))^(1/3)), RoundUp)
-        end
         p = points(LegendreCone(),10)
         @test length(p) == 12 == 2*2*3
-        v = fill(1.0,length(p))
-        n = length(v)
-        M,N,O = pointsize(Cone(),n)
-        
-
-        D = plan_transform!(rectspace(DuffyCone()), reshape(v,N,M))
-        N,M = D.plan[1][2],D.plan[2][2]
-        V=reshape(v,N,M)
-        @test D*V ≈ [[1/sqrt(2) zeros(1,5)]; zeros(2,6)]
+        @test size(p) == (2,2,3)
+        V = fill(1.0,size(p))
+        M,_,N = size(V)
+        D = plan_transform(DuffyCone(), V)
+        C = tensortransform(D,V)
+        @test C ≈ [[1/sqrt(2) zeros(1,2)]; zeros(1,3)]
         T = Float64
-        P = c_plan_rottriangle(N, zero(T), zero(T), zero(T))
-        duffy2legendrecone!(P,V)
-        @test V ≈ [[1/sqrt(2) zeros(1,5)]; zeros(2,6)]
-        @test fromtensor(LegendreCone(), V) ≈ [1/sqrt(2); Zeros(55)]
+        P = c_plan_rottriangle(M, zero(T), zero(T), one(T))
+        _coefficients!(P,C,DuffyCone(),LegendreCone())
+        @test C ≈ [[0.8164965809277259 zeros(1,2)]; zeros(1,3)]
+        @test fromtensor(LegendreCone(), C) ≈ [0.8164965809277259; Zeros(9)]
 
-        v = fill(1.0,length(p))
-        P = plan_transform(LegendreCone(),v)
-        @test P*v ≈ [1/sqrt(2); Zeros(55)]
-        @test v == fill(1.0,length(p))
+        P = plan_transform(LegendreCone(),V)
+        @test P*V ≈ [0.8164965809277259; Zeros(9)]
+        @test V == fill(1.0,size(p))
 
         p = points(LegendreCone(),20)    
-        v = fill(1.0,length(p))
-        P = plan_transform(LegendreCone(),v)
-    
-
-        for (m,k,ℓ) in ((0,0,0), )
-            Y = Fun(ZernikeDisk(), [Zeros(sum(1:m)+k); 1])
-            f = (txy) -> ((t,x,y) = txy;  θ = atan(y,x); Fun(NormalizedJacobi(0,2m+2,Segment(1,0)),[zeros(ℓ);1])(t) * 2^m * t^m * Y(x,y))
-            g = Fun(f, LegendreCone(),20)
-            t,x,y = 0.3,0.1,0.2
-            @test g(t,x,y) ≈ f((t,x,y))
-        end
+        V = fill(1.0,size(p))
+        P = plan_transform(LegendreCone(),V)
+        @test P*V ≈ [0.8164965809277259; Zeros(55)]
+    end
+    @testset "iduffy" begin
+        p = points(LegendreCone(),20)    
+        V = fill(1.0,size(p))
+        D = plan_transform(DuffyCone(),V)
+        P = plan_transform(LegendreCone(),V)
+        
     end
 
     @testset "LegendreCone" begin
         f = Fun((t,x,y) -> 1, LegendreCone(), 10)
-        @test f.coefficients ≈ [1; zeros(ncoefficients(f)-1)]
+        @test f.coefficients ≈ [0.8164965809277259; zeros(ncoefficients(f)-1)]
         @test f(0.3,0.1,0.2) ≈ 1
 
         f = Fun((t,x,y) -> t, LegendreCone(), 10)
@@ -264,6 +266,16 @@ end
         f = Fun((t,x,y) -> 1+t+x+y, LegendreConic(), 1000)
         @test f(0.3,0.1,0.2) ≈ 1+0.3+0.1+0.2
         @test ncoefficients(f) == 1771
+
+
+        for (m,k,ℓ) in ((0,0,0), (1,0,0), (0,0,1), (1,1,0), (2,1,1))
+            Y = Fun(ZernikeDisk(), [Zeros(sum(1:m)+k); 1])
+            f = (txy) -> ((t,x,y) = txy; Fun(NormalizedJacobi(0,2m+2,Segment(1,0)),[zeros(ℓ);1])(t) * 2^m * t^m * Y(x/t,y/t))
+            g = Fun(f, LegendreCone(),100)
+            @test sum(g.coefficients) ≈ 1
+            t,x,y = 0.3,0.1,0.2
+            @test g(t,x,y) ≈ f((t,x,y))
+        end
     end
 end
 
