@@ -47,12 +47,12 @@ function ClenshawRecurrenceData{T,S}(sp::S, N) where {T,S<:JacobiTriangle}
             Cx,Cy = view(Jx,Block(K-1,K)), view(Jy,Block(K-1,K))
             C[K-1] = BandedMatrix{T}(undef, (K-1,K+1), (0,2))
             B̃ˣ[K][end-1,end] = - inv(b₂) * By[K-1,K]/Bx[K-1,K-1]
-            C[K-1] .= Mul(Cx , B̃ˣ[K])
-            C[K-1] .= Mul(Cy, B̃ʸ[K]) .+ C[K-1]
+            C[K-1] .= @~ Cx *  B̃ˣ[K]
+            C[K-1] .= @~ Cy*B̃ʸ[K] + C[K-1]
         end
 
-        B[K] .= Mul(Ax, B̃ˣ[K])
-        B[K] .= Mul(Ay, B̃ʸ[K]) .+ B[K]
+        B[K] .= @~ Ax * B̃ˣ[K]
+        B[K] .= @~ Ay * B̃ʸ[K] + B[K]
     end
 
     ClenshawRecurrenceData{T,S}(sp, B̃ˣ, B̃ʸ, B, C)
@@ -161,9 +161,13 @@ function BandedBlockBandedMatrix(V::SubOperator{T,<:ClenshawMultiplication,Tuple
 
     Q = BandedBlockBandedMatrix(Eye{eltype(Jx)}(size(Jx)...), blocksizes(Jx), (0,0), (0,0))
     B2 = Fill(Q,N) .* view(cfs,Block(N))
-    B1 = Fill(Q,N-1) .* view(cfs,Block(N-1)) .+ Fill(Jx,N-1) .* (C.B̃ˣ[N-1]*B2) .+ Fill(Jy,N-1) .* (C.B̃ʸ[N-1]*B2) .- C.B[N-1]*B2
-    for K = N-2:-1:1
-        B1, B2 =  Fill(Q,K) .* view(cfs,Block(K)) .+ Fill(Jx,K) .* (C.B̃ˣ[K]*B1) .+ Fill(Jy,K) .* (C.B̃ʸ[K]*B1) .- C.B[K]*B1 .- C.C[K] * B2 ,  B1
+    if N == 1
+        B1 = B2
+    else
+        B1 = Fill(Q,N-1) .* view(cfs,Block(N-1)) .+ Fill(Jx,N-1) .* (C.B̃ˣ[N-1]*B2) .+ Fill(Jy,N-1) .* (C.B̃ʸ[N-1]*B2) .- C.B[N-1]*B2
+        for K = N-2:-1:1
+            B1, B2 =  Fill(Q,K) .* view(cfs,Block(K)) .+ Fill(Jx,K) .* (C.B̃ˣ[K]*B1) .+ Fill(Jy,K) .* (C.B̃ʸ[K]*B1) .- C.B[K]*B1 .- C.C[K] * B2 ,  B1
+        end
     end
 
 

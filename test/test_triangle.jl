@@ -1,9 +1,11 @@
 using StaticArrays, BandedMatrices, FastTransforms,
-        ApproxFun, MultivariateOrthogonalPolynomials, LinearAlgebra, Test
-    import MultivariateOrthogonalPolynomials: Lowering, DuffyTriangle,
-                            clenshaw, block, TriangleWeight,plan_evaluate, weight
-    import ApproxFun: testbandedblockbandedoperator, Block, BandedBlockBandedMatrix, blockcolrange, blocksize,
-                    Vec, jacobip, plan_transform
+        ApproxFunBase, ApproxFunOrthogonalPolynomials, ApproxFun, 
+        MultivariateOrthogonalPolynomials, LinearAlgebra, Test
+import MultivariateOrthogonalPolynomials: Lowering, DuffyTriangle,
+                        clenshaw, block, TriangleWeight,plan_evaluate, weight
+import ApproxFunBase: testbandedblockbandedoperator, Block, BandedBlockBandedMatrix, blockcolrange, blocksize,
+                Vec, plan_transform
+import ApproxFunOrthogonalPolynomials: jacobip                
 
 
 @testset "Triangle domain" begin
@@ -263,7 +265,6 @@ end
     Δ = Laplacian(JacobiTriangle(1,1,1))
     testbandedblockbandedoperator(Δ)
 end
-
 
 @testset "Triangle derivatives" begin
     K=JacobiTriangle(0,0,0)
