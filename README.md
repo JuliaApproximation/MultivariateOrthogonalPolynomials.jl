@@ -1,28 +1,26 @@
-# DiskFun
+# MultivariateOrthogonalPolynomials.jl
 
-[![Build Status](https://travis-ci.org/dlfivefifty/DiskFun.jl.svg?branch=master)](https://travis-ci.org/dlfivefifty/DiskFun.jl)
+[![Build Status](https://travis-ci.org/JuliaApproximation/MultivariateOrthogonalPolynomials.jl.svg?branch=master)](https://travis-ci.org/JuliaApproximation/MultivariateOrthogonalPolynomials.jl)
 
-
-
-The following solves Poisson `Δu =f` with zero Dirichlet conditions
-on a disk
-
+This is an experimental package to add support for multivariate orthogonal polynomials on disks, spheres, triangles, and other simple
+geometries to [ApproxFun.jl](https://github.com/JuliaApproximation/ApproxFun.jl). At the moment it primarily supports triangles. For example,
+we can solve variable coefficient Helmholtz on the triangle with zero Dirichlet conditions as follows:
 ```julia
-d = Disk()
-f = Fun((x,y)->exp(-10(x+.2)^2-20(y-.1)^2),d) 
-u = [dirichlet(d);lap(d)]\Any[0.,f]
-ApproxFun.plot(u)                           # Requires Gadfly or PyPlot
+using ApproxFun, MultivariateOrthogonalPolynomials
+x,y = Fun(Triangle())
+Δ = Laplacian() : TriangleWeight(1.0,1.0,1.0,JacobiTriangle(1.0,1.0,1.0))
+V = x*y^2
+L = Δ + 200^2*V
+u = \(L, ones(Triangle()); tolerance=1E-5)
 ```
+See the examples folder for more examples, including non-zero Dirichlet conditions, Neumann conditions, and piecing together multiple triangles. In particular, the [examples](examples/triangleexamples.jl) from Olver, Townsend & Vasil 2019.
 
 
-The following solves beam equation `u_tt + Δ^2u = 0`
-on a disk
+This code relies on Slevinsky's [FastTransforms](https://github.com/MikaelSlevinsky/FastTransforms) C library for calculating transforms between values and coefficients. At the moment the path to the compiled FastTransforms library is hard coded in [c_transforms.jl](src/c_transforms.jl). 
 
-```julia
-d = Disk()
-u0 = Fun((x,y)->exp(-50x^2-40(y-.1)^2)+.5exp(-30(x+.5)^2-40(y+.2)^2),d)
-B= [dirichlet(d),neumann(d)]
-L = -lap(d)^2
-h = 0.001
-timeevolution(2,B,L,u0,h)                 # Requires GLPlot
-```
+## References
+
+
+S. Olver, A. Townsend & G.M. Vasil (2019), [A sparse spectral method on triangles](https://arxiv.org/pdf/1902.04863.pdf), arXiv:1902.04
+S. Olver & Y. Xuan (2019), [Orthogonal polynomials in and on a quadratic surface of revolution](https://arxiv.org/abs/1906.12305.pdf), arXiv:1906.12305
+G.M. Vasil, K.J. Burns, D. Lecoanet, S. Olver, B.P. Brown & J.S. Oishi (2016), [Tensor calculus in polar coordinates using Jacobi polynomials](http://arxiv.org/pdf/1509.07624.pdf), J. Comp. Phys., 325: 53–73

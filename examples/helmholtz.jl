@@ -1,10 +1,11 @@
-using ApproxFun, MultivariateOrthogonalPolynomials, BlockArrays, FillArrays
-using Plots
+using ApproxFun, MultivariateOrthogonalPolynomials, BlockArrays, FillArrays, Plots
 import PyPlot
 x,y = Fun(Triangle())
 Δ = Laplacian() : TriangleWeight(1.0,1.0,1.0,JacobiTriangle(1.0,1.0,1.0))
 V = x*y^2
 L = Δ + 200^2*V
+u = L \ ones(Triangle())
+
 M = L[Block.(1:50),Block.(1:50)];
 
 PyPlot.spy(M)
