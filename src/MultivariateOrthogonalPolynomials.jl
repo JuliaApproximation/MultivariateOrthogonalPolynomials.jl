@@ -1,5 +1,5 @@
 module MultivariateOrthogonalPolynomials
-using Base, RecipesBase, ApproxFun, BandedMatrices, BlockArrays,
+using Base, RecipesBase, ApproxFun, BandedMatrices, BlockArrays, BlockBandedMatrices,
     FastTransforms, FastGaussQuadrature, StaticArrays, FillArrays,
     LinearAlgebra, Libdl, SpecialFunctions, LazyArrays, InfiniteArrays,
     DomainSets
@@ -11,7 +11,9 @@ import Base: values,getindex,setindex!,*, +, -, ==,<,<=,>,
 
 import BandedMatrices: inbands_getindex, inbands_setindex!
 
-import BlockArrays: blocksizes, BlockSizes, getblock, global2blockindex
+import BlockArrays: blocksizes, BlockSizes, getblock, global2blockindex, Block
+
+import BlockBandedMatrices: blockbandwidths, subblockbandwidths
 
 # ApproxFun general import
 import ApproxFunBase: BandedMatrix, blocksize,
@@ -46,9 +48,9 @@ import ApproxFunBase:   ConstantSpace, NoSpace, prectype,
 # Multivariate import
 import ApproxFunBase: DirectSumSpace, AbstractProductSpace, factor,
                     BivariateFun,  ProductFun, LowRankFun, lap, columnspace,
-                    blockbandwidths, subblockbandwidths, fromtensor, totensor, isbandedblockbanded,
+                    fromtensor, totensor, isbandedblockbanded,
                     Tensorizer, tensorizer, block, blockstart, blockstop, blocklengths,
-                    domaintensorizer, rangetensorizer, blockrange, Block, BlockRange1,
+                    domaintensorizer, rangetensorizer, blockrange, BlockRange1,
                     float
 
 # Singularities
@@ -62,8 +64,6 @@ import ApproxFunOrthogonalPolynomials: jacobip, JacobiSD, PolynomialSpace, order
 
 import ApproxFunFourier: polar, ipolar
 
-
-include("c_transforms.jl")
 
 include("Triangle/Triangle.jl")
 include("Disk/Disk.jl")
