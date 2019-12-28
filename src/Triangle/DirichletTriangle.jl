@@ -65,7 +65,7 @@ function Conversion(A::DirichletTriangle{a,b,c}, B::JacobiTriangle) where {a,b,c
 end
 
 function coefficients(u::AbstractVector, ds::DirichletTriangle, rs::JacobiTriangle)
-    N = nblocks(Fun(ds, u))
+    N = blocksize(Fun(ds, u),1)
     C = Conversion(ds, rs)[Block.(1:N), Block.(1:N)]
     C * pad(u, size(C,2))
 end

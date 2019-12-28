@@ -26,7 +26,7 @@ end
         B = PseudoBlockArray(A, Ones{Int}(3), [1; Fill(2,4)])
 
         a = Vector{eltype(A)}()
-        for N = 1:nblocks(B,2), K=1:(N+1)÷2
+        for N = 1:blocksize(B,2), K=1:(N+1)÷2
             append!(a, vec(B[Block(K,N-2K+2)]))
         end
 
@@ -44,7 +44,7 @@ end
         Ã = zeros(eltype(a), N, M)
         B = PseudoBlockArray(Ã, Ones{Int}(3), [1; Fill(2,4)])
         k = 1
-        for N = 1:nblocks(B,2), K=1:(N+1)÷2
+        for N = 1:blocksize(B,2), K=1:(N+1)÷2
             V = view(B, Block(K,N-2K+2))
             for j = 1:length(V)
                 V[j] = a[k]

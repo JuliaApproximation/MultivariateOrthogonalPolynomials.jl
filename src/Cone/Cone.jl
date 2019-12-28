@@ -37,7 +37,7 @@ function fromtensor(::ConicTensorizer, A::AbstractMatrix{T}) where T
     @assert size(A,2) == M
     B = PseudoBlockArray(A, Ones{Int}(N), [1; Fill(2,N-1)])
     a = Vector{T}()
-    for N = 1:nblocks(B,2), K=1:N
+    for N = 1:blocksize(B,2), K=1:N
         append!(a, vec(view(B,Block(K,N-K+1))))
     end
     a
@@ -49,7 +49,7 @@ function totensor(::ConicTensorizer, a::AbstractVector{T}) where T
     Ã = zeros(eltype(a), N, M)
     B = PseudoBlockArray(Ã, Ones{Int}(N), [1; Fill(2,N-1)])
     k = 1
-    for N = 1:nblocks(B,2), K=1:N
+    for N = 1:blocksize(B,2), K=1:N
         V = view(B, Block(K,N-K+1))
         for j = 1:length(V)
             V[j] = a[k]

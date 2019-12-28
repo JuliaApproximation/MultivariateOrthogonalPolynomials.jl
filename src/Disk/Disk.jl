@@ -61,7 +61,7 @@ function fromtensor(::DiskTensorizer, A::AbstractMatrix{T}) where T
     @assert size(A,2) == M
     B = PseudoBlockArray(A, Ones{Int}(N), [1; Fill(2,2*(N-1))])
     a = Vector{T}()
-    for N = 1:nblocks(B,2), K=1:(N+1)÷2
+    for N = 1:blocksize(B,2), K=1:(N+1)÷2
         append!(a, vec(view(B,Block(K,N-2K+2))))
     end
     a
@@ -76,7 +76,7 @@ function totensor(::DiskTensorizer, a::AbstractVector{T}) where T
     Ã = zeros(eltype(a), N, M)
     B = PseudoBlockArray(Ã, Ones{Int}(N), [1; Fill(2,2*(N-1))])
     k = 1
-    for N = 1:nblocks(B,2), K=1:(N+1)÷2
+    for N = 1:blocksize(B,2), K=1:(N+1)÷2
         V = view(B, Block(K,N-2K+2))
         for j = 1:length(V)
             V[j] = a[k]

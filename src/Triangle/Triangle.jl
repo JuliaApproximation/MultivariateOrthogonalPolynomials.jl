@@ -361,10 +361,10 @@ function clenshaw2D(Jx,Jy,cfs::Vector{Vector{T}},x,y) where T
 
         bk1 = (x*Abk1x) ::Vector{T}
         LinearAlgebra.axpy!(y,Abk1y,bk1)
-        bk1 .= (-one(T)).*Mul(Bx,Abk1x) .+ bk1
-        bk1 .= (-one(T)).*Mul(By,Abk1y) .+ bk1
-        bk1 .= (-one(T)).*Mul(Cx,Abk2x) .+ bk1
-        bk1 .= (-one(T)).*Mul(Cy,Abk2y) .+ bk1
+        muladd!(-one(T),Bx,Abk1x, one(T), bk1)
+        muladd!(-one(T),By,Abk1y, one(T), bk1)
+        muladd!(-one(T),Cx,Abk2x, one(T), bk1)
+        muladd!(-one(T),Cy,Abk2y, one(T), bk1)
         LinearAlgebra.axpy!(one(T),cfs[Int(K)],bk1)
     end
 
@@ -414,7 +414,7 @@ jacobioperators(S::JacobiTriangle) = fromcanonical(S, canonicaljacobioperators(S
 
 
 function plan_evaluate(f::Fun{JacobiTriangle},x...)
-    N = nblocks(f)
+    N = Int(block(space(f),ncoefficients(f)))
     S = space(f)
     # we cannot use true Jacobi operators because that changes the band
     # structure used in clenshaw2D to determine pseudoinverses
@@ -514,7 +514,7 @@ function Base.convert(::Type{BandedBlockBandedMatrix},
     α,β,γ = sp.α,sp.β,sp.γ
     K_sh = first(parentindices(S)[1])-1
     J_sh = first(parentindices(S)[2])-1
-    N,M=nblocks(ret)::Tuple{Int,Int}
+    N,M=blocksize(ret)::Tuple{Int,Int}
 
     if D.order == [1,0]
         for K=Block.(1:N)
@@ -674,7 +674,7 @@ function Base.convert(::Type{BandedBlockBandedMatrix}, S::SubOperator{T,Concrete
     α,β,γ = K1.α,K1.β,K1.γ
     K_sh = first(parentindices(S)[1])-1
     J_sh = first(parentindices(S)[2])-1
-    N,M=nblocks(ret)::Tuple{Int,Int}
+    N,M=blocksize(ret)::Tuple{Int,Int}
 
     if K2.α == α+1 && K2.β == β && K2.γ == γ
         for KK=Block.(1:N)
@@ -906,7 +906,7 @@ function Base.convert(::Type{BandedBlockBandedMatrix},S::SubOperator{T,Lowering{
     α,β,γ=R.space.α,R.space.β,R.space.γ
     K_sh = first(parentindices(S)[1])-1
     J_sh = first(parentindices(S)[2])-1
-    N,M=nblocks(ret)::Tuple{Int,Int}
+    N,M=blocksize(ret)::Tuple{Int,Int}
 
     for KK=Block.(1:N)
         JJ = KK+K_sh-J_sh-1  # super-diagonal
@@ -939,7 +939,7 @@ function Base.convert(::Type{BandedBlockBandedMatrix},S::SubOperator{T,Lowering{
     α,β,γ=R.space.α,R.space.β,R.space.γ
     K_sh = first(parentindices(S)[1])-1
     J_sh = first(parentindices(S)[2])-1
-    N,M = nblocks(ret)::Tuple{Int,Int}
+    N,M = blocksize(ret)::Tuple{Int,Int}
 
 
     for KK=Block.(1:N)
@@ -977,7 +977,7 @@ function Base.convert(::Type{BandedBlockBandedMatrix},S::SubOperator{T,Lowering{
     α,β,γ=R.space.α,R.space.β,R.space.γ
     K_sh = first(parentindices(S)[1])-1
     J_sh = first(parentindices(S)[2])-1
-    N,M=nblocks(ret)::Tuple{Int,Int}
+    N,M=blocksize(ret)::Tuple{Int,Int}
 
     for KK=Block.(1:N)
         JJ = KK+K_sh-J_sh-1  # super-diagonal
@@ -1372,8 +1372,6 @@ end
 
 
 # temporary work around
-import ApproxFun: block, blockbandwidth, Block
-import Base: *
 function *(A_in::Operator, f::Fun{<:JacobiTriangle})
     A = A_in : space(f)
     N = Int(block(space(f), ncoefficients(f)))

@@ -56,15 +56,15 @@ end
     @test f(0.1,0.2) ≈ P(0.1,0.2) ≈ cos(100*0.1*0.2)
     @test values(f) ≈ P.(points(f))
 
-    @time f = Fun((x,y)->cos(500x*y),JacobiTriangle(0.0,-0.5,-0.5),40_000); # 0.2
+    @time f = Fun((x,y)->cos(500x*y),JacobiTriangle(0.0,-0.5,-0.5),40_000); # 0.05
     @test f(0.1,0.2) ≈ cos(500*0.1*0.2)
 
     @time f = Fun((x,y)->cos(100x*y),JacobiTriangle(0.0,0.5,-0.5)); # 0.08s
-    @time f = Fun((x,y)->cos(500x*y),JacobiTriangle(0.0,0.5,-0.5),40_000); # 0.2
+    @time f = Fun((x,y)->cos(500x*y),JacobiTriangle(0.0,0.5,-0.5),40_000); # 0.06
     @test f(0.1,0.2) ≈ cos(500*0.1*0.2)
 
-    f = Fun((x,y)->cos(100x*y),JacobiTriangle(0.0,0.5,0.5)); # 1.15s
-    f = Fun((x,y)->cos(500x*y),JacobiTriangle(0.0,0.5,0.5),40_000); # 0.2
+    @time f = Fun((x,y)->cos(100x*y),JacobiTriangle(0.0,0.5,0.5)); # 0.07s
+    @time f = Fun((x,y)->cos(500x*y),JacobiTriangle(0.0,0.5,0.5),40_000); # 0.06
     @test f(0.1,0.2) ≈ cos(500*0.1*0.2)
 
     f = Fun((x,y)->cos(100x*y),JacobiTriangle(0.0,-0.5,0.5)); # 1.15s

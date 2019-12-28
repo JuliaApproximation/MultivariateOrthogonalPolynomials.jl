@@ -121,7 +121,7 @@ convert(::Type{Operator{T}}, C::ClenshawMultiplication{D,S}) where {D,S,T} =
                                     convert(AbstractVector{T}, C.cfs), C.space)
 
 function ClenshawMultiplication(f::Fun{D,T}, sp::S) where {D,S,T}
-    N = nblocks(f)
+    N = Int(block(space(f), ncoefficients(f)))
     ClenshawMultiplication{D,S,T}(ClenshawRecurrenceData(space(f),N),
                                     PseudoBlockArray(pad(f.coefficients, sum(1:N)),1:N),
                                     sp)
@@ -141,8 +141,8 @@ end
 domainspace(M::ClenshawMultiplication) = M.space
 rangespace(M::ClenshawMultiplication) = M.space
 isbandedblockbanded(::ClenshawMultiplication) = true
-blockbandwidths(M::ClenshawMultiplication) = (nblocks(M.cfs)[1]-1,nblocks(M.cfs)[1]-1)
-subblockbandwidths(M::ClenshawMultiplication) = (nblocks(M.cfs)[1]-1,nblocks(M.cfs)[1]-1)
+blockbandwidths(M::ClenshawMultiplication) = (blocksize(M.cfs,1)-1,blocksize(M.cfs,1)-1)
+subblockbandwidths(M::ClenshawMultiplication) = (blocksize(M.cfs,1)-1,blocksize(M.cfs,1)-1)
 
 function getindex(M::ClenshawMultiplication, k::Int, j::Int)
     K,J = block(M.space,k), block(M.space,j)
@@ -153,7 +153,7 @@ function BandedBlockBandedMatrix(V::SubOperator{T,<:ClenshawMultiplication,Tuple
     KR,JR = parentindices(V)
     M = parent(V)
     sp,cfs,C = M.space, M.cfs, M.data
-    N = nblocks(cfs)[1]
+    N = blocksize(cfs,1)
     JKR = Block.(max(1,min(Int(JR[1]),Int(KR[1]))-(N-1)÷2):max(Int(JR[end]),Int(KR[end]))+(N-1)÷2)
 
     Jx_∞, Jy_∞ = convert.(Operator{T}, jacobioperators(sp))
