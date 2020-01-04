@@ -159,7 +159,7 @@ function BandedBlockBandedMatrix(V::SubOperator{T,<:ClenshawMultiplication,Tuple
     Jx_∞, Jy_∞ = convert.(Operator{T}, jacobioperators(sp))
     Jx, Jy = Jx_∞[JKR, JKR], Jy_∞[JKR,JKR]
 
-    Q = BandedBlockBandedMatrix(Eye{eltype(Jx)}(size(Jx)...), blocksizes(Jx), (0,0), (0,0))
+    Q = BandedBlockBandedMatrix(Eye{eltype(Jx)}(size(Jx)...), axes(Jx), (0,0), (0,0))
     B2 = Fill(Q,N) .* view(cfs,Block(N))
     if N == 1
         B1 = B2

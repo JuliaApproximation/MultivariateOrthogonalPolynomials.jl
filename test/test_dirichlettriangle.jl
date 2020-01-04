@@ -188,56 +188,54 @@ x,y=0.1,0.2
         @test C[1:20,1:20] ≈ C̃[1:20,1:20]
 end
 
-
 @testset "Dirichlet evaluation" begin
     f=Fun((x,y)->exp(x-0.12*cos(y)),JacobiTriangle(0,0,0))
 
     C=Conversion(DirichletTriangle{1,0,0}(),JacobiTriangle(0,0,0))
-    R=Conversion(domainspace(C),Legendre(Vec(0.,0.)..Vec(0.,1.)))
+    R=Conversion(domainspace(C),Legendre(Segment(Vec(0.,0.),Vec(0.,1.))))
     u=C\f
     @test (R*u)(0.,0.3) ≈ f(0.,0.3)
     @test u(0.1,0.2) ≈ f(0.1,0.2)
 
 
     C=Conversion(DirichletTriangle{0,1,0}(),JacobiTriangle(0,0,0))
-    R=Conversion(domainspace(C),Legendre(Vec(0.,0.)..Vec(1.,0.)))
+    R=Conversion(domainspace(C),Legendre(Segment(Vec(0.,0.),Vec(1.,0.))))
     u=C\f
     @test (R*u)(0.3,0.) ≈ f(0.3,0.)
     @test u(0.1,0.2) ≈ f(0.1,0.2)
 
     C=Conversion(DirichletTriangle{0,0,1}(),JacobiTriangle(0,0,0))
-    R=Conversion(domainspace(C),Legendre(Vec(0.,1.)..Vec(1.,0.)))
+    R=Conversion(domainspace(C),Legendre(Segment(Vec(0.,1.),Vec(1.,0.))))
     u=C\f
     @test (R*u)(0.3,1-0.3) ≈ f(0.3,1-0.3)
     @test u(0.1,0.2) ≈ f(0.1,0.2)
 
     C=Conversion(DirichletTriangle{1,1,0}(),DirichletTriangle{1,0,0}(),JacobiTriangle(0,0,0))
-    Rx=Conversion(DirichletTriangle{1,1,0}(),DirichletTriangle{1,0,0}(),Legendre(Vec(0.,0.)..Vec(0.,1.)))
-    Ry=Conversion(DirichletTriangle{1,1,0}(),DirichletTriangle{0,1,0}(),Legendre(Vec(0.,0.)..Vec(1.,0.)))
+    Rx=Conversion(DirichletTriangle{1,1,0}(),DirichletTriangle{1,0,0}(),Legendre(Segment(Vec(0.,0.),Vec(0.,1.))))
+    Ry=Conversion(DirichletTriangle{1,1,0}(),DirichletTriangle{0,1,0}(),Legendre(Segment(Vec(0.,0.),Vec(1.,0.))))
     u=C\f
     @test (Rx*u)(0.,0.3) ≈ f(0.,0.3)
     @test (Ry*u)(0.3,0.) ≈ f(0.3,0.)
     @test u(0.1,0.2) ≈ f(0.1,0.2)
 
     C=Conversion(DirichletTriangle{1,0,1}(),DirichletTriangle{1,0,0}(),JacobiTriangle(0,0,0))
-    Rx=Conversion(DirichletTriangle{1,0,1}(),DirichletTriangle{1,0,0}(),Legendre(Vec(0.,0.)..Vec(0.,1.)))
-    Rz=Conversion(DirichletTriangle{1,0,1}(),DirichletTriangle{0,0,1}(),Legendre(Vec(0.,1.)..Vec(1.,0.)))
+    Rx=Conversion(DirichletTriangle{1,0,1}(),DirichletTriangle{1,0,0}(),Legendre(Segment(Vec(0.,0.),Vec(0.,1.))))
+    Rz=Conversion(DirichletTriangle{1,0,1}(),DirichletTriangle{0,0,1}(),Legendre(Segment(Vec(0.,1.),Vec(1.,0.))))
     u=C\f
     @test (Rx*u)(0.,0.3) ≈ f(0.,0.3)
     @test (Rz*u)(0.3,1-0.3) ≈ f(0.3,1-0.3)
     @test u(0.1,0.2) ≈ f(0.1,0.2)
 
     C=Conversion(DirichletTriangle{1,1,1}(),DirichletTriangle{1,1,0}(),DirichletTriangle{1,0,0}(),JacobiTriangle(0,0,0))
-    Rx=Conversion(DirichletTriangle{1,1,1}(),DirichletTriangle{1,1,0}(),DirichletTriangle{1,0,0}(),Legendre(Vec(0.,0.)..Vec(0.,1.)))
-    Ry=Conversion(DirichletTriangle{1,1,1}(),DirichletTriangle{1,1,0}(),DirichletTriangle{0,1,0}(),Legendre(Vec(0.,0.)..Vec(1.,0.)))
-    Rz=Conversion(DirichletTriangle{1,1,1}(),DirichletTriangle{0,1,1}(),DirichletTriangle{0,0,1}(),Legendre(Vec(0.,1.)..Vec(1.,0.)))
+    Rx=Conversion(DirichletTriangle{1,1,1}(),DirichletTriangle{1,1,0}(),DirichletTriangle{1,0,0}(),Legendre(Segment(Vec(0.,0.),Vec(0.,1.))))
+    Ry=Conversion(DirichletTriangle{1,1,1}(),DirichletTriangle{1,1,0}(),DirichletTriangle{0,1,0}(),Legendre(Segment(Vec(0.,0.),Vec(1.,0.))))
+    Rz=Conversion(DirichletTriangle{1,1,1}(),DirichletTriangle{0,1,1}(),DirichletTriangle{0,0,1}(),Legendre(Segment(Vec(0.,1.),Vec(1.,0.))))
     u=C\f
     @test (Rx*u)(0.,0.3) ≈ f(0.,0.3)
     @test (Ry*u)(0.3,0.) ≈ f(0.3,0.)
     @test (Rz*u)(0.3,1-0.3) ≈ f(0.3,1-0.3)
     @test u(0.1,0.2) ≈ f(0.1,0.2)
 end
-
 
 @testset "Dirichlet restriction" begin
     f=Fun((x,y)->exp(x-0.12*cos(y)),JacobiTriangle(0,0,0))
@@ -264,7 +262,6 @@ end
     @test ∂u(2,5)≈ f(2,5)
 
 end
-
 
 @testset "Triangle Dirichlet Derivatives" begin
     @testset "Triangle() Derivative" begin
@@ -374,7 +371,6 @@ end
         @test (Dy*f)(0.1,0.2) ≈ (Derivative([0,1])*Fun(f,JacobiTriangle(0,0,0,d)))(0.1,0.2)
     end
 end
-
 
 @testset "Triangle Dirichlet Laplacian" begin
     @testset "Triangle Laplace" begin
