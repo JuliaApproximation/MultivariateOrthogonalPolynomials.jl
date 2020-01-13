@@ -158,7 +158,7 @@ jacobinorm(n,a,b) = if n ≠ 0
 #
 #
 
-
+lgamma(x) = logabsgamma(x)[1]
 
 function trinorm(n,k,a,b,c)
     if a == 0 && b == c == -0.5
@@ -231,7 +231,7 @@ function FastJacobiTriangleTransformPlan(S::JacobiTriangle, v::AbstractVector{T}
     n = floor(Integer,sqrt(2length(v)) + 1/2)
     v = Array{T}(undef, sum(1:n))
     FastJacobiTriangleTransformPlan(plan_transform(DuffyTriangle(), v),
-                                     CTri2ChebPlan(n,S.α,S.β,S.γ),S.α,S.β,S.γ)
+                                     plan_tri2cheb(Float64,n,S.α,S.β,S.γ),S.α,S.β,S.γ)
 end
 
 function *(P::FastJacobiTriangleTransformPlan, v)
@@ -280,7 +280,7 @@ function FastJacobiTriangleITransformPlan(S::JacobiTriangle, v::AbstractVector{T
     n = floor(Integer,sqrt(2length(v)) + 1/2)
     v = Array{T}(undef, sum(1:n))
     FastJacobiTriangleITransformPlan(plan_itransform(DuffyTriangle(), v),
-                                   CTri2ChebPlan(n,S.α,S.β,S.γ),S.α,S.β,S.γ)
+                                   plan_tri2cheb(Float64,n,S.α,S.β,S.γ),S.α,S.β,S.γ)
 end
 
 function *(P::FastJacobiTriangleITransformPlan, v)

@@ -1,7 +1,7 @@
 using ApproxFun, MultivariateOrthogonalPolynomials, Test, StaticArrays
-    import MultivariateOrthogonalPolynomials: DirichletTriangle
-    import ApproxFun: testbandedblockbandedoperator, testblockbandedoperator, Vec
-    x,y=0.1,0.2
+import MultivariateOrthogonalPolynomials: DirichletTriangle
+import ApproxFunBase: testbandedblockbandedoperator, testblockbandedoperator, Vec
+x,y=0.1,0.2
 
 
 @testset "Dirchlet conversions" begin

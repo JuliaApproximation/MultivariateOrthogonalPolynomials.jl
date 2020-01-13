@@ -1,4 +1,4 @@
-using StaticArrays, BandedMatrices, FastTransforms,
+using StaticArrays, BandedMatrices, BlockArrays, FastTransforms,
         ApproxFunBase, ApproxFunOrthogonalPolynomials, ApproxFun, 
         MultivariateOrthogonalPolynomials, LinearAlgebra, Test
 import MultivariateOrthogonalPolynomials: Lowering, DuffyTriangle,
@@ -6,7 +6,7 @@ import MultivariateOrthogonalPolynomials: Lowering, DuffyTriangle,
 import ApproxFunBase: testbandedblockbandedoperator, Block, BandedBlockBandedMatrix, blockcolrange, blocksize,
                 Vec, plan_transform
 import ApproxFunOrthogonalPolynomials: jacobip                
-
+import BandedMatrices: colstop
 
 @testset "Triangle domain" begin
     d = Triangle()
@@ -137,10 +137,10 @@ end
 
     @test Jy[3,1] ≈ 1/3
 
-    @test ApproxFun.colstop(Jy,1) == 3
-    @test ApproxFun.colstop(Jy,2) == 5
-    @test ApproxFun.colstop(Jy,3) == 6
-    @test ApproxFun.colstop(Jy,4) == 8
+    @test colstop(Jy,1) == 3
+    @test colstop(Jy,2) == 5
+    @test colstop(Jy,3) == 6
+    @test colstop(Jy,4) == 8
 
 
     @test (Jy*f)(0.1,0.2) ≈ 0.2exp(0.1*cos(0.2))
