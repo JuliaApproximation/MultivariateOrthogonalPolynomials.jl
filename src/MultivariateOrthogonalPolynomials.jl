@@ -2,7 +2,7 @@ module MultivariateOrthogonalPolynomials
 using Base, RecipesBase, ApproxFun, BandedMatrices, BlockArrays, BlockBandedMatrices,
     FastTransforms, FastGaussQuadrature, StaticArrays, FillArrays,
     LinearAlgebra, Libdl, SpecialFunctions, LazyArrays, InfiniteArrays,
-    DomainSets
+    DomainSets, ArrayLayouts
 
 # package code goes here
 import Base: values,getindex,setindex!,*, +, -, ==,<,<=,>,
@@ -11,12 +11,12 @@ import Base: values,getindex,setindex!,*, +, -, ==,<,<=,>,
 
 import BandedMatrices: inbands_getindex, inbands_setindex!
 
-import BlockArrays: blocksizes, BlockSizes, getblock, global2blockindex, Block
+import BlockArrays: getblock, Block, blocksize
 
 import BlockBandedMatrices: blockbandwidths, subblockbandwidths
 
 # ApproxFun general import
-import ApproxFunBase: BandedMatrix, blocksize,
+import ApproxFunBase: BandedMatrix, 
                   linesum,complexlength, BandedBlockBandedMatrix,
                   real, eps, isapproxinteger, FiniteRange, DFunction,
                   TransformPlan, ITransformPlan, plan_transform!

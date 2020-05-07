@@ -13,7 +13,7 @@ import MultivariateOrthogonalPolynomials: rectspace, totensor, duffy2legendrecon
         B = PseudoBlockArray(A, Ones{Int}(3), [1; Fill(2,2)])
 
         a = Vector{eltype(A)}()
-        for N = 1:nblocks(B,2), K=1:N
+        for N = 1:blocksize(B,2), K=1:N
             append!(a, vec(B[Block(K,N-K+1)]))
         end
 
@@ -24,7 +24,7 @@ import MultivariateOrthogonalPolynomials: rectspace, totensor, duffy2legendrecon
         Ã = zeros(eltype(a), N, M)
         B = PseudoBlockArray(Ã, Ones{Int}(3), [1; Fill(2,2)])
         k = 1
-        for N = 1:nblocks(B,2), K=1:N
+        for N = 1:blocksize(B,2), K=1:N
             V = view(B, Block(K,N-K+1))
             for j = 1:length(V)
                 V[j] = a[k]
