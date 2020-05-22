@@ -1,79 +1,35 @@
 module MultivariateOrthogonalPolynomials
-using Base, RecipesBase, ApproxFun, BandedMatrices, BlockArrays, BlockBandedMatrices,
-    FastTransforms, FastGaussQuadrature, StaticArrays, FillArrays,
-    LinearAlgebra, Libdl, SpecialFunctions, LazyArrays, InfiniteArrays,
-    DomainSets, ArrayLayouts
+using OrthogonalPolynomialsQuasi, FastTransforms, BlockBandedMatrices, BlockArrays, DomainSets, 
+      QuasiArrays, StaticArrays, ContinuumArrays, InfiniteArrays, LazyArrays, SpecialFunctions, LinearAlgebra
 
-# package code goes here
-import Base: values,getindex,setindex!,*, +, -, ==,<,<=,>,
-                >=,/,^,\,∪,transpose, in, convert, issubset
+import Base: axes, in, ==, *
+import DomainSets: boundary
 
+import QuasiArrays: LazyQuasiMatrix
+import ContinuumArrays: @simplify, Weight
 
-import BandedMatrices: inbands_getindex, inbands_setindex!
+import BlockBandedMatrices: _BandedBlockBandedMatrix
 
-import BlockArrays: getblock, Block, blocksize
+export Triangle, JacobiTriangle, TriangleWeight, WeightedTriangle, PartialDerivative
 
-import BlockBandedMatrices: blockbandwidths, subblockbandwidths
-
-# ApproxFun general import
-import ApproxFunBase: BandedMatrix, 
-                  linesum,complexlength, BandedBlockBandedMatrix,
-                  real, eps, isapproxinteger, FiniteRange, DFunction,
-                  TransformPlan, ITransformPlan, plan_transform!
-
-# Domains import
-import ApproxFunBase: fromcanonical, tocanonical, domainscompatible
-
-# Operator import
-import ApproxFunBase:    bandwidths,SpaceOperator, ConversionWrapper, DerivativeWrapper,
-                  rangespace, domainspace, InterlaceOperator,
-                  promotedomainspace,  CalculusOperator, interlace, Multiplication,
-                   choosedomainspace, SubOperator, ZeroOperator,
-                    Dirichlet, DirichletWrapper, Neumann, Laplacian, ConstantTimesOperator, Conversion,
-                    Derivative, ConcreteMultiplication, ConcreteConversion, ConcreteLaplacian,
-                    ConcreteDerivative, TimesOperator, MultiplicationWrapper, TridiagonalOperator
+#########
+# PartialDerivative
+#########
 
 
-# Spaces import
-import ApproxFunBase:   ConstantSpace, NoSpace, prectype,
-                    SumSpace,PiecewiseSpace, ArraySpace, @containsconstants,
-                    UnsetSpace, canonicalspace, canonicaldomain, domain, evaluate,
-                    AnyDomain, plan_transform,plan_itransform,
-                    transform,itransform,transform!,itransform!,
-                    isambiguous, fromcanonical, tocanonical, checkpoints, ∂, spacescompatible,
-                    mappoint, UnivariateSpace, setdomain, setcanonicaldomain, canonicaldomain,
-                    Space, points, space, conversion_rule, maxspace_rule,
-                    union_rule, coefficients, RealUnivariateSpace, PiecewiseSegment, rangetype, cfstype
+struct PartialDerivative{k,T,D} <: LazyQuasiMatrix{T}
+    axis::Inclusion{T,D}
+end
 
-# Multivariate import
-import ApproxFunBase: DirectSumSpace, AbstractProductSpace, factor,
-                    BivariateFun,  ProductFun, LowRankFun, lap, columnspace,
-                    fromtensor, totensor, isbandedblockbanded,
-                    Tensorizer, tensorizer, block, blockstart, blockstop, blocklengths,
-                    domaintensorizer, rangetensorizer, blockrange, BlockRange1,
-                    float
+PartialDerivative{k,T}(axis::Inclusion{<:Any,D}) where {k,T,D} = PartialDerivative{k,T,D}(axis)
+PartialDerivative{k,T}(domain) where {k,T} = PartialDerivative{k,T}(Inclusion(domain))
+PartialDerivative{k}(axis) where k = PartialDerivative{k,eltype(axis)}(axis)
 
-# Singularities
-import ApproxFunBase: WeightSpace, weight
-
-# Vec is for two points
-import ApproxFunBase: Vec
-
-# Jacobi import
-import ApproxFunOrthogonalPolynomials: jacobip, JacobiSD, PolynomialSpace, order
-
-import ApproxFunFourier: polar, ipolar
-
+axes(D::PartialDerivative) = (D.axis, D.axis)
+==(a::PartialDerivative, b::PartialDerivative) = a.axis == b.axis && a.k == b.k
+copy(D::PartialDerivative) = PartialDerivative(copy(D.axis), D.k)
 
 include("Triangle/Triangle.jl")
-include("Disk/Disk.jl")
-include("Cone/Cone.jl")
 
-include("clenshaw.jl")
-
-# include("Sphere/SphericalHarmonics.jl")
-
-include("show.jl")
-include("plot.jl")
 
 end # module
