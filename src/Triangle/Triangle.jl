@@ -56,6 +56,10 @@ TriangleWeight(a::T, b::T, c::T) where T = TriangleWeight{float(T),T}(a, b, c)
 
 const WeightedTriangle{T} = WeightedBasis{T,<:TriangleWeight,<:JacobiTriangle}
 
+WeightedTriangle(a, b, c) = TriangleWeight(a,b,c) .* JacobiTriangle(a,b,c)
+
+axes(P::TriangleWeight) = (Inclusion(Triangle()),)
+
 @simplify function *(Dy::PartialDerivative{(0,1)}, P::JacobiTriangle)
     a,b,c = P.a,P.b,P.c
     k = mortar(Base.OneTo.(Base.OneTo(∞)))
@@ -169,14 +173,19 @@ end
     end
 end
 
+@simplify \(w_A::JacobiTriangle, w_B::WeightedTriangle) = 
+    (TriangleWeight(0,0,0) .* w_A) \ w_B
+
 @simplify function \(A::JacobiTriangle, B::JacobiTriangle)
-    if A.a == B.a + 1 && A.b == B.b && A.c == B.c
+    if A.a == B.a && A.b == B.b && A.c == B.c
+        Eye((axes(B,2),))
+    elseif A.a == B.a + 1 && A.b == B.b && A.c == B.c
         Rx(B.a, B.b, B.c)
     elseif A.a == B.a && A.b == B.b + 1 && A.c == B.c
         Ry(B.a, B.b, B.c)
     # elseif A.a == B.a && A.b == B.b && A.c == B.c + 1
     #     Rz(B.a, B.b, B.c)
     else
-        error("not implemented for $A and $wB")
+        error("not implemented for $A and $B")
     end
 end
