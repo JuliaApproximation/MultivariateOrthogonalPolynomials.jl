@@ -60,13 +60,7 @@ WeightedTriangle(a, b, c) = TriangleWeight(a,b,c) .* JacobiTriangle(a,b,c)
 
 axes(P::TriangleWeight) = (Inclusion(Triangle()),)
 
-@simplify function *(Dy::PartialDerivative{(0,1)}, P::JacobiTriangle)
-    a,b,c = P.a,P.b,P.c
-    k = mortar(Base.OneTo.(Base.OneTo(∞)))
-    JacobiTriangle(a,b+1,c+1) * _BandedBlockBandedMatrix((k .+ (b+c))', axes(k,1), (-1,1), (-1,1))
-end
-
-@simplify function *(Dx::PartialDerivative{(1,0)}, P::JacobiTriangle)
+@simplify function *(Dx::PartialDerivative{1}, P::JacobiTriangle)
     a,b,c = P.a,P.b,P.c
     n = mortar(Fill.(Base.OneTo(∞),Base.OneTo(∞)))
     k = mortar(Base.OneTo.(Base.OneTo(∞)))
@@ -76,6 +70,19 @@ end
         )
     JacobiTriangle(a+1,b,c+1) * _BandedBlockBandedMatrix(dat, axes(k,1), (-1,1), (0,1))
 end
+
+@simplify function *(Dy::PartialDerivative{2}, P::JacobiTriangle)
+    a,b,c = P.a,P.b,P.c
+    k = mortar(Base.OneTo.(Base.OneTo(∞)))
+    JacobiTriangle(a,b+1,c+1) * _BandedBlockBandedMatrix((k .+ (b+c))', axes(k,1), (-1,1), (-1,1))
+end
+
+
+# @simplify function *(Δ::Laplacian, P)
+#     _lap_mul(P, eltype(axes(P,1)))
+# end
+
+
 
 @simplify function *(Ac::QuasiAdjoint{<:Any,<:JacobiTriangle}, B::JacobiTriangle)
     A = parent(Ac)
