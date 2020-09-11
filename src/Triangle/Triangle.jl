@@ -46,6 +46,8 @@ JacobiTriangle() = JacobiTriangle(0,0,0)
 
 axes(P::JacobiTriangle) = (Inclusion(Triangle()),blockedrange(Base.OneTo(∞)))
 
+copy(A::JacobiTriangle) = A
+
 struct TriangleWeight{T,V} <: Weight{T}
     a::V
     b::V
@@ -162,7 +164,7 @@ function Lz(a,b,c)
 end
 
 
-@simplify function \(w_A::WeightedTriangle, w_B::WeightedTriangle)
+function \(w_A::WeightedTriangle, w_B::WeightedTriangle)
     wA,A = w_A.args
     wB,B = w_B.args
 
@@ -180,10 +182,10 @@ end
     end
 end
 
-@simplify \(w_A::JacobiTriangle, w_B::WeightedTriangle) = 
+\(w_A::JacobiTriangle, w_B::WeightedTriangle) = 
     (TriangleWeight(0,0,0) .* w_A) \ w_B
 
-@simplify function \(A::JacobiTriangle, B::JacobiTriangle)
+function \(A::JacobiTriangle, B::JacobiTriangle)
     if A.a == B.a && A.b == B.b && A.c == B.c
         Eye((axes(B,2),))
     elseif A.a == B.a + 1 && A.b == B.b && A.c == B.c

@@ -3,7 +3,7 @@ using OrthogonalPolynomialsQuasi, FastTransforms, BlockBandedMatrices, BlockArra
       QuasiArrays, StaticArrays, ContinuumArrays, InfiniteArrays, InfiniteLinearAlgebra, 
       LazyArrays, SpecialFunctions, LinearAlgebra
 
-import Base: axes, in, ==, *, ^, copy
+import Base: axes, in, ==, *, ^, \, copy
 import DomainSets: boundary
 
 import QuasiArrays: LazyQuasiMatrix
