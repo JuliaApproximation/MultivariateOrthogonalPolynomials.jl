@@ -33,7 +33,7 @@ Base.isnan(::Triangle) = false
 # P_{n-k}^{2k+b+c+1,a}(2x-1)*(1-x)^k*P_k^{c,b}(2y/(1-x)-1)
 
 
-struct JacobiTriangle{T,V} <: Basis{T}
+struct JacobiTriangle{T,V} <: BivariateOrthogonalPolynomial{T}
     a::V
     b::V
     c::V

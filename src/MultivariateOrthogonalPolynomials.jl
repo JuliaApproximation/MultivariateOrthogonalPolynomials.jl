@@ -6,7 +6,7 @@ using OrthogonalPolynomialsQuasi, FastTransforms, BlockBandedMatrices, BlockArra
 import Base: axes, in, ==, *, ^, \, copy
 import DomainSets: boundary
 
-import QuasiArrays: LazyQuasiMatrix
+import QuasiArrays: LazyQuasiMatrix, LazyQuasiArrayStyle
 import ContinuumArrays: @simplify, Weight
 
 import BlockBandedMatrices: _BandedBlockBandedMatrix
@@ -45,6 +45,19 @@ copy(D::Laplacian) = Laplacian(copy(D.axis), D.k)
 
 ^(D::PartialDerivative, k::Integer) = ApplyQuasiArray(^, D, k)
 ^(D::Laplacian, k::Integer) = ApplyQuasiArray(^, D, k)
+
+
+abstract type MultivariateOrthogonalPolynomial{T} <: Basis{T} end
+abstract type BivariateOrthogonalPolynomial{T} <: MultivariateOrthogonalPolynomial{T} end
+
+const FirstInclusion = BroadcastQuasiVector{<:Any, typeof(first), <:Tuple{Inclusion}}
+const LastInclusion = BroadcastQuasiVector{<:Any, typeof(last), <:Tuple{Inclusion}}
+
+function Base.broadcasted(::LazyQuasiArrayStyle{2}, ::typeof(*), x::FirstInclusion, P::BivariateOrthogonalPolynomial)
+    axes(x,1) == axes(P,1) || throw(DimensionMismatch())
+    P*jacobimatrix(Val(1), P)
+end
+
 
 include("Triangle/Triangle.jl")
 
