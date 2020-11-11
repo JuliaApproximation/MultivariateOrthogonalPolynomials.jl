@@ -198,3 +198,50 @@ function \(A::JacobiTriangle, B::JacobiTriangle)
         error("not implemented for $A and $B")
     end
 end
+
+
+## Jacobi matrix
+
+jacobimatrix(::Val{1}, P::JacobiTriangle) = Lx(P.a+1, P.b, P.c) * Rx(P.a, P.b, P.c)
+jacobimatrix(::Val{2}, P::JacobiTriangle) = Ly(P.a, P.b+1, P.c) * Ry(P.a, P.b, P.c)
+
+
+## Evaluation
+function tri_forwardrecurrence(N::Int, X, Y, x, y)
+    T = promote_type(eltype(X),eltype(Y))
+    ret = PseudoBlockVector{T}(undef, 1:N)
+    N < 1 && return ret
+    ret[1] = 1
+    N < 2 && return ret
+    ret[2] = x/X[1,1]-1
+    ret[3] = -Y[2,1]/(Y[3,1]*X[1,1]) * (x-X[1,1]) + (y-Y[1,1])/Y[3,1]
+
+    X_N = X[Block.(1:N), Block.(1:N-1)]
+    Y_N = Y[Block.(1:N), Block.(1:N-1)]
+
+    for n = 2:N-1
+        a_x = view(X_N,Block(n,n))[band(0)]
+        Aʸ = view(Y_N,Block(n,n))'
+        b_x = view(X_N,Block(n+1,n))[band(0)]
+        Bʸ = view(Y_N,Block(n+1,n))'
+        c_x = view(X_N,Block(n-1,n))[band(0)]
+        Cʸ = view(Y_N,Block(n-1,n))'
+        b₂ = Bʸ[n,n+1]
+        Bc = -Bʸ[n,n-1]/(b₂*b_x[n-1])*c_x[n-1] + Cʸ[n,n-1]/b₂
+        Ba_1 = -Bʸ[n,n-1]/(b₂*b_x[n-1]) * (x - a_x[n-1]) + (-Aʸ[n,n-1])/b₂
+        Ba_2 = -Bʸ[n,n]/(b₂*b_x[n]) * (x - a_x[n]) + (y-Aʸ[n,n])/b₂
+        P_1 = view(ret,Block(n-1))
+        P_2 = view(ret,Block(n))
+        w = view(ret,Block(n+1))
+        w[1:n] .= b_x .\ (x .- a_x) .* P_2
+        w[n+1] = Ba_1 * P_2[end-1] + Ba_2 * P_2[end]
+        w[1:n-1] .-= (view(b_x,1:n-1) .\ c_x .* P_1)
+        w[n+1] -= Bc * P_1[end]
+    end
+    ret
+end
+
+getindex(P::JacobiTriangle, xy::SVector{2}, J::Block{1}) = tri_forwardrecurrence(Int(J), jacobimatrix(Val(1), P), jacobimatrix(Val(2), P), xy...)[J]
+getindex(P::JacobiTriangle, xy::SVector{2}, JR::BlockRange{1}) = tri_forwardrecurrence(Int(JR[end]), jacobimatrix(Val(1), P), jacobimatrix(Val(2), P), xy...)[JR]
+getindex(P::JacobiTriangle, xy::SVector{2}, Jj::BlockIndex{1}) = P[xy, block(Jj)][blockindex(Jj)]
+getindex(P::JacobiTriangle, xy::SVector{2}, j::Integer) = P[xy, findblockindex(axes(P,2), j)]

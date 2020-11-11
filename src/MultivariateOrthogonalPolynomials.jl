@@ -1,7 +1,7 @@
 module MultivariateOrthogonalPolynomials
 using OrthogonalPolynomialsQuasi, FastTransforms, BlockBandedMatrices, BlockArrays, DomainSets, 
       QuasiArrays, StaticArrays, ContinuumArrays, InfiniteArrays, InfiniteLinearAlgebra, 
-      LazyArrays, SpecialFunctions, LinearAlgebra
+      LazyArrays, SpecialFunctions, LinearAlgebra, BandedMatrices
 
 import Base: axes, in, ==, *, ^, \, copy
 import DomainSets: boundary
@@ -9,6 +9,7 @@ import DomainSets: boundary
 import QuasiArrays: LazyQuasiMatrix, LazyQuasiArrayStyle
 import ContinuumArrays: @simplify, Weight
 
+import BlockArrays: block, blockindex
 import BlockBandedMatrices: _BandedBlockBandedMatrix
 
 export Triangle, JacobiTriangle, TriangleWeight, WeightedTriangle, PartialDerivative, Laplacian
@@ -56,6 +57,11 @@ const LastInclusion = BroadcastQuasiVector{<:Any, typeof(last), <:Tuple{Inclusio
 function Base.broadcasted(::LazyQuasiArrayStyle{2}, ::typeof(*), x::FirstInclusion, P::BivariateOrthogonalPolynomial)
     axes(x,1) == axes(P,1) || throw(DimensionMismatch())
     P*jacobimatrix(Val(1), P)
+end
+
+function Base.broadcasted(::LazyQuasiArrayStyle{2}, ::typeof(*), x::LastInclusion, P::BivariateOrthogonalPolynomial)
+    axes(x,1) == axes(P,1) || throw(DimensionMismatch())
+    P*jacobimatrix(Val(2), P)
 end
 
 
