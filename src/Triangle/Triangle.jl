@@ -206,7 +206,57 @@ jacobimatrix(::Val{1}, P::JacobiTriangle) = Lx(P.a+1, P.b, P.c) * Rx(P.a, P.b, P
 jacobimatrix(::Val{2}, P::JacobiTriangle) = Ly(P.a, P.b+1, P.c) * Ry(P.a, P.b, P.c)
 
 
+
+
 ## Evaluation
+"""
+applies
+B⁺ * [x*I - Aˣ; y*I - Aʸ]  == Diagonal(Bˣ[band(0)][1:end-1] .\ Cˣ[band(0)]); zeros(1, N-1); [zeros(1,N-2) Bc]]
+"""
+struct B⁺A{T} <: AbstractMatrix{T}
+    a_x::Vector{T}
+    b_x::Vector{T}
+    Ba::NTuple{2,T}
+    x::T
+    y::T
+end
+
+function size(BA::B⁺A)
+    n = length(BA.b_x)
+    (n+1, n)
+end
+
+function LinearAlgebra.mul!(dest::AbstractVector{T}, BA::B⁺A{T}, c::AbstractVector{T})
+    @boundscheck (size(BA,2) == length(x) && size(BA,1) == length(y)) || throw(DimensionMismatch())
+    a_x,b_x = BA.a_x,BA.b_x
+    Ba_1, Ba_2 = BA.Ba
+    x,y = BA.x, BA.y
+
+    n = length(b_x)
+    dest[1:n] .= b_x .\ (x .- a_x) .* x
+    dest[n+1] = Ba_1 * P_2[end-1] + Ba_2 * P_2[end]
+    dest
+end
+    
+
+function ArrayLayouts.muladd!(α::T, BA::B⁺A{T}, x::AbstractVector{T}, β::T, y::AbstractVector{T})
+    @boundscheck size(BA,2) == length(x) && size(BA,1) == length(y)
+    a_x,b_x = BA.a_x,BA.b_x
+
+    n = length(b_x)
+    y[1:n] .= b_x .\ (BA.x .- a_x) .* x
+    y[n+1] = Ba_1 * P_2[end-1] + Ba_2 * P_2[end]
+    y
+end
+    
+function tri_recurrence
+
+
+# Following gives data for applying 
+# 
+# and 
+# B⁺ * [Cˣ; Cʸ] == [Diagonal(Bˣ[band(0)] .\ (x .- Aˣ[band(0)])); [zeros(1,N-2) Ba_1 Ba_2]]
+
 function tri_forwardrecurrence(N::Int, X, Y, x, y)
     T = promote_type(eltype(X),eltype(Y))
     ret = PseudoBlockVector{T}(undef, 1:N)
@@ -220,12 +270,14 @@ function tri_forwardrecurrence(N::Int, X, Y, x, y)
     Y_N = Y[Block.(1:N), Block.(1:N-1)]
 
     for n = 2:N-1
-        a_x = view(X_N,Block(n,n))[band(0)]
-        Aʸ = view(Y_N,Block(n,n))'
-        b_x = view(X_N,Block(n+1,n))[band(0)]
-        Bʸ = view(Y_N,Block(n+1,n))'
-        c_x = view(X_N,Block(n-1,n))[band(0)]
-        Cʸ = view(Y_N,Block(n-1,n))'
+        BA,CA = tri_recurrence(X_N, Y_N, n)
+        mul!(w, BA, P_2)
+        muladd!(-one(T), CA, P_1, one(T), w)
+    end
+
+
+
+
         b₂ = Bʸ[n,n+1]
         Bc = -Bʸ[n,n-1]/(b₂*b_x[n-1])*c_x[n-1] + Cʸ[n,n-1]/b₂
         Ba_1 = -Bʸ[n,n-1]/(b₂*b_x[n-1]) * (x - a_x[n-1]) + (-Aʸ[n,n-1])/b₂
@@ -245,7 +297,8 @@ getindex(P::JacobiTriangle, xy::SVector{2}, JR::BlockOneTo) =
     tri_forwardrecurrence(Int(JR[end]), jacobimatrix(Val(1), P), jacobimatrix(Val(2), P), xy...)
 
 
-function trinorm(n,k,a,b,c)
+# FastTransforms uses normalized Jacobi polynomials so this corrects the normalization
+function _ft_trinorm(n,k,a,b,c)
     if a == 0 && b == c == -0.5
         k == 0 ? sqrt((2n+1)) /sqrt(2π) : k*sqrt(2n+1)*exp(lgamma(k)-lgamma(k+0.5))
     else
@@ -257,7 +310,7 @@ end
 
 function tridenormalize!(F̌,a,b,c)
     for n = 0:size(F̌,1)-1, k = 0:n
-        F̌[n-k+1,k+1] *=trinorm(n,k,a,b,c)
+        F̌[n-k+1,k+1] *= _ft_trinorm(n,k,a,b,c)
     end
     F̌
 end

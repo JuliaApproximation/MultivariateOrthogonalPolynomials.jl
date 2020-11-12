@@ -74,6 +74,38 @@ function Base.broadcasted(::LazyQuasiArrayStyle{2}, ::typeof(*), x::LastInclusio
     P*jacobimatrix(Val(2), P)
 end
 
+"""
+   forwardrecurrence!(v, A, B, C, x, y)
+
+evaluates the bivaraite orthogonal polynomials at points `(x,y)` ,
+where `A`, `B`, and `C` are `AbstractVector`s containing the recurrence coefficients
+matrices, e.g., A[N] is (N+1) x N
+"""
+function forwardrecurrence!(v::AbstractBlockVector{T}, A::AbstractVector, B::AbstractVector, C::AbstractVector, x, y) where T
+    N = blocklength(v)
+    N == 0 && return v
+    length(A)+1 ≥ N && length(B)+1 ≥ N && length(C)+1 ≥ N || throw(ArgumentError("A, B, C must contain at least $(N-1) entries"))
+    v[Block(1)] .= one(T)
+    N = 1 && return v
+    p_1 = view(v,Block(2))
+    p_0 = view(v,Block(1))
+    mul!(p_1, B[1], p_0)
+    muladd!(one(T), A[1], [x; y], one(T), p_1)
+
+    @inbounds for n = 2:N-1
+        
+        p1,p0 = _forwardrecurrence_next(n, A, B, C, x, p0, p1),p1
+        v[n+1] = p1
+    end    
+
+    p1 = convert(T, N == 1 ? p0 : muladd(A[1],x,B[1])*p0) # avoid accessing A[1]/B[1] if empty
+    _forwardrecurrence!(v, A, B, C, x, convert(T, p0), p1)
+end
+
+
+forwardrecurrence(N::Integer, A::AbstractVector, B::AbstractVector, C::AbstractVector, x, y) =
+    forwardrecurrence!(PseudoBlockVector{promote_type(eltype(eltype(A)),eltype(eltype(B)),eltype(eltype(C)),typeof(x),typeof(y))}(undef, 1:N), A, B, C, x, y)
+
 
 include("Triangle/Triangle.jl")
 
