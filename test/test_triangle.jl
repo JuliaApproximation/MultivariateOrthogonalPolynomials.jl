@@ -1,36 +1,76 @@
-using MultivariateOrthogonalPolynomials, StaticArrays, BlockArrays, BlockBandedMatrices, ArrayLayouts, QuasiArrays, Test, OrthogonalPolynomialsQuasi, BandedMatrices
-import MultivariateOrthogonalPolynomials: tri_forwardrecurrence
+using MultivariateOrthogonalPolynomials, StaticArrays, BlockArrays, BlockBandedMatrices, ArrayLayouts,
+        QuasiArrays, Test, OrthogonalPolynomialsQuasi, BandedMatrices, FastTransforms
+import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid
+
 
 
 @testset "Triangle" begin
-    P = JacobiTriangle()
-    @test copy(P) ≡ P
+    @testset "basics" begin
+        P = JacobiTriangle()
+        @test copy(P) ≡ P
 
-    xy = axes(P,1)
-    x,y = first.(xy),last.(xy)
-    @test xy[SVector(0.1,0.2)] == SVector(0.1,0.2)
-    @test x[SVector(0.1,0.2)] == 0.1
-    @test y[SVector(0.1,0.2)] == 0.2
-
+        xy = axes(P,1)
+        x,y = first.(xy),last.(xy)
+        @test xy[SVector(0.1,0.2)] == SVector(0.1,0.2)
+        @test x[SVector(0.1,0.2)] == 0.1
+        @test y[SVector(0.1,0.2)] == 0.2
+    end
     P̃ = (n,k,x,y) -> Jacobi(2k+1,0)[2x-1,n-k+1] * (1-x)^k * Legendre()[2y/(1-x)-1, k+1]
 
     @testset "evaluation" begin
-        xy = SVector(0.1,0.2)
-        P_N = P[xy, Block.(1:10)]
-        for N = 1:10
-            @test P[xy, Block(N)] ≈ P_N[Block(N)] ≈ P̃.(N-1, 0:N-1, xy...)
-            for j=1:N
-                P[xy,Block(N)[j]] ≈ P̃(N-1,j-1,xy...)
+        @testset "forwardrecurrnce" begin
+            P = JacobiTriangle()
+            xy = SVector(0.1,0.2)
+            P_N = P[xy, Block.(Base.OneTo(10))]
+            @test P_N == P[xy,Block.(1:10)]
+            for N = 1:10
+                @test P[xy, Block(N)] ≈ P_N[Block(N)] ≈ P̃.(N-1, 0:N-1, xy...)
+                for j=1:N
+                    P[xy,Block(N)[j]] ≈ P̃(N-1,j-1,xy...)
+                end
             end
-        end
-        @test P[xy,1] == 1
-        @test P[xy,2] ≈ P̃(1,0,xy...)
-        @test P[xy,3] ≈ P̃(1,1,xy...)
-        @test P[xy,4] ≈ P̃(2,0,xy...)
+            @test P[xy,1] == 1
+            @test P[xy,2] ≈ P̃(1,0,xy...)
+            @test P[xy,3] ≈ P̃(1,1,xy...)
+            @test P[xy,4] ≈ P̃(2,0,xy...)
 
-        @test P[[SVector(0.1,0.2),SVector(0.2,0.3)],1] ≈ [1,1]
-        @test P[[SVector(0.1,0.2),SVector(0.2,0.3)],Block(2)] ≈ [P[SVector(0.1,0.2),2] P[SVector(0.1,0.2),3];
-                                                                 P[SVector(0.2,0.3),2] P[SVector(0.2,0.3),3]]
+            @test P[[SVector(0.1,0.2),SVector(0.2,0.3)],1] ≈ [1,1]
+            @test P[[SVector(0.1,0.2),SVector(0.2,0.3)],Block(2)] ≈ [P[SVector(0.1,0.2),2] P[SVector(0.1,0.2),3];
+                                                                    P[SVector(0.2,0.3),2] P[SVector(0.2,0.3),3]]
+        end
+        @testset "function" begin
+            c = PseudoBlockVector([1:10; zeros(∞)], (axes(P,2),))
+            f = P*c
+            xy = SVector(0.1,0.2)
+            @test f[xy] ≈ dot(P[xy,1:10],1:10)
+            @test f[[xy, xy.+0.1]] ≈ [f[xy], f[xy.+0.1]]
+            @test f[permutedims([xy, xy.+0.1])] ≈ [f[xy] f[xy.+0.1]]
+        end
+    end
+
+    @testset "expansion" begin
+        P = JacobiTriangle()
+        N = M = 20
+        P_N = P[:,Block.(Base.OneTo(N))]
+        x = [sinpi((2N-2n-1)/(4N))^2 for n in 0:N-1]
+        w = [sinpi((2M-2m-1)/(4M))^2 for m in 0:M-1]
+        g = [SVector(x[n+1], x[N-n]*w[m+1]) for n in 0:N-1, m in 0:M-1]
+        @test grid(P_N) ≈ g
+
+        @testset "relation with transform" begin
+            c = PseudoBlockVector([1:10; zeros(∞)], (axes(P,2),))
+            f = P*c
+            F = f[g]
+            Pl = plan_tri2cheb(F, 0, 0, 0)
+            PA = plan_tri_analysis(F)
+            U = Pl\(PA*F)
+            @test tridenormalize!(U,0,0,0) ≈ [1 3 6 10 0; 2 5 9 0 0; 4 8 0 0 0; 7 0 0 0 0; 0 0 0 0 0]
+        end
+
+        xy = axes(P_N,1)
+        x,y = first.(xy),last.(xy)
+        u = P_N * (P_N \ (exp.(x) .* cos.(y)))
+        @test u[SVector(0.1,0.2)] ≈ exp(0.1)*cos(0.2)
     end
 
     @testset "operators" begin
@@ -42,6 +82,11 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence
 
         M = P'P
         @test blockbandwidths(M) == subblockbandwidths(M) == (0,0)
+        @test M[1,1] == 1/2
+        @test M[2,2] == 1/4
+        @test M[3,3] == 1/12
+        @test M[4,4] == 1/6
+        @test M[5,5] == 1/18
 
         Rx = JacobiTriangle(1,0,0) \ P
         Lx = P \ WeightedTriangle(1,0,0)

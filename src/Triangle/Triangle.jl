@@ -241,7 +241,59 @@ function tri_forwardrecurrence(N::Int, X, Y, x, y)
     ret
 end
 
-getindex(P::JacobiTriangle, xy::SVector{2}, J::Block{1}) = tri_forwardrecurrence(Int(J), jacobimatrix(Val(1), P), jacobimatrix(Val(2), P), xy...)[J]
-getindex(P::JacobiTriangle, xy::SVector{2}, JR::BlockRange{1}) = tri_forwardrecurrence(Int(JR[end]), jacobimatrix(Val(1), P), jacobimatrix(Val(2), P), xy...)[JR]
-getindex(P::JacobiTriangle, xy::SVector{2}, Jj::BlockIndex{1}) = P[xy, block(Jj)][blockindex(Jj)]
-getindex(P::JacobiTriangle, xy::SVector{2}, j::Integer) = P[xy, findblockindex(axes(P,2), j)]
+getindex(P::JacobiTriangle, xy::SVector{2}, JR::BlockOneTo) = 
+    tri_forwardrecurrence(Int(JR[end]), jacobimatrix(Val(1), P), jacobimatrix(Val(2), P), xy...)
+
+
+function trinorm(n,k,a,b,c)
+    if a == 0 && b == c == -0.5
+        k == 0 ? sqrt((2n+1)) /sqrt(2π) : k*sqrt(2n+1)*exp(lgamma(k)-lgamma(k+0.5))
+    else
+        sqrt((2n+b+c+a+2)*(2k+c+b+1))*exp(k*log(2)+(lgamma(n+k+b+c+a+2)+lgamma(n-k+1)-log(2)*(2k+a+b+c+2)-
+                lgamma(n+k+b+c+2)-lgamma(n-k+a+1) + lgamma(k+c+b+1)+lgamma(k+1)-
+                    log(2)*(c+b+1)-lgamma(k+c+1)-lgamma(k+b+1))/2)
+    end
+end
+
+function tridenormalize!(F̌,a,b,c)
+    for n = 0:size(F̌,1)-1, k = 0:n
+        F̌[n-k+1,k+1] *=trinorm(n,k,a,b,c)
+    end
+    F̌
+end
+
+function _trigrid(N::Integer)
+    M = N
+    x = [sinpi((2N-2n-1)/(4N))^2 for n in 0:N-1]
+    w = [sinpi((2M-2m-1)/(4M))^2 for m in 0:M-1]
+    [SVector(x[n+1], x[N-n]*w[m+1]) for n in 0:N-1, m in 0:M-1]
+end
+trigrid(N::Block{1}) = _trigrid(Int(N))
+
+
+function grid(Pn::SubQuasiArray{T,2,<:JacobiTriangle,<:Tuple{Inclusion,BlockSlice{<:BlockRange{1}}}}) where T
+    kr,jr = parentindices(Pn)
+    trigrid(maximum(jr.block))
+end
+
+struct TriTransform{T}
+    tri2cheb::FastTransforms.FTPlan{T,2,14}
+    grid2cheb::FastTransforms.FTPlan{T,2,24}
+    a::T
+    b::T
+    c::T
+end
+
+TriTransform{T}(F::AbstractMatrix{T}, a, b, c) where T = 
+    TriTransform{T}(plan_tri2cheb(F, a, b, c), plan_tri_analysis(F), a, b, c)
+
+TriTransform{T}(N::Block{1}, a, b, c) where T = TriTransform{T}(Matrix{T}(undef, Int(N), Int(N)), a, b, c)
+
+*(T::TriTransform, F::AbstractMatrix) = DiagTrav(tridenormalize!(T.tri2cheb\(T.grid2cheb*F),T.a,T.b,T.c))
+
+function factorize(V::SubQuasiArray{T,2,<:JacobiTriangle,<:Tuple{Inclusion,BlockSlice{BlockOneTo}}}) where T
+    P = parent(V)
+    _,jr = parentindices(V)
+    N = maximum(jr.block)
+    TransformFactorization(grid(V), TriTransform{T}(N, P.a, P.b, P.c))
+end

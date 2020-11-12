@@ -1,16 +1,17 @@
 module MultivariateOrthogonalPolynomials
 using OrthogonalPolynomialsQuasi, FastTransforms, BlockBandedMatrices, BlockArrays, DomainSets, 
       QuasiArrays, StaticArrays, ContinuumArrays, InfiniteArrays, InfiniteLinearAlgebra, 
-      LazyArrays, SpecialFunctions, LinearAlgebra, BandedMatrices
+      LazyArrays, SpecialFunctions, LinearAlgebra, BandedMatrices, LazyBandedMatrices
 
-import Base: axes, in, ==, *, ^, \, copy
+import Base: axes, in, ==, *, ^, \, copy, OneTo, getindex
 import DomainSets: boundary
 
 import QuasiArrays: LazyQuasiMatrix, LazyQuasiArrayStyle
-import ContinuumArrays: @simplify, Weight
+import ContinuumArrays: @simplify, Weight, grid, TransformFactorization
 
-import BlockArrays: block, blockindex
+import BlockArrays: block, blockindex, BlockSlice
 import BlockBandedMatrices: _BandedBlockBandedMatrix
+import LinearAlgebra: factorize
 
 export Triangle, JacobiTriangle, TriangleWeight, WeightedTriangle, PartialDerivative, Laplacian
 
@@ -48,8 +49,17 @@ copy(D::Laplacian) = Laplacian(copy(D.axis), D.k)
 ^(D::Laplacian, k::Integer) = ApplyQuasiArray(^, D, k)
 
 
-abstract type MultivariateOrthogonalPolynomial{T} <: Basis{T} end
-abstract type BivariateOrthogonalPolynomial{T} <: MultivariateOrthogonalPolynomial{T} end
+abstract type MultivariateOrthogonalPolynomial{T,D} <: Basis{T} end
+const BivariateOrthogonalPolynomial{T} = MultivariateOrthogonalPolynomial{T,2}
+const BlockOneTo = BlockRange{1,Tuple{OneTo{Int}}}
+
+
+getindex(P::MultivariateOrthogonalPolynomial{<:Any,D}, xy::SVector{D}, JR::BlockOneTo) where D = 
+    error("Overload")
+getindex(P::MultivariateOrthogonalPolynomial{<:Any,D}, xy::SVector{D}, J::Block{1}) where D = P[xy, Block.(OneTo(Int(J)))][J]
+getindex(P::MultivariateOrthogonalPolynomial{<:Any,D}, xy::SVector{D}, JR::BlockRange{1}) where D = P[xy, Block.(OneTo(Int(maximum(JR))))][JR]
+getindex(P::MultivariateOrthogonalPolynomial{<:Any,D}, xy::SVector{D}, Jj::BlockIndex{1}) where D = P[xy, block(Jj)][blockindex(Jj)]
+getindex(P::MultivariateOrthogonalPolynomial{<:Any,D}, xy::SVector{D}, j::Integer) where D = P[xy, findblockindex(axes(P,2), j)]
 
 const FirstInclusion = BroadcastQuasiVector{<:Any, typeof(first), <:Tuple{Inclusion}}
 const LastInclusion = BroadcastQuasiVector{<:Any, typeof(last), <:Tuple{Inclusion}}
