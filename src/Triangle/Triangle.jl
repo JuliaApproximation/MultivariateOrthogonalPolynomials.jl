@@ -209,47 +209,114 @@ jacobimatrix(::Val{2}, P::JacobiTriangle) = Ly(P.a, P.b+1, P.c) * Ry(P.a, P.b, P
 
 
 ## Evaluation
+
+"""
+Represents B⁺, the pseudo-inverse defined in forward recurrence.
+"""
+struct TriangleRecurrenceA{T} <: AbstractMatrix{T}
+    bˣ::Vector{T}
+    c::NTuple{3,T}  # last row entries
+end
+
+"""
+Represents -B⁺*[Aˣ; Aʸ].
+"""
+struct TriangleRecurrenceB{T} <: AbstractMatrix{T}
+    bˣ::Vector{T}
+    aˣ::Vector{T}
+    c::NTuple{3,T}  # last row entries
+end
+
+"""
+Represents B⁺*[Cˣ; Cʸ].
+"""
+struct TriangleRecurrenceC{T} <: AbstractMatrix{T}
+    bˣ::Vector{T}
+    cˣ::Vector{T}
+    c::NTuple{3,T}  # last row entries
+end
+
+function TriangleRecurrenceA(n, X, Y)
+    b_x = view(X,Block(n+1,n))[band(0)]
+    Bʸ = view(Y,Block(n+1,n))'
+    b₂ = inv(Bʸ[n,n+1])
+    b₁ = -Bʸ[n,n] * b₂/bˣ[max(1,n-1)]
+    b₀ = -Bʸ[n,n-1] * b₂/bˣ[max(1,n-2)]
+    TriangleRecurrenceA(b_x, (b₀, b₁, b₂))
+end
+
+function size(A::TriangleRecurrenceA)
+    n = length(A.bˣ)
+    (n+1,2n)
+end
+
+function getindex(A::TriangleRecurrenceA{T}, k::Int, j::Int) where T
+    n,m = size(A)
+    if k < n && j == k
+        return inv(A.bˣ[k])
+    elseif k == n
+        b₀, b₁, b₂ = A.c
+        if j == m
+            return b₂
+        elseif j == n-1
+            return b₁
+        elseif j == n-2
+            return b₀
+        end
+    end
+    return zero(T)
+end
+
+function xy_muladd!((x,y), A::TriangleRecurrenceA, v::AbstractVector, β, w::AbstractVector)
+    n = size(A,1)
+    b₀, b₁, b₂ = A.c
+    w_1 = view(w, 1:n-1)
+    w_1 .= A.b_x .\ x .* v .+ β .* w_1
+    w[n] = b₀*x*v[n-2] + (b₁*x+b₂*y)*v[n-1] + β*w[n]
+    w
+end
+
+
+
 """
 applies
-B⁺ * [x*I - Aˣ; y*I - Aʸ]  == Diagonal(Bˣ[band(0)][1:end-1] .\ Cˣ[band(0)]); zeros(1, N-1); [zeros(1,N-2) Bc]]
+B⁺ * [-Aˣ; -Aʸ] 
 """
-struct B⁺A{T} <: AbstractMatrix{T}
-    a_x::Vector{T}
-    b_x::Vector{T}
-    Ba::NTuple{2,T}
-    x::T
-    y::T
-end
+# struct TriangleRecurrenceB{T} <: AbstractMatrix{T}
+#     a_x::Vector{T}
+#     b_x::Vector{T}
+#     Ba::NTuple{2,T}
+# end
 
-function size(BA::B⁺A)
-    n = length(BA.b_x)
-    (n+1, n)
-end
+# function size(BA::B⁺A)
+#     n = length(BA.b_x)
+#     (n+1, n)
+# end
 
-function LinearAlgebra.mul!(dest::AbstractVector{T}, BA::B⁺A{T}, c::AbstractVector{T})
-    @boundscheck (size(BA,2) == length(x) && size(BA,1) == length(y)) || throw(DimensionMismatch())
-    a_x,b_x = BA.a_x,BA.b_x
-    Ba_1, Ba_2 = BA.Ba
-    x,y = BA.x, BA.y
+# function LinearAlgebra.mul!(dest::AbstractVector{T}, BA::TriangleRecurrenceB{T}, c::AbstractVector{T})
+#     @boundscheck (size(BA,2) == length(x) && size(BA,1) == length(y)) || throw(DimensionMismatch())
+#     a_x,b_x = BA.a_x,BA.b_x
+#     Ba_1, Ba_2 = BA.Ba
+#     x,y = BA.x, BA.y
 
-    n = length(b_x)
-    dest[1:n] .= b_x .\ (x .- a_x) .* x
-    dest[n+1] = Ba_1 * P_2[end-1] + Ba_2 * P_2[end]
-    dest
-end
+#     n = length(b_x)
+#     dest[1:n] .= b_x .\ (x .- a_x) .* x
+#     dest[n+1] = Ba_1 * P_2[end-1] + Ba_2 * P_2[end]
+#     dest
+# end
     
 
-function ArrayLayouts.muladd!(α::T, BA::B⁺A{T}, x::AbstractVector{T}, β::T, y::AbstractVector{T})
-    @boundscheck size(BA,2) == length(x) && size(BA,1) == length(y)
-    a_x,b_x = BA.a_x,BA.b_x
+# function ArrayLayouts.muladd!(α::T, BA::B⁺A{T}, x::AbstractVector{T}, β::T, y::AbstractVector{T})
+#     @boundscheck size(BA,2) == length(x) && size(BA,1) == length(y)
+#     a_x,b_x = BA.a_x,BA.b_x
 
-    n = length(b_x)
-    y[1:n] .= b_x .\ (BA.x .- a_x) .* x
-    y[n+1] = Ba_1 * P_2[end-1] + Ba_2 * P_2[end]
-    y
-end
+#     n = length(b_x)
+#     y[1:n] .= b_x .\ (BA.x .- a_x) .* x
+#     y[n+1] = Ba_1 * P_2[end-1] + Ba_2 * P_2[end]
+#     y
+# end
     
-function tri_recurrence
+
 
 
 # Following gives data for applying 
@@ -270,14 +337,12 @@ function tri_forwardrecurrence(N::Int, X, Y, x, y)
     Y_N = Y[Block.(1:N), Block.(1:N-1)]
 
     for n = 2:N-1
-        BA,CA = tri_recurrence(X_N, Y_N, n)
-        mul!(w, BA, P_2)
-        muladd!(-one(T), CA, P_1, one(T), w)
-    end
-
-
-
-
+        a_x = view(X_N,Block(n,n))[band(0)]
+        Aʸ = view(Y_N,Block(n,n))'
+        b_x = view(X_N,Block(n+1,n))[band(0)]
+        Bʸ = view(Y_N,Block(n+1,n))'
+        c_x = view(X_N,Block(n-1,n))[band(0)]
+        Cʸ = view(Y_N,Block(n-1,n))'
         b₂ = Bʸ[n,n+1]
         Bc = -Bʸ[n,n-1]/(b₂*b_x[n-1])*c_x[n-1] + Cʸ[n,n-1]/b₂
         Ba_1 = -Bʸ[n,n-1]/(b₂*b_x[n-1]) * (x - a_x[n-1]) + (-Aʸ[n,n-1])/b₂

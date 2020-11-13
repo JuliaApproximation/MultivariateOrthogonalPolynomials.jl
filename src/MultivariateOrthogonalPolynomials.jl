@@ -3,7 +3,7 @@ using OrthogonalPolynomialsQuasi, FastTransforms, BlockBandedMatrices, BlockArra
       QuasiArrays, StaticArrays, ContinuumArrays, InfiniteArrays, InfiniteLinearAlgebra, 
       LazyArrays, SpecialFunctions, LinearAlgebra, BandedMatrices, LazyBandedMatrices
 
-import Base: axes, in, ==, *, ^, \, copy, OneTo, getindex
+import Base: axes, in, ==, *, ^, \, copy, OneTo, getindex, size
 import DomainSets: boundary
 
 import QuasiArrays: LazyQuasiMatrix, LazyQuasiArrayStyle
@@ -75,13 +75,18 @@ function Base.broadcasted(::LazyQuasiArrayStyle{2}, ::typeof(*), x::LastInclusio
 end
 
 """
-   forwardrecurrence!(v, A, B, C, x, y)
+   forwardrecurrence!(v, A, B, C, (x,y))
 
 evaluates the bivaraite orthogonal polynomials at points `(x,y)` ,
 where `A`, `B`, and `C` are `AbstractVector`s containing the recurrence coefficients
-matrices, e.g., A[N] is (N+1) x N
+matrices. In particular, note that for any OPs we have
+
+    P[N+1,x] = (A[N]* [x*I; y*I] + B[N]) * P[N,x] - C[N] * P[N-1,x]
+
+where A[N] is (N+1) x 2N, B[N] and C[N] are (N+1) x N.
+
 """
-function forwardrecurrence!(v::AbstractBlockVector{T}, A::AbstractVector, B::AbstractVector, C::AbstractVector, x, y) where T
+function forwardrecurrence!(v::AbstractBlockVector{T}, A::AbstractVector, B::AbstractVector, C::AbstractVector, xy) where T
     N = blocklength(v)
     N == 0 && return v
     length(A)+1 ≥ N && length(B)+1 ≥ N && length(C)+1 ≥ N || throw(ArgumentError("A, B, C must contain at least $(N-1) entries"))
@@ -90,21 +95,21 @@ function forwardrecurrence!(v::AbstractBlockVector{T}, A::AbstractVector, B::Abs
     p_1 = view(v,Block(2))
     p_0 = view(v,Block(1))
     mul!(p_1, B[1], p_0)
-    muladd!(one(T), A[1], [x; y], one(T), p_1)
+    xy_muladd!(xy, A[1], p_0, one(T), p_1)
 
     @inbounds for n = 2:N-1
-        
-        p1,p0 = _forwardrecurrence_next(n, A, B, C, x, p0, p1),p1
-        v[n+1] = p1
+        p_2 = view(v,Block(n+1))
+        mul!(p_2, B[n], p_1)
+        xy_muladd!(xy, A[n], p_1, one(T), p_2)
+        muladd!(-one(T), C[n], p_0, one(T), p_2)
+        p_1,p_0 = p_2,p_1
     end    
-
-    p1 = convert(T, N == 1 ? p0 : muladd(A[1],x,B[1])*p0) # avoid accessing A[1]/B[1] if empty
-    _forwardrecurrence!(v, A, B, C, x, convert(T, p0), p1)
+    v
 end
 
 
-forwardrecurrence(N::Integer, A::AbstractVector, B::AbstractVector, C::AbstractVector, x, y) =
-    forwardrecurrence!(PseudoBlockVector{promote_type(eltype(eltype(A)),eltype(eltype(B)),eltype(eltype(C)),typeof(x),typeof(y))}(undef, 1:N), A, B, C, x, y)
+forwardrecurrence(N::Block{1}, A::AbstractVector, B::AbstractVector, C::AbstractVector, xy) =
+    forwardrecurrence!(PseudoBlockVector{promote_type(eltype(eltype(A)),eltype(eltype(B)),eltype(eltype(C)),eltype(xy))}(undef, 1:Int(N)), A, B, C, xy)
 
 
 include("Triangle/Triangle.jl")

@@ -1,6 +1,6 @@
 using MultivariateOrthogonalPolynomials, StaticArrays, BlockArrays, BlockBandedMatrices, ArrayLayouts,
         QuasiArrays, Test, OrthogonalPolynomialsQuasi, BandedMatrices, FastTransforms
-import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid
+import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleRecurrenceA
 
 
 
@@ -74,6 +74,9 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid
     end
 
     @testset "operators" begin
+        P = JacobiTriangle()
+        xy = axes(P,1)
+
         ∂ˣ = PartialDerivative{1}(xy)
         ∂ʸ = PartialDerivative{2}(xy)
 
@@ -103,6 +106,9 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid
         Dʸ² = JacobiTriangle(0,2,2) \ (∂ʸ * (∂ʸ * P))
 
         @testset "jacobi" begin
+            P = JacobiTriangle()
+            xy = axes(P,1)
+            x,y = first.(xy),last.(xy)
             X = P \ (x .* P)
             Y = P \ (y .* P)
 
@@ -149,6 +155,7 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid
 
                     for N = 1:5
                         Bˣ = X[Block(N+1,N)]'; Bʸ = Y[Block(N+1,N)]'; B = [Bˣ; Bʸ]
+                        @test TriangleRecurrenceA(N, X, Y) ≈ B⁺(N)
                         @test B⁺(N) * B ≈ I
                     end
 
