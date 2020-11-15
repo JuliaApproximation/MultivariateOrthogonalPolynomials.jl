@@ -91,7 +91,7 @@ end
     @assert A == B == JacobiTriangle(0,0,0)
     a,b,c = A.a,A.b,A.c
     n = mortar(Fill.(Base.OneTo(∞),Base.OneTo(∞)))
-    k = mortar(Base.OneTo.(Base.OneTo(∞)))    
+    k = mortar(Base.OneTo.(Base.OneTo(∞)))
     _BandedBlockBandedMatrix((@. exp(loggamma(n+k+b+c)+loggamma(n-k+a+1)+loggamma(k+b)+loggamma(k+c)-loggamma(n+k+a+b+c)-loggamma(k+b+c)-loggamma(n-k+1)-loggamma(k))/((2n+a+b+c)*(2k+b+c-1)))',
                                 axes(k,1), (0,0), (0,0))
 end
@@ -113,7 +113,7 @@ end
  function Rx(a,b,c)
     n = mortar(Fill.(Base.OneTo(∞),Base.OneTo(∞)))
     k = mortar(Base.OneTo.(Base.OneTo(∞)))
-    dat = PseudoBlockArray(Vcat(        
+    dat = PseudoBlockArray(Vcat(
         ((n .+ k .+ (b+c-1) ) ./ (2n .+ (a+b+c)))',
         ((n .+ k .+ (a+b+c) ) ./ (2n .+ (a+b+c)))'
         ), (blockedrange(Fill(1,2)), axes(n,1)))
@@ -122,7 +122,7 @@ end
 function Ry(a,b,c)
     n = mortar(Fill.(Base.OneTo(∞),Base.OneTo(∞)))
     k = mortar(Base.OneTo.(Base.OneTo(∞)))
-    dat = PseudoBlockArray(Vcat(        
+    dat = PseudoBlockArray(Vcat(
         ((k .+ (c-1) ) .* (n .+ k .+ (b+c-1)) ./ ((2n .+ (a+b+c)) .* (2k .+ (b+c-1) )))',
         ((k .- n .- a ) .* (k .+ (b+c)) ./ ((2n .+ (a+b+c)) .* (2k .+ (b+c-1) )))',
         ((k .+ (c-1) ) .* (k .- n .- 1) ./ ((2n .+ (a+b+c)) .* (2k .+ (b+c-1) )))',
@@ -134,7 +134,7 @@ end
 function Lx(a,b,c)
     n = mortar(Fill.(Base.OneTo(∞),Base.OneTo(∞)))
     k = mortar(Base.OneTo.(Base.OneTo(∞)))
-    dat = PseudoBlockArray(Vcat(        
+    dat = PseudoBlockArray(Vcat(
         ((n .- k .+ a) ./ (2n .+ (a+b+c)))',
         ((n .- k .+ 1) ./ (2n .+ (a+b+c)))'
         ), (blockedrange(Fill(1,2)), axes(n,1)))
@@ -143,7 +143,7 @@ end
 function Ly(a,b,c)
     n = mortar(Fill.(Base.OneTo(∞),Base.OneTo(∞)))
     k = mortar(Base.OneTo.(Base.OneTo(∞)))
-    dat = PseudoBlockArray(Vcat(        
+    dat = PseudoBlockArray(Vcat(
         ((k .+ (b-1) ) .* (n .+ k .+ (b+c-1)) ./ ((2n .+ (a+b+c)) .* (2k .+ (b+c-1) )))',
         (k .* (k .- n .- a ) ./ ((2n .+ (a+b+c)) .* (2k .+ (b+c-1) )))',
         ((k .+ (b-1) ) .* (k .- n .- 1) ./ ((2n .+ (a+b+c)) .* (2k .+ (b+c-1) )))',
@@ -154,7 +154,7 @@ end
 function Lz(a,b,c)
     n = mortar(Fill.(Base.OneTo(∞),Base.OneTo(∞)))
     k = mortar(Base.OneTo.(Base.OneTo(∞)))
-    dat = PseudoBlockArray(Vcat(        
+    dat = PseudoBlockArray(Vcat(
         ((k .+ (c-1) ) .* (n .+ k .+ (b+c-1)) ./ ((2n .+ (a+b+c)) .* (2k .+ (b+c-1) )))',
         (k .* (n .- k .+ a ) ./ ((2n .+ (a+b+c)) .* (2k .+ (b+c-1) )))',
         ((k .+ (c-1) ) .* (k .- n .- 1) ./ ((2n .+ (a+b+c)) .* (2k .+ (b+c-1) )))',
@@ -182,7 +182,7 @@ function \(w_A::WeightedTriangle, w_B::WeightedTriangle)
     end
 end
 
-\(w_A::JacobiTriangle, w_B::WeightedTriangle) = 
+\(w_A::JacobiTriangle, w_B::WeightedTriangle) =
     (TriangleWeight(0,0,0) .* w_A) \ w_B
 
 function \(A::JacobiTriangle, B::JacobiTriangle)
@@ -343,6 +343,21 @@ function xy_muladd!((x,y), A::TriangleRecurrenceA, v::AbstractVector, β, w::Abs
     w
 end
 
+function xy_muladd!(xy, Ac::Adjoint{<:Any,<:TriangleRecurrenceA}, v::AbstractVector, β, w::AbstractVector)
+    x,y = xy
+    A = parent(Ac)
+    n = size(A,1)
+    d₀, d₁, d₂ = A.d
+    w .= A.bˣ .\ x .* view(v,1:n-1) .+ β .* w
+    if n > 2
+        w[n-2] += d₀*x*v[n]
+        w[n-1] += (d₁*x+d₂*y)*v[n]
+    else
+        w[n-1] += (d₁*x+d₂*y)*v[n]
+    end
+    w
+end
+
 
 function LinearAlgebra.mul!(dest::AbstractVector{T}, BA::TriangleRecurrenceB{T}, c::AbstractVector{T}) where T
     @boundscheck (size(BA,2) == length(c) && size(BA,1) == length(dest)) || throw(DimensionMismatch())
@@ -351,10 +366,29 @@ function LinearAlgebra.mul!(dest::AbstractVector{T}, BA::TriangleRecurrenceB{T},
 
     n = length(bˣ)
     dest[1:n] .= (-).(bˣ .\ aˣ .* c)
-    dest[n+1] = Ba_1 * c[end-1] + Ba_2 * c[end]
+    if n > 1
+        dest[n+1] = Ba_1 * c[end-1] + Ba_2 * c[end]
+    else
+        dest[n+1] = Ba_2 * c[end]
+    end
     dest
 end
-    
+
+function LinearAlgebra.mul!(dest::AbstractVector{T}, BAc::Adjoint{T,<:TriangleRecurrenceB{T}}, c::AbstractVector{T}) where T
+    @boundscheck (size(BAc,2) == length(c) && size(BAc,1) == length(dest)) || throw(DimensionMismatch())
+    BA = parent(BAc)
+    aˣ,bˣ = BA.aˣ,BA.bˣ
+    Ba_1, Ba_2 = BA.d
+
+    n = length(bˣ)
+    dest .= (-).(bˣ .\ aˣ .* view(c,1:n))
+    if n > 1
+        dest[end-1] += Ba_1*c[n+1]
+    end
+    dest[end] += Ba_2*c[n+1]
+    dest
+end
+
 
 function ArrayLayouts.muladd!(α::T, BA::TriangleRecurrenceC{T}, u::AbstractVector{T}, β::T, dest::AbstractVector{T}) where T
     @boundscheck (size(BA,2) == length(u) && size(BA,1) == length(dest)) || throw(DimensionMismatch())
@@ -369,12 +403,25 @@ function ArrayLayouts.muladd!(α::T, BA::TriangleRecurrenceC{T}, u::AbstractVect
     dest
 end
 
+function ArrayLayouts.muladd!(α::T, BAc::Adjoint{T,TriangleRecurrenceC{T}}, u::AbstractVector{T}, β::T, w::AbstractVector{T}) where T
+    @boundscheck (size(BAc,2) == length(u) && size(BAc,1) == length(w)) || throw(DimensionMismatch())
+    BA = parent(BAc)
+    bˣ,cˣ = BA.bˣ,BA.cˣ
+    d = BA.d
 
-# Following gives data for applying 
-# 
-# and 
-# B⁺ * [Cˣ; Cʸ] == [Diagonal(Bˣ[band(0)] .\ (x .- Aˣ[band(0)])); [zeros(1,N-2) Ba_1 Ba_2]]
+    n = length(bˣ)
+    w .= α .* (view(bˣ,1:n-1) .\ cˣ .* view(u,1:n-1)) .+ β .* w
+    w[n-1] += d*u[n+1]
 
+    w
+end
+
+##
+# TODO: almost generic, but left specialised for now because we need
+# to make block indexing of infinite Jacobi operators fast.
+# This has to do with recognizing a block-row vector with banded blocks
+# times a block-col vec with banded blocks is banded.
+# The functionality will need to be added to LazyBandedMatrices.jl
 function tri_forwardrecurrence(N::Int, X, Y, x, y)
     T = promote_type(eltype(X),eltype(Y))
     ret = PseudoBlockVector{T}(undef, 1:N)
@@ -388,29 +435,59 @@ function tri_forwardrecurrence(N::Int, X, Y, x, y)
     Y_N = Y[Block.(1:N), Block.(1:N-1)]
 
     for n = 2:N-1
-        a_x = view(X_N,Block(n,n))[band(0)]
-        Aʸ = view(Y_N,Block(n,n))'
-        b_x = view(X_N,Block(n+1,n))[band(0)]
-        Bʸ = view(Y_N,Block(n+1,n))'
-        c_x = view(X_N,Block(n-1,n))[band(0)]
-        Cʸ = view(Y_N,Block(n-1,n))'
-        b₂ = Bʸ[n,n+1]
-        Bc = -Bʸ[n,n-1]/(b₂*b_x[n-1])*c_x[n-1] + Cʸ[n,n-1]/b₂
-        Ba_1 = -Bʸ[n,n-1]/(b₂*b_x[n-1]) * (x - a_x[n-1]) + (-Aʸ[n,n-1])/b₂
-        Ba_2 = -Bʸ[n,n]/(b₂*b_x[n]) * (x - a_x[n]) + (y-Aʸ[n,n])/b₂
-        P_1 = view(ret,Block(n-1))
-        P_2 = view(ret,Block(n))
-        w = view(ret,Block(n+1))
-        w[1:n] .= b_x .\ (x .- a_x) .* P_2
-        w[n+1] = Ba_1 * P_2[end-1] + Ba_2 * P_2[end]
-        w[1:n-1] .-= (view(b_x,1:n-1) .\ c_x .* P_1)
-        w[n+1] -= Bc * P_1[end]
+        A = TriangleRecurrenceA(n, X_N, Y_N)
+        B = TriangleRecurrenceB(n, X_N, Y_N)
+        C = TriangleRecurrenceC(n, X_N, Y_N)
+
+        p_0 = view(ret,Block(n-1))
+        p_1 = view(ret,Block(n))
+        p_2 = view(ret,Block(n+1))
+
+        mul!(p_2, B, p_1)
+        xy_muladd!((x,y), A, p_1, one(T), p_2)
+        muladd!(-one(T), C, p_0, one(T), p_2)
     end
     ret
 end
 
-getindex(P::JacobiTriangle, xy::SVector{2}, JR::BlockOneTo) = 
+
+
+getindex(P::JacobiTriangle, xy::SVector{2}, JR::BlockOneTo) =
     tri_forwardrecurrence(Int(JR[end]), jacobimatrix(Val(1), P), jacobimatrix(Val(2), P), xy...)
+
+###
+# Clenshaw
+###
+
+function getindex(f::Expansion{T,<:JacobiTriangle}, xy::SVector{2}) where T
+    P,c∞ = arguments(f)
+    c = paddeddata(c∞)
+    N = blocksize(c,1)
+
+    N == 1 && return c[1]
+    X = jacobimatrix(Val(1), P)
+    Y = jacobimatrix(Val(2), P)
+    X_N = X[Block.(1:N), Block.(1:N-1)]
+    Y_N = Y[Block.(1:N), Block.(1:N-1)]
+    γ = Array{T}(undef, 1)
+
+    B = TriangleRecurrenceB(1, X_N, Y_N)
+    A = TriangleRecurrenceA(1, X_N, Y_N)
+    c_2 = view(c,Block(2))
+    mul!(γ, B', c_2)
+    xy_muladd!(xy, A', c_2, one(T), γ)
+    γ[1] + c[1]
+end
+
+# getindex(f::Expansion{T,<:JacobiTriangle}, x::AbstractVector{<:Number}) where T =
+#     copyto!(Vector{T}(undef, length(x)), view(f, x))
+
+# function copyto!(dest::AbstractVector{T}, v::SubArray{<:Any,1,<:Expansion{<:Any,<:JacobiTriangle}, <:Tuple{AbstractVector{<:Number}}}) where T
+#     f = parent(v)
+#     (x,) = parentindices(v)
+#     P,c = arguments(f)
+#     clenshaw!(paddeddata(c), recurrencecoefficients(P)..., x, Fill(_p0(P), length(x)), dest)
+# end
 
 
 # FastTransforms uses normalized Jacobi polynomials so this corrects the normalization
@@ -446,14 +523,14 @@ function grid(Pn::SubQuasiArray{T,2,<:JacobiTriangle,<:Tuple{Inclusion,BlockSlic
 end
 
 struct TriTransform{T}
-    tri2cheb::FastTransforms.FTPlan{T,2,14}
-    grid2cheb::FastTransforms.FTPlan{T,2,24}
+    tri2cheb::FastTransforms.FTPlan{T,2,FastTransforms.TRIANGLE}
+    grid2cheb::FastTransforms.FTPlan{T,2,FastTransforms.TRIANGLEANALYSIS}
     a::T
     b::T
     c::T
 end
 
-TriTransform{T}(F::AbstractMatrix{T}, a, b, c) where T = 
+TriTransform{T}(F::AbstractMatrix{T}, a, b, c) where T =
     TriTransform{T}(plan_tri2cheb(F, a, b, c), plan_tri_analysis(F), a, b, c)
 
 TriTransform{T}(N::Block{1}, a, b, c) where T = TriTransform{T}(Matrix{T}(undef, Int(N), Int(N)), a, b, c)

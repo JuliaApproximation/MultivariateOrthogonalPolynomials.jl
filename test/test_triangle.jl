@@ -2,8 +2,6 @@ using MultivariateOrthogonalPolynomials, StaticArrays, BlockArrays, BlockBandedM
         QuasiArrays, Test, OrthogonalPolynomialsQuasi, BandedMatrices, FastTransforms
 import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleRecurrenceA, TriangleRecurrenceB, TriangleRecurrenceC, xy_muladd!
 
-
-
 @testset "Triangle" begin
     @testset "basics" begin
         P = JacobiTriangle()
@@ -39,6 +37,15 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
                                                                     P[SVector(0.2,0.3),2] P[SVector(0.2,0.3),3]]
         end
         @testset "function" begin
+            P = JacobiTriangle()
+            xy = SVector(0.1,0.2)
+            c = PseudoBlockVector([1; Zeros(∞)], (axes(P,2),))
+            f = P*c
+            @test f[xy] == 1.0
+            c = PseudoBlockVector([1:3; Zeros(∞)], (axes(P,2),))
+            f = P*c
+            @test f[xy] ≈ P[xy,1:3]'*(1:3)
+
             c = PseudoBlockVector([1:10; zeros(∞)], (axes(P,2),))
             f = P*c
             xy = SVector(0.1,0.2)
@@ -152,27 +159,37 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
                     #     w[1:N] .= X[Block(N+1,N)][band(0)] .\ view(v,1:N)
                     # end
 
-
                     for N = 1:5
                         Bˣ = X[Block(N+1,N)]'; Bʸ = Y[Block(N+1,N)]'; B = [Bˣ; Bʸ]
                         Aˣ = X[Block(N,N)]'; Aʸ = Y[Block(N,N)]'; A = [Aˣ; Aʸ]
-                        Cˣ = X[Block(N-1,N)]'; Cʸ = Y[Block(N-1,N)]'; C = [Cˣ; Cʸ]
+                        if N > 1
+                            Cˣ = X[Block(N-1,N)]'; Cʸ = Y[Block(N-1,N)]'; C = [Cˣ; Cʸ]
+                        end
                         @test B⁺(N) * B ≈ I
                         @test TriangleRecurrenceA(N, X, Y) ≈ B⁺(N)
                         @test TriangleRecurrenceB(N, X, Y) ≈ B⁺(N)*[-Aˣ; -Aʸ]
-                        @test TriangleRecurrenceC(N, X, Y) ≈ B⁺(N)*[Cˣ; Cʸ]
+                        if N > 1
+                            @test TriangleRecurrenceC(N, X, Y) ≈ B⁺(N)*[Cˣ; Cʸ]
+                        end
                         
                         x,y = 0.1,0.2
                         v = randn(N)
                         w = randn(N+1)
-                        @test xy_muladd!((x,y), TriangleRecurrenceA(N, X, Y),  v, 2.0, copy(w)) ≈ 
+                        @test xy_muladd!((x,y), TriangleRecurrenceA(N,X,Y),  v, 2.0, copy(w)) ≈ 
                             B⁺(N) * [x*Eye(N); y*Eye(N)]*v + 2w
+                        @test xy_muladd!((x,y), TriangleRecurrenceA(N,X,Y)', w, 2.0, copy(v)) ≈
+                            (B⁺(N) * [x*Eye(N); y*Eye(N)])'*w + 2v
 
                         @test mul!(w, TriangleRecurrenceB(N, X, Y), v) ≈ B⁺(N)*[-Aˣ; -Aʸ]*v
+                        @test mul!(v, TriangleRecurrenceB(N, X, Y)', w) ≈ (B⁺(N)*[-Aˣ; -Aʸ])'*w
 
-                        u = randn(N-1)
-                        @test muladd!(1.0, TriangleRecurrenceC(N, X, Y), u, 2.0, copy(w)) ≈ 
-                            B⁺(N)*[Cˣ; Cʸ]*u + 2w
+                        if N > 1
+                            u = randn(N-1)
+                            @test muladd!(1.0, TriangleRecurrenceC(N, X, Y), u, 2.0, copy(w)) ≈ 
+                                B⁺(N)*[Cˣ; Cʸ]*u + 2w
+                            @test muladd!(1.0, TriangleRecurrenceC(N, X, Y)', w, 2.0, copy(u)) ≈ 
+                                (B⁺(N)*[Cˣ; Cʸ])'*w + 2u
+                        end
                     end
 
                     @testset "comparison with exact" begin

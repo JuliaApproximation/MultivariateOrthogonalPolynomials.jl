@@ -7,11 +7,12 @@ import Base: axes, in, ==, *, ^, \, copy, OneTo, getindex, size
 import DomainSets: boundary
 
 import QuasiArrays: LazyQuasiMatrix, LazyQuasiArrayStyle
-import ContinuumArrays: @simplify, Weight, grid, TransformFactorization
+import ContinuumArrays: @simplify, Weight, grid, TransformFactorization, Expansion
 
 import BlockArrays: block, blockindex, BlockSlice
 import BlockBandedMatrices: _BandedBlockBandedMatrix
 import LinearAlgebra: factorize
+import LazyArrays: arguments, paddeddata
 
 export Triangle, JacobiTriangle, TriangleWeight, WeightedTriangle, PartialDerivative, Laplacian
 
@@ -86,30 +87,30 @@ matrices. In particular, note that for any OPs we have
 where A[N] is (N+1) x 2N, B[N] and C[N] are (N+1) x N.
 
 """
-function forwardrecurrence!(v::AbstractBlockVector{T}, A::AbstractVector, B::AbstractVector, C::AbstractVector, xy) where T
-    N = blocklength(v)
-    N == 0 && return v
-    length(A)+1 ≥ N && length(B)+1 ≥ N && length(C)+1 ≥ N || throw(ArgumentError("A, B, C must contain at least $(N-1) entries"))
-    v[Block(1)] .= one(T)
-    N = 1 && return v
-    p_1 = view(v,Block(2))
-    p_0 = view(v,Block(1))
-    mul!(p_1, B[1], p_0)
-    xy_muladd!(xy, A[1], p_0, one(T), p_1)
+# function forwardrecurrence!(v::AbstractBlockVector{T}, A::AbstractVector, B::AbstractVector, C::AbstractVector, xy) where T
+#     N = blocklength(v)
+#     N == 0 && return v
+#     length(A)+1 ≥ N && length(B)+1 ≥ N && length(C)+1 ≥ N || throw(ArgumentError("A, B, C must contain at least $(N-1) entries"))
+#     v[Block(1)] .= one(T)
+#     N = 1 && return v
+#     p_1 = view(v,Block(2))
+#     p_0 = view(v,Block(1))
+#     mul!(p_1, B[1], p_0)
+#     xy_muladd!(xy, A[1], p_0, one(T), p_1)
 
-    @inbounds for n = 2:N-1
-        p_2 = view(v,Block(n+1))
-        mul!(p_2, B[n], p_1)
-        xy_muladd!(xy, A[n], p_1, one(T), p_2)
-        muladd!(-one(T), C[n], p_0, one(T), p_2)
-        p_1,p_0 = p_2,p_1
-    end    
-    v
-end
+#     @inbounds for n = 2:N-1
+#         p_2 = view(v,Block(n+1))
+#         mul!(p_2, B[n], p_1)
+#         xy_muladd!(xy, A[n], p_1, one(T), p_2)
+#         muladd!(-one(T), C[n], p_0, one(T), p_2)
+#         p_1,p_0 = p_2,p_1
+#     end    
+#     v
+# end
 
 
-forwardrecurrence(N::Block{1}, A::AbstractVector, B::AbstractVector, C::AbstractVector, xy) =
-    forwardrecurrence!(PseudoBlockVector{promote_type(eltype(eltype(A)),eltype(eltype(B)),eltype(eltype(C)),eltype(xy))}(undef, 1:Int(N)), A, B, C, xy)
+# forwardrecurrence(N::Block{1}, A::AbstractVector, B::AbstractVector, C::AbstractVector, xy) =
+#     forwardrecurrence!(PseudoBlockVector{promote_type(eltype(eltype(A)),eltype(eltype(B)),eltype(eltype(C)),eltype(xy))}(undef, 1:Int(N)), A, B, C, xy)
 
 
 include("Triangle/Triangle.jl")
