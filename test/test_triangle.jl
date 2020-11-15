@@ -1,6 +1,6 @@
 using MultivariateOrthogonalPolynomials, StaticArrays, BlockArrays, BlockBandedMatrices, ArrayLayouts,
         QuasiArrays, Test, OrthogonalPolynomialsQuasi, BandedMatrices, FastTransforms
-import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleRecurrenceA
+import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleRecurrenceA, TriangleRecurrenceB, TriangleRecurrenceC, xy_muladd!
 
 
 
@@ -155,8 +155,24 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
 
                     for N = 1:5
                         Bˣ = X[Block(N+1,N)]'; Bʸ = Y[Block(N+1,N)]'; B = [Bˣ; Bʸ]
-                        @test TriangleRecurrenceA(N, X, Y) ≈ B⁺(N)
+                        Aˣ = X[Block(N,N)]'; Aʸ = Y[Block(N,N)]'; A = [Aˣ; Aʸ]
+                        Cˣ = X[Block(N-1,N)]'; Cʸ = Y[Block(N-1,N)]'; C = [Cˣ; Cʸ]
                         @test B⁺(N) * B ≈ I
+                        @test TriangleRecurrenceA(N, X, Y) ≈ B⁺(N)
+                        @test TriangleRecurrenceB(N, X, Y) ≈ B⁺(N)*[-Aˣ; -Aʸ]
+                        @test TriangleRecurrenceC(N, X, Y) ≈ B⁺(N)*[Cˣ; Cʸ]
+                        
+                        x,y = 0.1,0.2
+                        v = randn(N)
+                        w = randn(N+1)
+                        @test xy_muladd!((x,y), TriangleRecurrenceA(N, X, Y),  v, 2.0, copy(w)) ≈ 
+                            B⁺(N) * [x*Eye(N); y*Eye(N)]*v + 2w
+
+                        @test mul!(w, TriangleRecurrenceB(N, X, Y), v) ≈ B⁺(N)*[-Aˣ; -Aʸ]*v
+
+                        u = randn(N-1)
+                        @test muladd!(1.0, TriangleRecurrenceC(N, X, Y), u, 2.0, copy(w)) ≈ 
+                            B⁺(N)*[Cˣ; Cʸ]*u + 2w
                     end
 
                     @testset "comparison with exact" begin

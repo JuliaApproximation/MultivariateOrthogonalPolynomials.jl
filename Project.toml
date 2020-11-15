@@ -25,8 +25,9 @@ StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [compat]
+ArrayLayouts = "0.4.11"
 BandedMatrices = "0.15"
-BlockArrays = "0.12.15"
+BlockArrays = "0.13"
 BlockBandedMatrices = "0.9.6"
 ContinuumArrays = "0.3.2"
 DomainSets = "0.4"

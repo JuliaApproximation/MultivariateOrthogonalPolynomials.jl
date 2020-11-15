@@ -215,16 +215,16 @@ Represents B⁺, the pseudo-inverse defined in forward recurrence.
 """
 struct TriangleRecurrenceA{T} <: AbstractMatrix{T}
     bˣ::Vector{T}
-    c::NTuple{3,T}  # last row entries
+    d::NTuple{3,T}  # last row entries
 end
 
 """
 Represents -B⁺*[Aˣ; Aʸ].
 """
 struct TriangleRecurrenceB{T} <: AbstractMatrix{T}
-    bˣ::Vector{T}
     aˣ::Vector{T}
-    c::NTuple{3,T}  # last row entries
+    bˣ::Vector{T}
+    d::NTuple{2,T}
 end
 
 """
@@ -233,16 +233,39 @@ Represents B⁺*[Cˣ; Cʸ].
 struct TriangleRecurrenceC{T} <: AbstractMatrix{T}
     bˣ::Vector{T}
     cˣ::Vector{T}
-    c::NTuple{3,T}  # last row entries
+    d::T  # last row entries
 end
 
 function TriangleRecurrenceA(n, X, Y)
-    b_x = view(X,Block(n+1,n))[band(0)]
+    bˣ = view(X,Block(n+1,n))[band(0)]
     Bʸ = view(Y,Block(n+1,n))'
-    b₂ = inv(Bʸ[n,n+1])
-    b₁ = -Bʸ[n,n] * b₂/bˣ[max(1,n-1)]
-    b₀ = -Bʸ[n,n-1] * b₂/bˣ[max(1,n-2)]
-    TriangleRecurrenceA(b_x, (b₀, b₁, b₂))
+    d₂ = inv(Bʸ[n,n+1])
+    d₁ = -Bʸ[n,n] * d₂/bˣ[n]
+    # max avoids bounds error, result unused
+    d₀ = -Bʸ[n,max(1,n-1)] * d₂/bˣ[max(1,n-1)]
+    TriangleRecurrenceA(bˣ, (d₀, d₁, d₂))
+end
+
+function TriangleRecurrenceB(n, X, Y)
+    aˣ = view(X,Block(n,n))[band(0)]
+    bˣ = view(X,Block(n+1,n))[band(0)]
+    Aʸ = view(Y,Block(n,n))'
+    Bʸ = view(Y,Block(n+1,n))'
+    d₂ = inv(Bʸ[n,n+1])
+    d₁ = Bʸ[n,n] * d₂/bˣ[n]*aˣ[n]-Aʸ[n,n]*d₂
+    # max avoids bounds error, result unused
+    d₀ = Bʸ[n,max(1,n-1)] * d₂ * aˣ[max(1,n-1)]/bˣ[max(1,n-1)] - Aʸ[n,max(1,n-1)]*d₂
+    TriangleRecurrenceB(aˣ, bˣ, (d₀, d₁))
+end
+
+function TriangleRecurrenceC(n, X, Y)
+    cˣ = view(X,Block(n-1,n))[band(0)]
+    bˣ = view(X,Block(n+1,n))[band(0)]
+    Cʸ = view(Y,Block(n-1,n))'
+    Bʸ = view(Y,Block(n+1,n))'
+    d₂ = inv(Bʸ[n,n+1])
+    d = -Bʸ[n,n-1]/bˣ[n-1]*cˣ[n-1]*d₂ + Cʸ[n,n-1]*d₂
+    TriangleRecurrenceC(bˣ, cˣ, d)
 end
 
 function size(A::TriangleRecurrenceA)
@@ -250,73 +273,101 @@ function size(A::TriangleRecurrenceA)
     (n+1,2n)
 end
 
+function size(BA::TriangleRecurrenceB)
+    n = length(BA.bˣ)
+    (n+1, n)
+end
+
+
+function size(BA::TriangleRecurrenceC)
+    n = length(BA.bˣ)
+    (n+1, n-1)
+end
+
+
+
 function getindex(A::TriangleRecurrenceA{T}, k::Int, j::Int) where T
     n,m = size(A)
     if k < n && j == k
         return inv(A.bˣ[k])
     elseif k == n
-        b₀, b₁, b₂ = A.c
+        d₀, d₁, d₂ = A.d
         if j == m
-            return b₂
+            return d₂
         elseif j == n-1
-            return b₁
+            return d₁
         elseif j == n-2
-            return b₀
+            return d₀
         end
     end
     return zero(T)
 end
 
-function xy_muladd!((x,y), A::TriangleRecurrenceA, v::AbstractVector, β, w::AbstractVector)
-    n = size(A,1)
-    b₀, b₁, b₂ = A.c
-    w_1 = view(w, 1:n-1)
-    w_1 .= A.b_x .\ x .* v .+ β .* w_1
-    w[n] = b₀*x*v[n-2] + (b₁*x+b₂*y)*v[n-1] + β*w[n]
-    w
+function getindex(A::TriangleRecurrenceB{T}, k::Int, j::Int) where T
+    n,m = size(A)
+    if k < n && j == k
+        return -A.aˣ[k] / A.bˣ[k]
+    elseif k == n
+        d₀, d₁ = A.d
+        if j == m
+            return d₁
+        elseif j == m-1
+            return d₀
+        end
+    end
+    return zero(T)
+end
+
+function getindex(A::TriangleRecurrenceC{T}, k::Int, j::Int) where T
+    n,m = size(A)
+    if k ≤ m && j == k
+        return A.cˣ[k] / A.bˣ[k]
+    elseif k == n && j == m
+        return A.d
+    end
+    return zero(T)
 end
 
 
 
-"""
-applies
-B⁺ * [-Aˣ; -Aʸ] 
-"""
-# struct TriangleRecurrenceB{T} <: AbstractMatrix{T}
-#     a_x::Vector{T}
-#     b_x::Vector{T}
-#     Ba::NTuple{2,T}
-# end
+function xy_muladd!((x,y), A::TriangleRecurrenceA, v::AbstractVector, β, w::AbstractVector)
+    n = size(A,1)
+    d₀, d₁, d₂ = A.d
+    w_1 = view(w, 1:n-1)
+    w_1 .= A.bˣ .\ x .* v .+ β .* w_1
+    if n > 2
+        w[n] = d₀*x*v[n-2] + (d₁*x+d₂*y)*v[n-1] + β*w[n]
+    else
+        w[n] = (d₁*x+d₂*y)*v[n-1] + β*w[n]
+    end
+    w
+end
 
-# function size(BA::B⁺A)
-#     n = length(BA.b_x)
-#     (n+1, n)
-# end
 
-# function LinearAlgebra.mul!(dest::AbstractVector{T}, BA::TriangleRecurrenceB{T}, c::AbstractVector{T})
-#     @boundscheck (size(BA,2) == length(x) && size(BA,1) == length(y)) || throw(DimensionMismatch())
-#     a_x,b_x = BA.a_x,BA.b_x
-#     Ba_1, Ba_2 = BA.Ba
-#     x,y = BA.x, BA.y
+function LinearAlgebra.mul!(dest::AbstractVector{T}, BA::TriangleRecurrenceB{T}, c::AbstractVector{T}) where T
+    @boundscheck (size(BA,2) == length(c) && size(BA,1) == length(dest)) || throw(DimensionMismatch())
+    aˣ,bˣ = BA.aˣ,BA.bˣ
+    Ba_1, Ba_2 = BA.d
 
-#     n = length(b_x)
-#     dest[1:n] .= b_x .\ (x .- a_x) .* x
-#     dest[n+1] = Ba_1 * P_2[end-1] + Ba_2 * P_2[end]
-#     dest
-# end
+    n = length(bˣ)
+    dest[1:n] .= (-).(bˣ .\ aˣ .* c)
+    dest[n+1] = Ba_1 * c[end-1] + Ba_2 * c[end]
+    dest
+end
     
 
-# function ArrayLayouts.muladd!(α::T, BA::B⁺A{T}, x::AbstractVector{T}, β::T, y::AbstractVector{T})
-#     @boundscheck size(BA,2) == length(x) && size(BA,1) == length(y)
-#     a_x,b_x = BA.a_x,BA.b_x
+function ArrayLayouts.muladd!(α::T, BA::TriangleRecurrenceC{T}, u::AbstractVector{T}, β::T, dest::AbstractVector{T}) where T
+    @boundscheck (size(BA,2) == length(u) && size(BA,1) == length(dest)) || throw(DimensionMismatch())
+    bˣ,cˣ = BA.bˣ,BA.cˣ
+    d = BA.d
 
-#     n = length(b_x)
-#     y[1:n] .= b_x .\ (BA.x .- a_x) .* x
-#     y[n+1] = Ba_1 * P_2[end-1] + Ba_2 * P_2[end]
-#     y
-# end
-    
-
+    n = length(bˣ)
+    w = view(dest,1:n-1)
+    w .= α .* (view(bˣ,1:n-1) .\ cˣ .* u) .+ β .* w
+    dest[n] *= β
+    dest[n+1] = d * u[end] + β*dest[n+1]
+    dest
+end
 
 
 # Following gives data for applying 

@@ -1,7 +1,7 @@
 module MultivariateOrthogonalPolynomials
 using OrthogonalPolynomialsQuasi, FastTransforms, BlockBandedMatrices, BlockArrays, DomainSets, 
       QuasiArrays, StaticArrays, ContinuumArrays, InfiniteArrays, InfiniteLinearAlgebra, 
-      LazyArrays, SpecialFunctions, LinearAlgebra, BandedMatrices, LazyBandedMatrices
+      LazyArrays, SpecialFunctions, LinearAlgebra, BandedMatrices, LazyBandedMatrices, ArrayLayouts
 
 import Base: axes, in, ==, *, ^, \, copy, OneTo, getindex, size
 import DomainSets: boundary
