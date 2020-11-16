@@ -1,5 +1,4 @@
 ## Triangle Def
-# currently right trianglel
 struct Triangle <: EuclideanDomain{2,Float64}
     a::SVector{2,Float64}
     b::SVector{2,Float64}
@@ -11,6 +10,8 @@ function in(p::SVector{2,Float64}, d::Triangle)
     x,y = p
     0 ≤ x ≤ x + y ≤ 1
 end
+
+
 
 # issubset(a::Segment{<:SVector{2}}, b::Triangle) = all(in.(endpoints(a), Ref(b)))
 
@@ -26,6 +27,24 @@ boundary(d::Triangle) = PiecewiseSegment([d.a,d.b,d.c,d.a])
 
 
 Base.isnan(::Triangle) = false
+
+function tocanonical(d::Triangle, xy::SVector{2})
+    if all(iszero,d.a)
+        [d.b d.c] \ xy
+    else
+        tocanonical(d-d.a, xy-d.a)
+    end
+end
+
+function fromcanonical(d::Triangle, xy::SVector{2})
+    if all(iszero,d.a)
+        [d.b d.c]*xy
+    else
+        fromcanonical(d-d.a, xy) + d.a
+    end
+end
+
+OrthogonalPolynomialsQuasi.checkpoints(d::Triangle) = fromcanonical.(Ref(d), [SVector(0.1,0.2), SVector(0.2,0.3)])
 
 # expansion in OPs orthogonal to
 # x^a*y^b*(1-x-y)^c
@@ -359,33 +378,30 @@ function xy_muladd!(xy, Ac::Adjoint{<:Any,<:TriangleRecurrenceA}, v::AbstractVec
 end
 
 
-function LinearAlgebra.mul!(dest::AbstractVector{T}, BA::TriangleRecurrenceB{T}, c::AbstractVector{T}) where T
+function ArrayLayouts.muladd!(α::T, BA::TriangleRecurrenceB{T}, c::AbstractVector{T}, β::T, dest::AbstractVector{T}) where T
     @boundscheck (size(BA,2) == length(c) && size(BA,1) == length(dest)) || throw(DimensionMismatch())
     aˣ,bˣ = BA.aˣ,BA.bˣ
     Ba_1, Ba_2 = BA.d
 
     n = length(bˣ)
-    dest[1:n] .= (-).(bˣ .\ aˣ .* c)
-    if n > 1
-        dest[n+1] = Ba_1 * c[end-1] + Ba_2 * c[end]
-    else
-        dest[n+1] = Ba_2 * c[end]
-    end
+    w = view(dest,1:n)
+    w .= (-α) .* (bˣ .\ aˣ .* c) .+ β .* w
+    dest[n+1] = α*(n > 1 ? Ba_1 * c[end-1] + Ba_2 * c[end] : Ba_2 * c[end]) + β*dest[n+1]
     dest
 end
 
-function LinearAlgebra.mul!(dest::AbstractVector{T}, BAc::Adjoint{T,<:TriangleRecurrenceB{T}}, c::AbstractVector{T}) where T
+function ArrayLayouts.muladd!(α::T, BAc::Adjoint{T,<:TriangleRecurrenceB{T}}, c::AbstractVector{T}, β::T, dest::AbstractVector{T}) where T
     @boundscheck (size(BAc,2) == length(c) && size(BAc,1) == length(dest)) || throw(DimensionMismatch())
     BA = parent(BAc)
     aˣ,bˣ = BA.aˣ,BA.bˣ
     Ba_1, Ba_2 = BA.d
 
     n = length(bˣ)
-    dest .= (-).(bˣ .\ aˣ .* view(c,1:n))
+    dest .= (-α) .* (bˣ .\ aˣ .* view(c,1:n)) .+ β .* dest
     if n > 1
-        dest[end-1] += Ba_1*c[n+1]
+        dest[end-1] += α*Ba_1*c[n+1]
     end
-    dest[end] += Ba_2*c[n+1]
+    dest[end] += α*Ba_2*c[n+1]
     dest
 end
 
@@ -399,7 +415,7 @@ function ArrayLayouts.muladd!(α::T, BA::TriangleRecurrenceC{T}, u::AbstractVect
     w = view(dest,1:n-1)
     w .= α .* (view(bˣ,1:n-1) .\ cˣ .* u) .+ β .* w
     dest[n] *= β
-    dest[n+1] = d * u[end] + β*dest[n+1]
+    dest[n+1] = α*d * u[end] + β*dest[n+1]
     dest
 end
 
@@ -411,9 +427,29 @@ function ArrayLayouts.muladd!(α::T, BAc::Adjoint{T,TriangleRecurrenceC{T}}, u::
 
     n = length(bˣ)
     w .= α .* (view(bˣ,1:n-1) .\ cˣ .* view(u,1:n-1)) .+ β .* w
-    w[n-1] += d*u[n+1]
+    w[n-1] += α*d*u[n+1]
 
     w
+end
+
+# following also resizes
+function LinearAlgebra.lmul!(BAc::Adjoint{T,TriangleRecurrenceC{T}}, u::AbstractVector{T}) where T
+    @boundscheck size(BAc,2) == length(u) || throw(DimensionMismatch())
+    BA = parent(BAc)
+    bˣ,cˣ = BA.bˣ,BA.cˣ
+    d = BA.d
+
+    n = length(bˣ)
+    v = view(u,1:n-1)
+    v .= view(bˣ,1:n-1) .\ cˣ .* v
+    u[n-1] += d*u[n+1]
+
+    resize!(u, n-1)
+end
+
+function LinearAlgebra.mul!(dest::AbstractVector{T}, BA::Union{TriangleRecurrenceB,TriangleRecurrenceC,Adjoint{<:Any,<:TriangleRecurrenceB},Adjoint{<:Any,<:TriangleRecurrenceC}}, c::AbstractVector) where T
+    ArrayLayouts.zero!(dest) # avoid NaN
+    muladd!(one(T), BA, c, zero(T), dest)
 end
 
 ##
@@ -469,15 +505,33 @@ function getindex(f::Expansion{T,<:JacobiTriangle}, xy::SVector{2}) where T
     Y = jacobimatrix(Val(2), P)
     X_N = X[Block.(1:N), Block.(1:N-1)]
     Y_N = Y[Block.(1:N), Block.(1:N-1)]
-    γ = Array{T}(undef, 1)
+    γ1 = Array{T}(undef, N-1)
+    γ2 = Array{T}(undef, N)
+    A = TriangleRecurrenceA(N-1, X_N, Y_N)
+    B = TriangleRecurrenceB(N-1, X_N, Y_N)
+    copyto!(γ2, view(c,Block(N)))
+    copyto!(γ1, view(c,Block(N-1)))
+    muladd!(one(T), B', γ2, one(T), γ1)
+    xy_muladd!(xy, A', γ2, one(T), γ1)
 
-    B = TriangleRecurrenceB(1, X_N, Y_N)
-    A = TriangleRecurrenceA(1, X_N, Y_N)
-    c_2 = view(c,Block(2))
-    mul!(γ, B', c_2)
-    xy_muladd!(xy, A', c_2, one(T), γ)
-    γ[1] + c[1]
+    for n = N-2:-1:1
+        A,B,C = TriangleRecurrenceA(n, X_N, Y_N),TriangleRecurrenceB(n, X_N, Y_N),TriangleRecurrenceC(n+1, X_N, Y_N)
+        # some magic! C can be done in-place, otherwise
+        # we would need a secondary buffer.
+        # this also resizes γ2
+        lmul!(C', γ2)
+        # Need to swap sign since it should have been -C
+        γ2 .= (-).(γ2) .+ view(c,Block(n))
+        γ2,γ1 = γ1,γ2
+        muladd!(one(T), B', γ2, one(T), γ1)
+        xy_muladd!(xy, A', γ2, one(T), γ1)
+    end
+
+    γ1[1]
 end
+
+getindex(f::Expansion{T,<:JacobiTriangle}, xys::AbstractArray{<:SVector{2}}) where T =
+    [f[xy] for xy in xys]
 
 # getindex(f::Expansion{T,<:JacobiTriangle}, x::AbstractVector{<:Number}) where T =
 #     copyto!(Vector{T}(undef, length(x)), view(f, x))

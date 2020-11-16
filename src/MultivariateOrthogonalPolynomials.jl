@@ -61,6 +61,7 @@ getindex(P::MultivariateOrthogonalPolynomial{<:Any,D}, xy::SVector{D}, J::Block{
 getindex(P::MultivariateOrthogonalPolynomial{<:Any,D}, xy::SVector{D}, JR::BlockRange{1}) where D = P[xy, Block.(OneTo(Int(maximum(JR))))][JR]
 getindex(P::MultivariateOrthogonalPolynomial{<:Any,D}, xy::SVector{D}, Jj::BlockIndex{1}) where D = P[xy, block(Jj)][blockindex(Jj)]
 getindex(P::MultivariateOrthogonalPolynomial{<:Any,D}, xy::SVector{D}, j::Integer) where D = P[xy, findblockindex(axes(P,2), j)]
+getindex(P::MultivariateOrthogonalPolynomial{<:Any,D}, xy::SVector{D}, jr::AbstractVector) where D = P[xy, Block.(OneTo(Int(findblock(axes(P,2), maximum(jr)))))][jr]
 
 const FirstInclusion = BroadcastQuasiVector{<:Any, typeof(first), <:Tuple{Inclusion}}
 const LastInclusion = BroadcastQuasiVector{<:Any, typeof(last), <:Tuple{Inclusion}}
@@ -111,6 +112,21 @@ where A[N] is (N+1) x 2N, B[N] and C[N] are (N+1) x N.
 
 # forwardrecurrence(N::Block{1}, A::AbstractVector, B::AbstractVector, C::AbstractVector, xy) =
 #     forwardrecurrence!(PseudoBlockVector{promote_type(eltype(eltype(A)),eltype(eltype(B)),eltype(eltype(C)),eltype(xy))}(undef, 1:Int(N)), A, B, C, xy)
+
+# use block expansion
+ContinuumArrays.transform_ldiv(V::SubQuasiArray{<:Any,2,<:BivariateOrthogonalPolynomial,<:Tuple{Inclusion,BlockSlice{BlockOneTo}}}, B, _) =
+    factorize(V) \ B
+function ContinuumArrays.transform_ldiv(V::SubQuasiArray{<:Any,2,<:BivariateOrthogonalPolynomial,<:Tuple{Inclusion,AbstractVector{Int}}}, B, _)
+    P = parent(V)
+    _,jr = parentindices(V)
+    J = findblock(axes(P,2),maximum(jr))
+    (P[:,Block.(OneTo(Int(J)))] \ B)[jr]
+end
+
+# Make sure block structure matches. Probably should do this for all block mul
+LazyArrays.mul(A::MultivariateOrthogonalPolynomial, b::AbstractVector) =
+    ApplyQuasiArray(*, A, PseudoBlockVector(b, (axes(A,2),)))
+
 
 
 include("Triangle/Triangle.jl")

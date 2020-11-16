@@ -45,6 +45,13 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
             c = PseudoBlockVector([1:3; Zeros(∞)], (axes(P,2),))
             f = P*c
             @test f[xy] ≈ P[xy,1:3]'*(1:3)
+            c = PseudoBlockVector([1:6; Zeros(∞)], (axes(P,2),))
+            f = P*c
+            @test f[xy] ≈ P[xy,1:6]'*(1:6)
+
+            c = PseudoBlockVector([randn(5050); Zeros(∞)], (axes(P,2),))
+            f = P*c
+            @test f[xy] ≈ P[xy,1:5050]'*c[1:5050]
 
             c = PseudoBlockVector([1:10; zeros(∞)], (axes(P,2),))
             f = P*c
@@ -52,11 +59,24 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
             @test f[xy] ≈ dot(P[xy,1:10],1:10)
             @test f[[xy, xy.+0.1]] ≈ [f[xy], f[xy.+0.1]]
             @test f[permutedims([xy, xy.+0.1])] ≈ [f[xy] f[xy.+0.1]]
+
+            @testset "block structure missing" begin
+                f = P * [1:5; zeros(∞)]
+                @test f.args[2][Block(2)] == 2:3
+                @test f[xy] ≈ P[xy,1:5]'*(1:5)
+
+                f = P * [1:5; Zeros(∞)]
+                @test f.args[2][Block(2)] == 2:3
+                @test f[xy] ≈ P[xy,1:5]'*(1:5)
+            end
         end
     end
 
-    @testset "expansion" begin
+    @testset "transform" begin
         P = JacobiTriangle()
+        xy = axes(P,1)
+        x,y = first.(xy),last.(xy)
+
         N = M = 20
         P_N = P[:,Block.(Base.OneTo(N))]
         x = [sinpi((2N-2n-1)/(4N))^2 for n in 0:N-1]
@@ -74,9 +94,14 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
             @test tridenormalize!(U,0,0,0) ≈ [1 3 6 10 0; 2 5 9 0 0; 4 8 0 0 0; 7 0 0 0 0; 0 0 0 0 0]
         end
 
-        xy = axes(P_N,1)
-        x,y = first.(xy),last.(xy)
         u = P_N * (P_N \ (exp.(x) .* cos.(y)))
+        @test u[SVector(0.1,0.2)] ≈ exp(0.1)*cos(0.2)
+
+        P_n = P[:,1:200]
+        u = P_n * (P_n \ (exp.(x) .* cos.(y)))
+        @test u[SVector(0.1,0.2)] ≈ exp(0.1)*cos(0.2)
+
+        u = P * (P \ (exp.(x) .* cos.(y)))
         @test u[SVector(0.1,0.2)] ≈ exp(0.1)*cos(0.2)
     end
 
@@ -182,13 +207,21 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
 
                         @test mul!(w, TriangleRecurrenceB(N, X, Y), v) ≈ B⁺(N)*[-Aˣ; -Aʸ]*v
                         @test mul!(v, TriangleRecurrenceB(N, X, Y)', w) ≈ (B⁺(N)*[-Aˣ; -Aʸ])'*w
+                        @test muladd!(3.0, TriangleRecurrenceB(N, X, Y), v, 2.0, copy(w)) ≈ 3B⁺(N)*[-Aˣ; -Aʸ]*v + 2w
+                        @test muladd!(3.0, TriangleRecurrenceB(N, X, Y)', w, 2.0, copy(v)) ≈ 3(B⁺(N)*[-Aˣ; -Aʸ])'*w + 2v
+
 
                         if N > 1
                             u = randn(N-1)
-                            @test muladd!(1.0, TriangleRecurrenceC(N, X, Y), u, 2.0, copy(w)) ≈ 
-                                B⁺(N)*[Cˣ; Cʸ]*u + 2w
-                            @test muladd!(1.0, TriangleRecurrenceC(N, X, Y)', w, 2.0, copy(u)) ≈ 
-                                (B⁺(N)*[Cˣ; Cʸ])'*w + 2u
+                            @test muladd!(3.0, TriangleRecurrenceC(N, X, Y), u, 2.0, copy(w)) ≈ 
+                                3B⁺(N)*[Cˣ; Cʸ]*u + 2w
+                            @test muladd!(3.0, TriangleRecurrenceC(N, X, Y)', w, 2.0, copy(u)) ≈ 
+                                3(B⁺(N)*[Cˣ; Cʸ])'*w + 2u
+
+                            # need in-place to minimise buffers in Clenshaw
+                            w̃ = copy(w)
+                            @test lmul!(TriangleRecurrenceC(N, X, Y)', w̃) === w̃
+                            @test w̃ ≈ (B⁺(N)*[Cˣ; Cʸ])'*w
                         end
                     end
 
