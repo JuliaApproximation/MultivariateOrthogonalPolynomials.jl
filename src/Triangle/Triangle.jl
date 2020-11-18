@@ -471,6 +471,7 @@ function tri_forwardrecurrence(N::Int, X, Y, x, y)
     Y_N = Y[Block.(1:N), Block.(1:N-1)]
 
     for n = 2:N-1
+        # P[n+1,xy] == (A[n]*[x*Eye(n); y*Eye(n)] + B[n])*P[n,xy] - C[n]*P[n-1,xy]
         A = TriangleRecurrenceA(n, X_N, Y_N)
         B = TriangleRecurrenceB(n, X_N, Y_N)
         C = TriangleRecurrenceC(n, X_N, Y_N)
@@ -515,6 +516,7 @@ function getindex(f::Expansion{T,<:JacobiTriangle}, xy::SVector{2}) where T
     xy_muladd!(xy, A', γ2, one(T), γ1)
 
     for n = N-2:-1:1
+        # P[n+1,xy] == (A[n]*[x*Eye(n); y*Eye(n)] + B[n])*P[n,xy] - C[n]*P[n-1,xy]
         A,B,C = TriangleRecurrenceA(n, X_N, Y_N),TriangleRecurrenceB(n, X_N, Y_N),TriangleRecurrenceC(n+1, X_N, Y_N)
         # some magic! C can be done in-place, otherwise
         # we would need a secondary buffer.
