@@ -1,6 +1,6 @@
 name = "MultivariateOrthogonalPolynomials"
 uuid = "4f6956fd-4f93-5457-9149-7bfc4b2ce06d"
-version = "0.0.1"
+version = "0.0.2"
 
 [deps]
 ApproxFun = "28f2ccd6-bb30-5033-b560-165f7b14dc2f"
