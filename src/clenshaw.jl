@@ -149,7 +149,7 @@ function getindex(M::ClenshawMultiplication, k::Int, j::Int)
     M[K:K,J:J][k-sum(1:Int(K)-1),j-sum(1:Int(J)-1)]
 end
 
-function BandedBlockBandedMatrix(V::SubOperator{T,<:ClenshawMultiplication,Tuple{BlockRange1,BlockRange1}}) where T
+function BandedBlockBandedMatrix(V::SubOperator{T,<:ClenshawMultiplication,<:Tuple{BlockRange1,BlockRange1}}) where T
     KR,JR = parentindices(V)
     M = parent(V)
     sp,cfs,C = M.space, M.cfs, M.data

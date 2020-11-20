@@ -77,12 +77,14 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
         xy = axes(P,1)
         x,y = first.(xy),last.(xy)
 
-        N = M = 20
-        P_N = P[:,Block.(Base.OneTo(N))]
-        x = [sinpi((2N-2n-1)/(4N))^2 for n in 0:N-1]
-        w = [sinpi((2M-2m-1)/(4M))^2 for m in 0:M-1]
-        g = [SVector(x[n+1], x[N-n]*w[m+1]) for n in 0:N-1, m in 0:M-1]
-        @test grid(P_N) ≈ g
+        @testset "grid" begin
+            N = M = 20
+            P_N = P[:,Block.(Base.OneTo(N))]
+            x = [sinpi((2N-2n-1)/(4N))^2 for n in 0:N-1]
+            w = [sinpi((2M-2m-1)/(4M))^2 for m in 0:M-1]
+            g = [SVector(x[n+1], x[N-n]*w[m+1]) for n in 0:N-1, m in 0:M-1]
+            @test grid(P_N) ≈ g
+        end
 
         @testset "relation with transform" begin
             c = PseudoBlockVector([1:10; zeros(∞)], (axes(P,2),))
@@ -143,6 +145,9 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
             x,y = first.(xy),last.(xy)
             X = P \ (x .* P)
             Y = P \ (y .* P)
+
+            N = 100
+            @time X.args[1][Block.(1:N), Block.(1:N)]
 
             @test X[Block(2,2)] isa BandedMatrix
 
