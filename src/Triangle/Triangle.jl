@@ -85,9 +85,9 @@ axes(P::TriangleWeight) = (Inclusion(Triangle()),)
     a,b,c = P.a,P.b,P.c
     n = mortar(Fill.(Base.OneTo(∞),Base.OneTo(∞)))
     k = mortar(Base.OneTo.(Base.OneTo(∞)))
-    dat = Vcat(
-        ((k .+ (b-1)) .* (n .+ k .+ (b+c-1)) ./ (2k .+ (b+c-1)))',
-        ((n .+ k .+ (a+b+c)) .* (k .+ (b+c)) ./ (2k .+ (b+c-1)))'
+    dat = BlockHcat(
+        ((k .+ (b-1)) .* (n .+ k .+ (b+c-1)) ./ (2k .+ (b+c-1))),
+        ((n .+ k .+ (a+b+c)) .* (k .+ (b+c)) ./ (2k .+ (b+c-1)))
         )
     JacobiTriangle(a+1,b,c+1) * _BandedBlockBandedMatrix(dat, axes(k,1), (-1,1), (0,1))
 end
@@ -122,7 +122,7 @@ end
 function Wx(a,b,c)
     n = mortar(Fill.(Base.OneTo(∞),Base.OneTo(∞)))
     k = mortar(Base.OneTo.(Base.OneTo(∞)))
-    dat = Vcat(
+    dat = BlockVcat(
         ((k .+ (c-1)) .* ( k .- n .- 1 ) ./ (2k .+ (b+c-1)))',
         (k .* (k .- n .- a) ./ (2k .+ (b+c-1)))'
         )
