@@ -85,11 +85,11 @@ axes(P::TriangleWeight) = (Inclusion(Triangle()),)
     a,b,c = P.a,P.b,P.c
     n = mortar(Fill.(Base.OneTo(∞),Base.OneTo(∞)))
     k = mortar(Base.OneTo.(Base.OneTo(∞)))
-    dat = BlockHcat(
+    dat = BlockBroadcastArray(hcat,
         ((k .+ (b-1)) .* (n .+ k .+ (b+c-1)) ./ (2k .+ (b+c-1))),
         ((n .+ k .+ (a+b+c)) .* (k .+ (b+c)) ./ (2k .+ (b+c-1)))
         )
-    JacobiTriangle(a+1,b,c+1) * _BandedBlockBandedMatrix(dat, axes(k,1), (-1,1), (0,1))
+    JacobiTriangle(a+1,b,c+1) * _BandedBlockBandedMatrix(dat', axes(k,1), (-1,1), (0,1))
 end
 
 @simplify function *(Dy::PartialDerivative{2}, P::JacobiTriangle)
@@ -115,7 +115,7 @@ end
                                 axes(k,1), (0,0), (0,0))
 end
 
- function Wy(a,b,c)
+function Wy(a,b,c)
     k = mortar(Base.OneTo.(Base.OneTo(∞)))
     _BandedBlockBandedMatrix((-k)', axes(k,1), (1,-1), (1,-1))
 end
@@ -132,11 +132,11 @@ end
  function Rx(a,b,c)
     n = mortar(Fill.(Base.OneTo(∞),Base.OneTo(∞)))
     k = mortar(Base.OneTo.(Base.OneTo(∞)))
-    dat = PseudoBlockArray(Vcat(
-        ((n .+ k .+ (b+c-1) ) ./ (2n .+ (a+b+c)))',
-        ((n .+ k .+ (a+b+c) ) ./ (2n .+ (a+b+c)))'
-        ), (blockedrange(Fill(1,2)), axes(n,1)))
-    _BandedBlockBandedMatrix(dat, axes(k,1), (0,1), (0,0))
+    dat = BlockHcat(
+        BroadcastVector((n,k,bc1,abc) -> (n + k +  bc1) / (2n + abc), n, k, b+c-1, a+b+c),
+        BroadcastVector((n,k,abc) -> (n + k +  abc) / (2n + abc), n, k, a+b+c)
+        )
+    _BandedBlockBandedMatrix(dat', axes(k,1), (0,1), (0,0))
 end
 function Ry(a,b,c)
     n = mortar(Fill.(Base.OneTo(∞),Base.OneTo(∞)))
