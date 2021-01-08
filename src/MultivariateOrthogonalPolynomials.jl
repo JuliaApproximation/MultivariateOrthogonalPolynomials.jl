@@ -14,6 +14,8 @@ import BlockBandedMatrices: _BandedBlockBandedMatrix
 import LinearAlgebra: factorize
 import LazyArrays: arguments, paddeddata
 
+import OrthogonalPolynomialsQuasi: jacobimatrix
+
 export Triangle, JacobiTriangle, TriangleWeight, WeightedTriangle, PartialDerivative, Laplacian
 
 #########
