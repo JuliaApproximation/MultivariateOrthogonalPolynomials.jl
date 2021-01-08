@@ -9,7 +9,7 @@ import DomainSets: boundary
 import QuasiArrays: LazyQuasiMatrix, LazyQuasiArrayStyle
 import ContinuumArrays: @simplify, Weight, grid, TransformFactorization, Expansion
 
-import BlockArrays: block, blockindex, BlockSlice
+import BlockArrays: block, blockindex, BlockSlice, viewblock
 import BlockBandedMatrices: _BandedBlockBandedMatrix
 import LinearAlgebra: factorize
 import LazyArrays: arguments, paddeddata

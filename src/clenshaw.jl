@@ -71,7 +71,8 @@ blocksizes(U::ClenshawRecurrence) = BlockSizes(1:(length(U.data.B̃ˣ)+1),1:(len
 blockbandwidths(::ClenshawRecurrence) = (0,2)
 subblockbandwidths(::ClenshawRecurrence) = (0,2)
 
-@inline function getblock(U::ClenshawRecurrence{T}, K::Int, J::Int) where T
+@inline function viewblock(U::ClenshawRecurrence{T}, KJ::Block{2}) where T
+    K,J = KJ.n
     J == K && return BandedMatrix(Eye{T}(K,K))
     J == K+1 && return BandedMatrix((U.data.B[K] - U.x*U.data.B̃ˣ[K] - U.y*U.data.B̃ʸ[K]))
     J == K+2 && return BandedMatrix((U.data.C[K]))
@@ -79,7 +80,7 @@ subblockbandwidths(::ClenshawRecurrence) = (0,2)
 end
 
 @inline function getindex(block_arr::ClenshawRecurrence, blockindex::BlockIndex{2})
-    @inbounds block = getblock(block_arr, blockindex.I...)
+    @inbounds block = view(block_arr, block(blockindex))
     @boundscheck checkbounds(block, blockindex.α...)
     @inbounds v = block[blockindex.α...]
     return v
