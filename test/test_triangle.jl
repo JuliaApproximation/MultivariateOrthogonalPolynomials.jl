@@ -93,7 +93,7 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
             F = f[g]
             Pl = plan_tri2cheb(F, 0, 0, 0)
             PA = plan_tri_analysis(F)
-            U = Pl\(PA*F)
+            @time U = Pl\(PA*F)
             @test MultivariateOrthogonalPolynomials.tridenormalize!(U,0,0,0) ≈ [1 3 6 10 0; 2 5 9 0 0; 4 8 0 0 0; 7 0 0 0 0; 0 0 0 0 0]
         end
 
@@ -110,7 +110,7 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
             u = P_n * (P_n \ (exp.(x) .* cos.(y)))
             @test u[SVector(0.1,0.2)] ≈ exp(0.1)*cos(0.2)
 
-            u = P * (P \ (exp.(x) .* cos.(y)))
+            @time u = P * (P \ (exp.(x) .* cos.(y)))
             @test u[SVector(0.1,0.2)] ≈ exp(0.1)*cos(0.2)
         end
     end
