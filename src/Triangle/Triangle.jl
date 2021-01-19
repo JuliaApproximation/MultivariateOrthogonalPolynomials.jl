@@ -67,6 +67,8 @@ axes(P::JacobiTriangle) = (Inclusion(Triangle()),blockedrange(Base.OneTo(∞)))
 
 copy(A::JacobiTriangle) = A
 
+Base.summary(io::IO, P::JacobiTriangle) = print(io, "JacobiTriangle($(P.a), $(P.b), $(P.c))")
+
 struct TriangleWeight{T,V} <: Weight{T}
     a::V
     b::V
@@ -80,6 +82,8 @@ const WeightedTriangle{T} = WeightedBasis{T,<:TriangleWeight,<:JacobiTriangle}
 WeightedTriangle(a, b, c) = TriangleWeight(a,b,c) .* JacobiTriangle(a,b,c)
 
 axes(P::TriangleWeight) = (Inclusion(Triangle()),)
+
+Base.summary(io::IO, P::TriangleWeight) = print(io, "x^$(P.a)*y^$(P.b)*(1-x-y)^$(P.c) on the unit triangle")
 
 @simplify function *(Dx::PartialDerivative{1}, P::JacobiTriangle)
     a,b,c = P.a,P.b,P.c
@@ -95,7 +99,8 @@ end
 @simplify function *(Dy::PartialDerivative{2}, P::JacobiTriangle)
     a,b,c = P.a,P.b,P.c
     k = mortar(Base.OneTo.(Base.OneTo(∞)))
-    JacobiTriangle(a,b+1,c+1) * _BandedBlockBandedMatrix((k .+ (b+c))', axes(k,1), (-1,1), (-1,1))
+    T = promote_type(eltype(Dy), eltype(P)) # avoid bug in convert
+    JacobiTriangle(a,b+1,c+1) * _BandedBlockBandedMatrix((k .+ convert(T, b+c))', axes(k,1), (-1,1), (-1,1))
 end
 
 
@@ -545,6 +550,7 @@ getindex(f::Expansion{T,<:JacobiTriangle}, xys::AbstractArray{<:SVector{2}}) whe
 #     clenshaw!(paddeddata(c), recurrencecoefficients(P)..., x, Fill(_p0(P), length(x)), dest)
 # end
 
+lgamma(x) = logabsgamma(x)[1]
 
 # FastTransforms uses normalized Jacobi polynomials so this corrects the normalization
 function _ft_trinorm(n,k,a,b,c)

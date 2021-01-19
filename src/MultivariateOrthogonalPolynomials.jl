@@ -24,13 +24,13 @@ export Triangle, JacobiTriangle, TriangleWeight, WeightedTriangle, PartialDeriva
 #########
 
 
-struct PartialDerivative{k,T,D} <: LazyQuasiMatrix{T}
-    axis::Inclusion{T,D}
+struct PartialDerivative{k,T,Ax<:Inclusion} <: LazyQuasiMatrix{T}
+    axis::Ax
 end
 
-PartialDerivative{k,T}(axis::Inclusion{<:Any,D}) where {k,T,D} = PartialDerivative{k,T,D}(axis)
+PartialDerivative{k,T}(axis::Inclusion) where {k,T} = PartialDerivative{k,T,typeof(axis)}(axis)
 PartialDerivative{k,T}(domain) where {k,T} = PartialDerivative{k,T}(Inclusion(domain))
-PartialDerivative{k}(axis) where k = PartialDerivative{k,eltype(axis)}(axis)
+PartialDerivative{k}(axis) where k = PartialDerivative{k,eltype(eltype(axis))}(axis)
 
 axes(D::PartialDerivative) = (D.axis, D.axis)
 ==(a::PartialDerivative{k}, b::PartialDerivative{k}) where k = a.axis == b.axis

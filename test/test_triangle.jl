@@ -1,5 +1,5 @@
 using MultivariateOrthogonalPolynomials, StaticArrays, BlockArrays, BlockBandedMatrices, ArrayLayouts,
-        QuasiArrays, Test, OrthogonalPolynomialsQuasi, BandedMatrices, FastTransforms
+        QuasiArrays, Test, OrthogonalPolynomialsQuasi, BandedMatrices, FastTransforms, LinearAlgebra
 import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleRecurrenceA, TriangleRecurrenceB, TriangleRecurrenceC, xy_muladd!
 
 @testset "Triangle" begin
@@ -73,11 +73,8 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
     end
 
     @testset "transform" begin
-        P = JacobiTriangle()
-        xy = axes(P,1)
-        x,y = first.(xy),last.(xy)
-
         @testset "grid" begin
+            P = JacobiTriangle()
             N = M = 20
             P_N = P[:,Block.(Base.OneTo(N))]
             x = [sinpi((2N-2n-1)/(4N))^2 for n in 0:N-1]
@@ -87,24 +84,35 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
         end
 
         @testset "relation with transform" begin
+            P = JacobiTriangle()
             c = PseudoBlockVector([1:10; zeros(∞)], (axes(P,2),))
             f = P*c
+            N = 5
+            P_N = P[:,Block.(Base.OneTo(N))]
+            g = grid(P_N)
             F = f[g]
             Pl = plan_tri2cheb(F, 0, 0, 0)
             PA = plan_tri_analysis(F)
             U = Pl\(PA*F)
-            @test tridenormalize!(U,0,0,0) ≈ [1 3 6 10 0; 2 5 9 0 0; 4 8 0 0 0; 7 0 0 0 0; 0 0 0 0 0]
+            @test MultivariateOrthogonalPolynomials.tridenormalize!(U,0,0,0) ≈ [1 3 6 10 0; 2 5 9 0 0; 4 8 0 0 0; 7 0 0 0 0; 0 0 0 0 0]
         end
 
-        u = P_N * (P_N \ (exp.(x) .* cos.(y)))
-        @test u[SVector(0.1,0.2)] ≈ exp(0.1)*cos(0.2)
+        @testset "expansions" begin
+            P = JacobiTriangle()
+            xy = axes(P,1)
+            x,y = first.(xy),last.(xy)
+            N = 20
+            P_N = P[:,Block.(Base.OneTo(N))]
+            u = P_N * (P_N \ (exp.(x) .* cos.(y)))
+            @test u[SVector(0.1,0.2)] ≈ exp(0.1)*cos(0.2)
 
-        P_n = P[:,1:200]
-        u = P_n * (P_n \ (exp.(x) .* cos.(y)))
-        @test u[SVector(0.1,0.2)] ≈ exp(0.1)*cos(0.2)
+            P_n = P[:,1:200]
+            u = P_n * (P_n \ (exp.(x) .* cos.(y)))
+            @test u[SVector(0.1,0.2)] ≈ exp(0.1)*cos(0.2)
 
-        u = P * (P \ (exp.(x) .* cos.(y)))
-        @test u[SVector(0.1,0.2)] ≈ exp(0.1)*cos(0.2)
+            u = P * (P \ (exp.(x) .* cos.(y)))
+            @test u[SVector(0.1,0.2)] ≈ exp(0.1)*cos(0.2)
+        end
     end
 
     @testset "operators" begin
@@ -113,6 +121,8 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
 
         ∂ˣ = PartialDerivative{1}(xy)
         ∂ʸ = PartialDerivative{2}(xy)
+
+        @test eltype(∂ˣ) == eltype(∂ʸ) == Float64
 
         Dˣ = JacobiTriangle(1,0,1) \ (∂ˣ * P)
         Dʸ = JacobiTriangle(0,1,1) \ (∂ʸ * P)
@@ -147,7 +157,7 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
             Y = P \ (y .* P)
 
             N = 100
-            @time X.args[1][Block.(1:N), Block.(1:N)]
+            @test X.args[1][Block.(Base.OneTo(N)), Block.(Base.OneTo(N))] isa BandedBlockBandedMatrix
 
             @test X[Block(2,2)] isa BandedMatrix
 
