@@ -1,7 +1,7 @@
-using ApproxFun, MultivariateOrthogonalPolynomials, Test
+using MultivariateOrthogonalPolynomials, Test
 
 include("test_triangle.jl")
-include("test_dirichlettriangle.jl")
+# include("test_dirichlettriangle.jl")
 
 
 ##  bessel

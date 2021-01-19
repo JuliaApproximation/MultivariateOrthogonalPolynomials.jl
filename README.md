@@ -3,15 +3,21 @@
 [![Build Status](https://travis-ci.org/JuliaApproximation/MultivariateOrthogonalPolynomials.jl.svg?branch=master)](https://travis-ci.org/JuliaApproximation/MultivariateOrthogonalPolynomials.jl)
 
 This is an experimental package to add support for multivariate orthogonal polynomials on disks, spheres, triangles, and other simple
-geometries to [ApproxFun.jl](https://github.com/JuliaApproximation/ApproxFun.jl). At the moment it primarily supports triangles. For example,
+geometries to [ContinuumArrays.jl](https://github.com/JuliaApproximation/ContinuumArrays.jl). At the moment it primarily supports triangles. For example,
 we can solve variable coefficient Helmholtz on the triangle with zero Dirichlet conditions as follows:
 ```julia
-using ApproxFun, MultivariateOrthogonalPolynomials
-x,y = Fun(Triangle())
-Δ = Laplacian() : TriangleWeight(1.0,1.0,1.0,JacobiTriangle(1.0,1.0,1.0))
-V = x*y^2
-L = Δ + 200^2*V
-u = \(L, ones(Triangle()); tolerance=1E-5)
+julia> using MultivariateOrthogonalPolynomials, StaticArrays, LinearAlgebra
+
+julia> P = JacobiTriangle()
+JacobiTriangle(0, 0, 0)
+
+julia> x,y = first.(axes(P,1)), last.(axes(P,1));
+
+julia> u = P * (P \ (exp.(x) .* cos.(y))) # Expand in Triangle OPs
+JacobiTriangle(0, 0, 0) * [1.3365085377830084, 0.5687967596428205, -0.22812040274224554, 0.07733064070637755, 0.016169744493985644, -0.08714886622738759, 0.00338435674992512, 0.01220019521126353, -0.016867598915573725, 0.003930461395801074  …  ]
+
+julia> u[SVector(0.1,0.2)] # Evaluate expansion
+1.083141079608063
 ```
 See the examples folder for more examples, including non-zero Dirichlet conditions, Neumann conditions, and piecing together multiple triangles. In particular, the [examples](examples/triangleexamples.jl) from Olver, Townsend & Vasil 2019.
 
