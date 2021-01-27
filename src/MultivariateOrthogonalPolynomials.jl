@@ -1,5 +1,5 @@
 module MultivariateOrthogonalPolynomials
-using OrthogonalPolynomialsQuasi, FastTransforms, BlockBandedMatrices, BlockArrays, DomainSets, 
+using ClassicalOrthogonalPolynomials, FastTransforms, BlockBandedMatrices, BlockArrays, DomainSets, 
       QuasiArrays, StaticArrays, ContinuumArrays, InfiniteArrays, InfiniteLinearAlgebra, 
       LazyArrays, SpecialFunctions, LinearAlgebra, BandedMatrices, LazyBandedMatrices, ArrayLayouts
 
@@ -14,7 +14,7 @@ import BlockBandedMatrices: _BandedBlockBandedMatrix
 import LinearAlgebra: factorize
 import LazyArrays: arguments, paddeddata
 
-import OrthogonalPolynomialsQuasi: jacobimatrix
+import ClassicalOrthogonalPolynomials: jacobimatrix
 
 export Triangle, JacobiTriangle, TriangleWeight, WeightedTriangle, PartialDerivative, Laplacian, MultivariateOrthogonalPolynomial, BivariateOrthogonalPolynomial
 

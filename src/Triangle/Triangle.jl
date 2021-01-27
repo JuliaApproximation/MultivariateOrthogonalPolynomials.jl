@@ -44,7 +44,7 @@ function fromcanonical(d::Triangle, xy::SVector{2})
     end
 end
 
-OrthogonalPolynomialsQuasi.checkpoints(d::Triangle) = fromcanonical.(Ref(d), [SVector(0.1,0.2), SVector(0.2,0.3)])
+ClassicalOrthogonalPolynomials.checkpoints(d::Triangle) = fromcanonical.(Ref(d), [SVector(0.1,0.2), SVector(0.2,0.3)])
 
 # expansion in OPs orthogonal to
 # x^a*y^b*(1-x-y)^c
