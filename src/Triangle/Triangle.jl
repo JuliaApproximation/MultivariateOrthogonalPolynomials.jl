@@ -63,7 +63,7 @@ JacobiTriangle(a::T, b::T, c::T) where T = JacobiTriangle{float(T),T}(a, b, c)
 JacobiTriangle() = JacobiTriangle(0,0,0)
 ==(K1::JacobiTriangle, K2::JacobiTriangle) = K1.a == K2.a && K1.b == K2.b && K1.c == K2.c
 
-axes(P::JacobiTriangle) = (Inclusion(Triangle()),blockedrange(Base.OneTo(∞)))
+axes(P::JacobiTriangle) = (Inclusion(Triangle()),blockedrange(oneto(∞)))
 
 copy(A::JacobiTriangle) = A
 
@@ -87,8 +87,8 @@ Base.summary(io::IO, P::TriangleWeight) = print(io, "x^$(P.a)*y^$(P.b)*(1-x-y)^$
 
 @simplify function *(Dx::PartialDerivative{1}, P::JacobiTriangle)
     a,b,c = P.a,P.b,P.c
-    n = mortar(Fill.(Base.OneTo(∞),Base.OneTo(∞)))
-    k = mortar(Base.OneTo.(Base.OneTo(∞)))
+    n = mortar(Fill.(oneto(∞),oneto(∞)))
+    k = mortar(Base.OneTo.(oneto(∞)))
     dat = BlockBroadcastArray(hcat,
         ((k .+ (b-1)) .* (n .+ k .+ (b+c-1)) ./ (2k .+ (b+c-1))),
         ((n .+ k .+ (a+b+c)) .* (k .+ (b+c)) ./ (2k .+ (b+c-1)))
@@ -98,7 +98,7 @@ end
 
 @simplify function *(Dy::PartialDerivative{2}, P::JacobiTriangle)
     a,b,c = P.a,P.b,P.c
-    k = mortar(Base.OneTo.(Base.OneTo(∞)))
+    k = mortar(Base.OneTo.(oneto(∞)))
     T = promote_type(eltype(Dy), eltype(P)) # avoid bug in convert
     JacobiTriangle(a,b+1,c+1) * _BandedBlockBandedMatrix((k .+ convert(T, b+c))', axes(k,1), (-1,1), (-1,1))
 end
@@ -114,19 +114,19 @@ end
     A = parent(Ac)
     @assert A == B == JacobiTriangle(0,0,0)
     a,b,c = A.a,A.b,A.c
-    n = mortar(Fill.(Base.OneTo(∞),Base.OneTo(∞)))
-    k = mortar(Base.OneTo.(Base.OneTo(∞)))
+    n = mortar(Fill.(oneto(∞),oneto(∞)))
+    k = mortar(Base.OneTo.(oneto(∞)))
     _BandedBlockBandedMatrix((@. exp(loggamma(n+k+b+c)+loggamma(n-k+a+1)+loggamma(k+b)+loggamma(k+c)-loggamma(n+k+a+b+c)-loggamma(k+b+c)-loggamma(n-k+1)-loggamma(k))/((2n+a+b+c)*(2k+b+c-1)))',
                                 axes(k,1), (0,0), (0,0))
 end
 
 function Wy(a,b,c)
-    k = mortar(Base.OneTo.(Base.OneTo(∞)))
+    k = mortar(Base.OneTo.(oneto(∞)))
     _BandedBlockBandedMatrix((-k)', axes(k,1), (1,-1), (1,-1))
 end
 function Wx(a,b,c)
-    n = mortar(Fill.(Base.OneTo(∞),Base.OneTo(∞)))
-    k = mortar(Base.OneTo.(Base.OneTo(∞)))
+    n = mortar(Fill.(oneto(∞),oneto(∞)))
+    k = mortar(Base.OneTo.(oneto(∞)))
     dat = BlockVcat(
         ((k .+ (c-1)) .* ( k .- n .- 1 ) ./ (2k .+ (b+c-1)))',
         (k .* (k .- n .- a) ./ (2k .+ (b+c-1)))'
@@ -135,8 +135,8 @@ function Wx(a,b,c)
 end
 
  function Rx(a,b,c)
-    n = mortar(Fill.(Base.OneTo(∞),Base.OneTo(∞)))
-    k = mortar(Base.OneTo.(Base.OneTo(∞)))
+    n = mortar(Fill.(oneto(∞),oneto(∞)))
+    k = mortar(Base.OneTo.(oneto(∞)))
     dat = BlockHcat(
         BroadcastVector((n,k,bc1,abc) -> (n + k +  bc1) / (2n + abc), n, k, b+c-1, a+b+c),
         BroadcastVector((n,k,abc) -> (n + k +  abc) / (2n + abc), n, k, a+b+c)
@@ -144,8 +144,8 @@ end
     _BandedBlockBandedMatrix(dat', axes(k,1), (0,1), (0,0))
 end
 function Ry(a,b,c)
-    n = mortar(Fill.(Base.OneTo(∞),Base.OneTo(∞)))
-    k = mortar(Base.OneTo.(Base.OneTo(∞)))
+    n = mortar(Fill.(oneto(∞),oneto(∞)))
+    k = mortar(Base.OneTo.(oneto(∞)))
     dat = PseudoBlockArray(Vcat(
         ((k .+ (c-1) ) .* (n .+ k .+ (b+c-1)) ./ ((2n .+ (a+b+c)) .* (2k .+ (b+c-1) )))',
         ((k .- n .- a ) .* (k .+ (b+c)) ./ ((2n .+ (a+b+c)) .* (2k .+ (b+c-1) )))',
@@ -156,8 +156,8 @@ function Ry(a,b,c)
 end
 
 function Lx(a,b,c)
-    n = mortar(Fill.(Base.OneTo(∞),Base.OneTo(∞)))
-    k = mortar(Base.OneTo.(Base.OneTo(∞)))
+    n = mortar(Fill.(oneto(∞),oneto(∞)))
+    k = mortar(Base.OneTo.(oneto(∞)))
     dat = PseudoBlockArray(Vcat(
         ((n .- k .+ a) ./ (2n .+ (a+b+c)))',
         ((n .- k .+ 1) ./ (2n .+ (a+b+c)))'
@@ -165,8 +165,8 @@ function Lx(a,b,c)
     _BandedBlockBandedMatrix(dat, axes(k,1), (1,0), (0,0))
 end
 function Ly(a,b,c)
-    n = mortar(Fill.(Base.OneTo(∞),Base.OneTo(∞)))
-    k = mortar(Base.OneTo.(Base.OneTo(∞)))
+    n = mortar(Fill.(oneto(∞),oneto(∞)))
+    k = mortar(Base.OneTo.(oneto(∞)))
     dat = PseudoBlockArray(Vcat(
         ((k .+ (b-1) ) .* (n .+ k .+ (b+c-1)) ./ ((2n .+ (a+b+c)) .* (2k .+ (b+c-1) )))',
         (k .* (k .- n .- a ) ./ ((2n .+ (a+b+c)) .* (2k .+ (b+c-1) )))',
@@ -176,8 +176,8 @@ function Ly(a,b,c)
     _BandedBlockBandedMatrix(dat, axes(k,1), (1,0), (1,0))
 end
 function Lz(a,b,c)
-    n = mortar(Fill.(Base.OneTo(∞),Base.OneTo(∞)))
-    k = mortar(Base.OneTo.(Base.OneTo(∞)))
+    n = mortar(Fill.(oneto(∞),oneto(∞)))
+    k = mortar(Base.OneTo.(oneto(∞)))
     dat = PseudoBlockArray(Vcat(
         ((k .+ (c-1) ) .* (n .+ k .+ (b+c-1)) ./ ((2n .+ (a+b+c)) .* (2k .+ (b+c-1) )))',
         (k .* (n .- k .+ a ) ./ ((2n .+ (a+b+c)) .* (2k .+ (b+c-1) )))',

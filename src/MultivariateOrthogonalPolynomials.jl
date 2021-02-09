@@ -20,6 +20,11 @@ import HarmonicOrthogonalPolynomials: BivariateOrthogonalPolynomial, Multivariat
 
 export Triangle, JacobiTriangle, TriangleWeight, WeightedTriangle, PartialDerivative, Laplacian, MultivariateOrthogonalPolynomial, BivariateOrthogonalPolynomial
 
+if VERSION < v"1.6-"
+      oneto(n) = Base.OneTo(n)
+else
+      import Base: oneto
+end
 
 
 
