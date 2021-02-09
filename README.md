@@ -1,6 +1,7 @@
 # MultivariateOrthogonalPolynomials.jl
 
-[![Build Status](https://travis-ci.org/JuliaApproximation/MultivariateOrthogonalPolynomials.jl.svg?branch=master)](https://travis-ci.org/JuliaApproximation/MultivariateOrthogonalPolynomials.jl)
+[![Build Status](https://github.com/JuliaApproximation/MultivariateOrthogonalPolynomials.jl/workflows/CI/badge.svg)](https://github.com/JuliaApproximation/MultivariateOrthogonalPolynomials.jl/actions)
+[![codecov](https://codecov.io/gh/JuliaApproximation/MultivariateOrthogonalPolynomials.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/JuliaApproximation/MultivariateOrthogonalPolynomials.jl)
 
 This is an experimental package to add support for multivariate orthogonal polynomials on disks, spheres, triangles, and other simple
 geometries to [ContinuumArrays.jl](https://github.com/JuliaApproximation/ContinuumArrays.jl). At the moment it primarily supports triangles. For example,
