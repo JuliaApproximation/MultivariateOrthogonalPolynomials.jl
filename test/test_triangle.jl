@@ -1,5 +1,5 @@
 using MultivariateOrthogonalPolynomials, StaticArrays, BlockArrays, BlockBandedMatrices, ArrayLayouts,
-        QuasiArrays, Test, OrthogonalPolynomialsQuasi, BandedMatrices, FastTransforms, LinearAlgebra
+        QuasiArrays, Test, ClassicalOrthogonalPolynomials, BandedMatrices, FastTransforms, LinearAlgebra
 import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleRecurrenceA, TriangleRecurrenceB, TriangleRecurrenceC, xy_muladd!
 
 @testset "Triangle" begin
@@ -129,11 +129,11 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
 
         M = P'P
         @test blockbandwidths(M) == subblockbandwidths(M) == (0,0)
-        @test M[1,1] == 1/2
-        @test M[2,2] == 1/4
-        @test M[3,3] == 1/12
-        @test M[4,4] == 1/6
-        @test M[5,5] == 1/18
+        @test M[1,1] ≈ 1/2
+        @test M[2,2] ≈ 1/4
+        @test M[3,3] ≈ 1/12
+        @test M[4,4] ≈ 1/6
+        @test M[5,5] ≈ 1/18
 
         Rx = JacobiTriangle(1,0,0) \ P
         Lx = P \ WeightedTriangle(1,0,0)
