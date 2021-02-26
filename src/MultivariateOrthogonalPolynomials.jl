@@ -18,7 +18,8 @@ import LazyArrays: arguments, paddeddata
 import ClassicalOrthogonalPolynomials: jacobimatrix
 import HarmonicOrthogonalPolynomials: BivariateOrthogonalPolynomial, MultivariateOrthogonalPolynomial, PartialDerivative, BlockOneTo
 
-export Triangle, JacobiTriangle, TriangleWeight, WeightedTriangle, PartialDerivative, Laplacian, MultivariateOrthogonalPolynomial, BivariateOrthogonalPolynomial
+export UnitTriangle, UnitDisk, JacobiTriangle, TriangleWeight, WeightedTriangle, PartialDerivative, Laplacian, 
+      MultivariateOrthogonalPolynomial, BivariateOrthogonalPolynomial, Zernike, RadialCoordinate
 
 if VERSION < v"1.6-"
       oneto(n) = Base.OneTo(n)
