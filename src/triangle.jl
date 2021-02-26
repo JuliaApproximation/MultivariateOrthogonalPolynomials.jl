@@ -1,50 +1,6 @@
-## Triangle Def
-struct Triangle <: EuclideanDomain{2,Float64}
-    a::SVector{2,Float64}
-    b::SVector{2,Float64}
-    c::SVector{2,Float64}
-end
+const UnitTriangle{T} = UnitSimplex{2,T,:closed}
 
-Triangle() = Triangle(SVector(0,0), SVector(1,0), SVector(0,1))
-function in(p::SVector{2,Float64}, d::Triangle)
-    x,y = p
-    0 ≤ x ≤ x + y ≤ 1
-end
-
-
-
-# issubset(a::Segment{<:SVector{2}}, b::Triangle) = all(in.(endpoints(a), Ref(b)))
-
-
-#canonical is rectangle [0,1]^2
-# with the map (x,y)=(s,(1-s)*t)
-iduffy(st::SVector) = SVector(st[1],(1-st[1])*st[2])
-iduffy(s,t) = SVector(s,(1-s)*t)
-duffy(xy::SVector) = SVector(xy[1],xy[1]==1 ? zero(eltype(xy)) : xy[2]/(1-xy[1]))
-duffy(x::T,y::T) where T = SVector(x,x == 1 ? zero(Y) : y/(1-x))
-
-boundary(d::Triangle) = PiecewiseSegment([d.a,d.b,d.c,d.a])
-
-
-Base.isnan(::Triangle) = false
-
-function tocanonical(d::Triangle, xy::SVector{2})
-    if all(iszero,d.a)
-        [d.b d.c] \ xy
-    else
-        tocanonical(d-d.a, xy-d.a)
-    end
-end
-
-function fromcanonical(d::Triangle, xy::SVector{2})
-    if all(iszero,d.a)
-        [d.b d.c]*xy
-    else
-        fromcanonical(d-d.a, xy) + d.a
-    end
-end
-
-ClassicalOrthogonalPolynomials.checkpoints(d::Triangle) = fromcanonical.(Ref(d), [SVector(0.1,0.2), SVector(0.2,0.3)])
+ClassicalOrthogonalPolynomials.checkpoints(d::UnitTriangle{T}) where T = [SVector{2,T}(0.1,0.2), SVector{2,T}(0.2,0.3)]
 
 # expansion in OPs orthogonal to
 # x^a*y^b*(1-x-y)^c
@@ -63,7 +19,7 @@ JacobiTriangle(a::T, b::T, c::T) where T = JacobiTriangle{float(T),T}(a, b, c)
 JacobiTriangle() = JacobiTriangle(0,0,0)
 ==(K1::JacobiTriangle, K2::JacobiTriangle) = K1.a == K2.a && K1.b == K2.b && K1.c == K2.c
 
-axes(P::JacobiTriangle) = (Inclusion(Triangle()),blockedrange(oneto(∞)))
+axes(P::JacobiTriangle{T}) where T = (Inclusion(UnitTriangle{T}()),blockedrange(oneto(∞)))
 
 copy(A::JacobiTriangle) = A
 
@@ -81,7 +37,7 @@ const WeightedTriangle{T} = WeightedBasis{T,<:TriangleWeight,<:JacobiTriangle}
 
 WeightedTriangle(a, b, c) = TriangleWeight(a,b,c) .* JacobiTriangle(a,b,c)
 
-axes(P::TriangleWeight) = (Inclusion(Triangle()),)
+axes(P::TriangleWeight{T}) where T = (Inclusion(UnitTriangle{T}()),)
 
 Base.summary(io::IO, P::TriangleWeight) = print(io, "x^$(P.a)*y^$(P.b)*(1-x-y)^$(P.c) on the unit triangle")
 

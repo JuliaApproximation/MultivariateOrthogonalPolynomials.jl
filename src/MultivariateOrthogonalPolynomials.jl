@@ -28,7 +28,8 @@ end
 
 
 
-include("Triangle/Triangle.jl")
+include("disk.jl")
+include("triangle.jl")
 
 
 end # module
