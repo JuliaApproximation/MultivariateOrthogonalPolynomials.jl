@@ -8,4 +8,10 @@ axes(P::Zernike{T}) where T = (Inclusion(UnitDisk{T}()),blockedrange(oneto(∞))
 
 copy(A::Zernike) = A
 
-# getindex(
+# function getindex(Z::Zernike, rθ::RadialCoordinate, B::BlockIndex{1})
+#     r,θ = rθ.r, rθ.θ
+#     if isodd(block(B))
+#         ℓ = blockindex(B)-1
+#     m = block(B)
+#     Normalized(Jacobi(0,m)
+# end
