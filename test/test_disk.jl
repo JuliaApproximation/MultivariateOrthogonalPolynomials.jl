@@ -15,10 +15,11 @@ function chebydiskeval(c::AbstractMatrix{T}, r, θ) where T
 end
 
 @testset "Disk" begin
-    @test Zernike()[SVector(0.1,0.2),1] ≈ inv(sqrt(π))
-
-    Zernike()[SVector(0.1,0.2),Block.(1:5)]
-
-    Zernike()[SVector(0.1,0.2),Block(2)]
-    Zernike()[SVector(0.1,0.2),Block(3)]
+    r,θ = 0.1, 0.2
+    rθ = RadialCoordinate(r,θ)
+    xy = SVector(rθ)
+    @test Zernike()[rθ,1] ≈ Zernike()[xy,1] ≈ inv(sqrt(π))
+    @test Zernike()[rθ,Block(1)] ≈ Zernike()[xy,Block(1)] ≈ [inv(sqrt(π))]
+    @test Zernike()[rθ,Block(2)] ≈ [2r/π*sin(θ), 2r/π*cos(θ)]
+    @test Zernike()[rθ,Block(3)] ≈ [sqrt(3/π)*(2r^2-1),sqrt(6)/π*r^2*sin(2θ),sqrt(6)/π*r^2*cos(2θ)]
 end
