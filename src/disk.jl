@@ -9,7 +9,7 @@ struct DiskTrav{T, AA<:AbstractMatrix{T}} <: AbstractBlockVector{T}
     matrix::AA
     function DiskTrav{T, AA}(matrix::AA) where {T,AA<:AbstractMatrix{T}}
         n,m = size(matrix)
-        m == 2n-1 || throw(ArgumentError("size must match"))
+        isodd(m) && n == m ÷ 4 + 1 || throw(ArgumentError("size must match"))
         new{T,AA}(matrix)
     end
 end
@@ -17,18 +17,26 @@ end
 DiskTrav{T}(matrix::AbstractMatrix{T}) where T = DiskTrav{T,typeof(matrix)}(matrix)
 DiskTrav(matrix::AbstractMatrix{T}) where T = DiskTrav{T}(matrix)
 
-axes(A::DiskTrav) = (blockedrange(range(1; step=2, length=size(A.matrix,1))),)
+axes(A::DiskTrav) = (blockedrange(oneto(div(size(A.matrix,2),2,RoundUp))),)
 
 function getindex(A::DiskTrav, K::Block{1})
     k = Int(K)
-    m = size(A.matrix,1)
+    k == 1 && return A.matrix[1:1]
+    k == 2 && return A.matrix[1,2:3]
     st = stride(A.matrix,2)
-    # nonnegative terms
-    p = A.matrix[range(k; step=2*st-1, length=k)]
-    k == 1 && return p
-    # negative terms
-    n = A.matrix[range(k+st-1; step=2*st-1, length=k-1)]
-    interlace(p,n)
+    if isodd(k)
+        # nonnegative terms
+        p = A.matrix[range(k÷2+1, step=4*st-1, length=k÷2+1)]
+        # negative terms
+        n = A.matrix[range(k÷2+3*st, step=4*st-1, length=k÷2)]
+        interlace(p,n)
+    else
+        # negative terms
+        n = A.matrix[range(st+k÷2, step=4*st-1, length=k÷2)]
+        # positive terms
+        p = A.matrix[range(2st+k÷2, step=4*st-1, length=k÷2)]
+        interlace(n,p)
+    end
 end
 
 getindex(A::DiskTrav, k::Int) = A[findblockindex(axes(A,1), k)]
