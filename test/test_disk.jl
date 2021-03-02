@@ -1,4 +1,4 @@
-using MultivariateOrthogonalPolynomials, StaticArrays, BlockArrays, FastTransforms, Test
+using MultivariateOrthogonalPolynomials, StaticArrays, BlockArrays, FastTransforms, LinearAlgebra, Test
 import MultivariateOrthogonalPolynomials: DiskTrav, grid
 
 function chebydiskeval(c::AbstractMatrix{T}, r, θ) where T
@@ -21,8 +21,8 @@ end
         xy = SVector(rθ)
         @test Zernike()[rθ,1] ≈ Zernike()[xy,1] ≈ inv(sqrt(π))
         @test Zernike()[rθ,Block(1)] ≈ Zernike()[xy,Block(1)] ≈ [inv(sqrt(π))]
-        @test Zernike()[rθ,Block(2)] ≈ [2r/π*sin(θ), 2r/π*cos(θ)]
-        @test Zernike()[rθ,Block(3)] ≈ [sqrt(3/π)*(2r^2-1),sqrt(6)/π*r^2*sin(2θ),sqrt(6)/π*r^2*cos(2θ)]
+        @test Zernike()[rθ,Block(2)] ≈ [2r/sqrt(π)*sin(θ), 2r/sqrt(π)*cos(θ)]
+        @test Zernike()[rθ,Block(3)] ≈ [sqrt(3/π)*(2r^2-1),sqrt(6/π)*r^2*sin(2θ),sqrt(6/π)*r^2*cos(2θ)]
     end
 
     @testset "DiskTrav" begin
