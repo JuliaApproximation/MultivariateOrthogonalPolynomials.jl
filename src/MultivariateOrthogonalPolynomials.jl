@@ -16,8 +16,8 @@ import LinearAlgebra: factorize
 import LazyArrays: arguments, paddeddata
 
 import ClassicalOrthogonalPolynomials: jacobimatrix
-import HarmonicOrthogonalPolynomials: BivariateOrthogonalPolynomial, MultivariateOrthogonalPolynomial, 
-                                          PartialDerivative, BlockOneTo, interlace
+import HarmonicOrthogonalPolynomials: BivariateOrthogonalPolynomial, MultivariateOrthogonalPolynomial, Plan,
+                                          PartialDerivative, BlockOneTo, BlockRange1, interlace
 
 export UnitTriangle, UnitDisk, JacobiTriangle, TriangleWeight, WeightedTriangle, PartialDerivative, Laplacian, 
       MultivariateOrthogonalPolynomial, BivariateOrthogonalPolynomial, Zernike, RadialCoordinate

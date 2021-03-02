@@ -1,5 +1,5 @@
-using MultivariateOrthogonalPolynomials, StaticArrays, BlockArrays, Test
-import MultivariateOrthogonalPolynomials: DiskTrav
+using MultivariateOrthogonalPolynomials, StaticArrays, BlockArrays, FastTransforms, Test
+import MultivariateOrthogonalPolynomials: DiskTrav, grid
 
 function chebydiskeval(c::AbstractMatrix{T}, r, θ) where T
     ret = zero(T)
@@ -40,4 +40,19 @@ end
         @test_throws ArgumentError DiskTrav([1 2 3; 4 5 6])
         @test_throws ArgumentError DiskTrav([1 2 3 4; 5 6 7 8])
     end
+
+    @testset "Transform" begin
+        Zn = Zernike()[:,Block.(Base.OneTo(3))]
+        for k = 1:6
+            @test factorize(Zn) \ Zernike()[:,k] ≈ [zeros(k-1); 1; zeros(6-k)]
+        end
+
+        Z = Zernike();
+        xy = axes(Z,1); x,y = first.(xy),last.(xy);
+        u = Z * (Z \ exp.(x .* cos.(y)))
+        @test u[SVector(0.1,0.2)] ≈ exp(0.1cos(0.2))
+    end
 end
+
+
+

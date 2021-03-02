@@ -60,7 +60,7 @@ function getindex(Z::Zernike{T}, rθ::RadialCoordinate, B::BlockIndex{1}) where 
     if iszero(m)
         sqrt(convert(T,2)/π) * Normalized(Legendre{T}())[2r^2-1, ℓ ÷ 2 + 1]
     else
-        convert(T,2^((m+2)/2))/π * r^m * Normalized(Jacobi{T}(0, m))[2r^2-1,(ℓ-m) ÷ 2 + 1] * (isodd(k+ℓ) ? cos(m*θ) : sin(m*θ))
+        sqrt(convert(T,2)^(m+2)/π) * r^m * Normalized(Jacobi{T}(0, m))[2r^2-1,(ℓ-m) ÷ 2 + 1] * (isodd(k+ℓ) ? cos(m*θ) : sin(m*θ))
     end
 end
 
@@ -68,3 +68,35 @@ end
 getindex(Z::Zernike, xy::StaticVector{2}, B::BlockIndex{1}) = Z[RadialCoordinate(xy), B]
 getindex(Z::Zernike, xy::StaticVector{2}, B::Block{1}) = [Z[xy, B[j]] for j=1:Int(B)]
 getindex(Z::Zernike, xy::StaticVector{2}, JR::BlockOneTo) = mortar([Z[xy,Block(J)] for J = 1:Int(JR[end])])
+
+
+###
+# Transforms
+###
+
+const FiniteZernike{T} = SubQuasiArray{T,2,Zernike{T},<:Tuple{<:Inclusion,<:BlockSlice{BlockRange1{OneTo{Int}}}}}
+
+function grid(S::FiniteZernike{T}) where T
+    N = blocksize(S,2) ÷ 2 + 1 # polynomial degree
+    M = 4N-3
+
+    r = sinpi.((N .-(0:N-1) .- one(T)/2) ./ (2N))
+
+    # The angular grid:
+    θ = (0:M-1)*convert(T,2)/M
+    RadialCoordinate.(r, π*θ')
+end
+
+struct ZernikeTransform{T} <: Plan{T}
+    N::Int
+    disk2cxf::FastTransforms.FTPlan{T,2,FastTransforms.DISK}
+    analysis::FastTransforms.FTPlan{T,2,FastTransforms.DISKANALYSIS}
+end
+
+function ZernikeTransform{T}(N::Int) where T<:Real
+    Ñ = N ÷ 2 + 1
+    ZernikeTransform{T}(N, plan_disk2cxf(T, Ñ, 0, 0), plan_disk_analysis(T, Ñ, 4Ñ-3))
+end
+*(P::ZernikeTransform{T}, f::Matrix{T}) where T = DiskTrav(P.disk2cxf \ (P.analysis * f))[Block.(1:P.N)]
+
+factorize(S::FiniteZernike{T}) where T = TransformFactorization(grid(S), ZernikeTransform{T}(blocksize(S,2)))
