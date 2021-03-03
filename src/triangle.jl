@@ -25,6 +25,12 @@ copy(A::JacobiTriangle) = A
 
 Base.summary(io::IO, P::JacobiTriangle) = print(io, "JacobiTriangle($(P.a), $(P.b), $(P.c))")
 
+
+"""
+    TriangleWeight(a, b, c)
+
+is a quasi-vector representing `x^a * y^b * (1-x-y)^c`.
+"""
 struct TriangleWeight{T,V} <: Weight{T}
     a::V
     b::V

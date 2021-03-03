@@ -52,6 +52,18 @@ end
         u = Z * (Z \ exp.(x .* cos.(y)))
         @test u[SVector(0.1,0.2)] ≈ exp(0.1cos(0.2))
     end
+
+    @testset "Laplacian" begin
+        # u = r^m*f(r^2) * cos(m*θ)
+        # u_r = (m*r^(m-1)*f(r^2) + 2r^(m+1)*f'(r^2)) * cos(m*θ)
+        # u_rr = (m*(m-1)*r^(m-2)*f(r^2) + 2*(2m+1)*r^m*f'(r^2) + 4r^(m+2)*f''(r^2)) * cos(m*θ)
+        # u_rr + u_r/r + u_θθ/r^2 = (4*(m+1)*f'(r^2) + 4r^2*f''(r^2)) * r^m * cos(m*θ)
+        # t = r^2, dt = 2r * dr, 4*(m+1)*f'(t) + 4t*f''(t) = 4 t^(-m) * d/dt * t^(m+1) f'(t)
+        # d/ds * (1-s) * P_n^(1,m)(s) = -n*P_n^(0,m+1)(s)
+        # use L^6 and L^6'
+        # 2t-1 = s, 2dt = ds
+        
+    end
 end
 
 
