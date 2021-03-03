@@ -72,11 +72,11 @@ function zernikez(ℓ, ms, a, b, rθ::RadialCoordinate{T}) where T
     r,θ = rθ.r,rθ.θ
     m = abs(ms)
     if iszero(m)
-        sqrt(convert(T,2)/π)*Normalized(Jacobi{T}(b,a))[2r^2-1, ℓ ÷ 2 + 1]
+        sqrt(convert(T,2)^(a+b+2)/π)*Normalized(Jacobi{T}(b,a))[2r^2-1, ℓ ÷ 2 + 1]
     elseif ms > 0
-        sqrt(convert(T,2)^(m+2)/π) * r^m * Normalized(Jacobi{T}(b, m+a))[2r^2-1,(ℓ-m) ÷ 2 + 1] * cos(m*θ)
+        sqrt(convert(T,2)^(m+a+b+2)/π) * r^m * Normalized(Jacobi{T}(b, m+a))[2r^2-1,(ℓ-m) ÷ 2 + 1] * cos(m*θ)
     else
-        sqrt(convert(T,2)^(m+2)/π) * r^m * Normalized(Jacobi{T}(b, m+a))[2r^2-1,(ℓ-m) ÷ 2 + 1] * sin(m*θ)
+        sqrt(convert(T,2)^(m+a+b+2)/π) * r^m * Normalized(Jacobi{T}(b, m+a))[2r^2-1,(ℓ-m) ÷ 2 + 1] * sin(m*θ)
     end
 end
 
