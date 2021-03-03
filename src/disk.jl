@@ -57,7 +57,9 @@ end
 struct Zernike{T} <: BivariateOrthogonalPolynomial{T}
     a::T
     b::T
+    Zernike{T}(a::T, b::T) where T = new{T}(a, b)
 end
+Zernike{T}(a, b) where T = Zernike{T}(convert(T,a), convert(T,b))
 Zernike(a::T, b::V) where {T,V} = Zernike{float(promote_type(T,V))}(a, b)
 Zernike{T}() where T = Zernike{T}(zero(T), zero(T))
 Zernike() = Zernike{Float64}()

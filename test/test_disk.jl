@@ -42,15 +42,17 @@ end
     end
 
     @testset "Transform" begin
-        Zn = Zernike()[:,Block.(Base.OneTo(3))]
-        for k = 1:6
-            @test factorize(Zn) \ Zernike()[:,k] ≈ [zeros(k-1); 1; zeros(6-k)]
-        end
+        for (a,b) in ((0,0), (0.1, 0.2), (0,1))
+            Zn = Zernike(a,b)[:,Block.(Base.OneTo(3))]
+            for k = 1:6
+                @test factorize(Zn) \ Zernike(a,b)[:,k] ≈ [zeros(k-1); 1; zeros(6-k)]
+            end
 
-        Z = Zernike();
-        xy = axes(Z,1); x,y = first.(xy),last.(xy);
-        u = Z * (Z \ exp.(x .* cos.(y)))
-        @test u[SVector(0.1,0.2)] ≈ exp(0.1cos(0.2))
+            Z = Zernike(a,b);
+            xy = axes(Z,1); x,y = first.(xy),last.(xy);
+            u = Z * (Z \ exp.(x .* cos.(y)))
+            @test u[SVector(0.1,0.2)] ≈ exp(0.1cos(0.2))
+        end
     end
 
     @testset "Laplacian" begin
