@@ -62,9 +62,6 @@ end
         # d/ds * (1-s) * P_n^(1,m)(s) = -n*P_n^(0,m+1)(s)
         # use L^6 and L^6'
         # 2t-1 = s, 2dt = ds
-        
+
     end
 end
-
-
-

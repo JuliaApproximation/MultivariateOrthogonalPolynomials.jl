@@ -70,7 +70,7 @@ function zernikez(ℓ, ms, a, b, rθ::RadialCoordinate{T}) where T
     r,θ = rθ.r,rθ.θ
     m = abs(ms)
     if iszero(m)
-        2Normalized(Jacobi{T}(b,a))[2r^2-1, ℓ ÷ 2 + 1]/π
+        sqrt(convert(T,2)/π)*Normalized(Jacobi{T}(b,a))[2r^2-1, ℓ ÷ 2 + 1]
     elseif ms > 0
         sqrt(convert(T,2)^(m+2)/π) * r^m * Normalized(Jacobi{T}(b, m+a))[2r^2-1,(ℓ-m) ÷ 2 + 1] * cos(m*θ)
     else
@@ -82,7 +82,7 @@ function getindex(Z::Zernike{T}, rθ::RadialCoordinate, B::BlockIndex{1}) where 
     ℓ = Int(block(B))-1
     k = blockindex(B)
     m = iseven(ℓ) ? k-isodd(k) : k-iseven(k)
-    zernikez(ℓ, isodd(k+ℓ) ? m ÷ 2 : -(m ÷ 2), Z.a, Z.b, rθ)
+    zernikez(ℓ, (isodd(k+ℓ) ? 1 : -1) * m, Z.a, Z.b, rθ)
 end
 
 
