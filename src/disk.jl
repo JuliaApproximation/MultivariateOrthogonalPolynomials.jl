@@ -68,16 +68,12 @@ axes(P::Zernike{T}) where T = (Inclusion(UnitDisk{T}()),blockedrange(oneto(∞))
 
 copy(A::Zernike) = A
 
+zerniker(ℓ, m, a, b, r::T) where T = sqrt(convert(T,2)^(m+a+b+2-iszero(m))/π) * r^m * Normalized(Jacobi{T}(b, m+a))[2r^2-1,(ℓ-m) ÷ 2 + 1]
+
 function zernikez(ℓ, ms, a, b, rθ::RadialCoordinate{T}) where T
     r,θ = rθ.r,rθ.θ
     m = abs(ms)
-    if iszero(m)
-        sqrt(convert(T,2)^(a+b+2)/π)*Normalized(Jacobi{T}(b,a))[2r^2-1, ℓ ÷ 2 + 1]
-    elseif ms > 0
-        sqrt(convert(T,2)^(m+a+b+2)/π) * r^m * Normalized(Jacobi{T}(b, m+a))[2r^2-1,(ℓ-m) ÷ 2 + 1] * cos(m*θ)
-    else
-        sqrt(convert(T,2)^(m+a+b+2)/π) * r^m * Normalized(Jacobi{T}(b, m+a))[2r^2-1,(ℓ-m) ÷ 2 + 1] * sin(m*θ)
-    end
+    zerniker(ℓ, m, a, b, r) * (signbit(ms) ? sin(m*θ) : cos(m*θ))
 end
 
 function getindex(Z::Zernike{T}, rθ::RadialCoordinate, B::BlockIndex{1}) where T
