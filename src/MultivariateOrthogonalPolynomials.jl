@@ -20,7 +20,8 @@ import HarmonicOrthogonalPolynomials: BivariateOrthogonalPolynomial, Multivariat
                                           PartialDerivative, BlockOneTo, BlockRange1, interlace
 
 export UnitTriangle, UnitDisk, JacobiTriangle, TriangleWeight, WeightedTriangle, PartialDerivative, Laplacian, 
-      MultivariateOrthogonalPolynomial, BivariateOrthogonalPolynomial, Zernike, RadialCoordinate
+      MultivariateOrthogonalPolynomial, BivariateOrthogonalPolynomial, Zernike, RadialCoordinate,
+      zerniker, zernikez
 
 if VERSION < v"1.6-"
       oneto(n) = Base.OneTo(n)

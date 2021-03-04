@@ -76,6 +76,8 @@ function zernikez(ℓ, ms, a, b, rθ::RadialCoordinate{T}) where T
     zerniker(ℓ, m, a, b, r) * (signbit(ms) ? sin(m*θ) : cos(m*θ))
 end
 
+zernikez(ℓ, ms, a, b, xy::StaticVector{2}) = zernikez(ℓ, ms, a, b, RadialCoordinate(xy))
+
 function getindex(Z::Zernike{T}, rθ::RadialCoordinate, B::BlockIndex{1}) where T
     ℓ = Int(block(B))-1
     k = blockindex(B)
