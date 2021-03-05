@@ -53,7 +53,29 @@ struct ZernikeWeight{T} <: Weight{T}
     b::T
 end
 
+"""
+    ZernikeWeight(b)
 
+is a quasi-vector representing `(1-r^2)^b`
+"""
+
+ZernikeWeight(b) = ZernikeWeight(zero(b), b)
+
+axes(::ZernikeWeight{T}) where T = (Inclusion(UnitDisk{T}()),)
+
+==(w::ZernikeWeight, v::ZernikeWeight) = w.a == v.a && w.b == v.b
+
+function getindex(w::ZernikeWeight, xy::StaticVector{2})
+    r = norm(xy)
+    r^(2w.a) * (1-r^2)^w.b
+end
+
+
+"""
+    Zernike(a, b)
+
+is a quasi-matrix orthogonal `r^(2a) * (1-r^2)^b`
+"""
 struct Zernike{T} <: BivariateOrthogonalPolynomial{T}
     a::T
     b::T
@@ -61,14 +83,28 @@ struct Zernike{T} <: BivariateOrthogonalPolynomial{T}
 end
 Zernike{T}(a, b) where T = Zernike{T}(convert(T,a), convert(T,b))
 Zernike(a::T, b::V) where {T,V} = Zernike{float(promote_type(T,V))}(a, b)
-Zernike{T}() where T = Zernike{T}(zero(T), zero(T))
+Zernike{T}(b) where T = Zernike{T}(zero(b), b)
+Zernike{T}() where T = Zernike{T}(zero(T))
+
+"""
+    Zernike(b)
+
+is a quasi-matrix orthogonal `(1-r^2)^b`
+"""
+Zernike(b) = Zernike(zero(b), b)
 Zernike() = Zernike{Float64}()
 
 axes(P::Zernike{T}) where T = (Inclusion(UnitDisk{T}()),blockedrange(oneto(∞)))
 
+==(w::Zernike, v::Zernike) = w.a == v.a && w.b == v.b
+
 copy(A::Zernike) = A
 
-zerniker(ℓ, m, a, b, r::T) where T = sqrt(convert(T,2)^(m+a+b+2-iszero(m))/π) * r^m * Normalized(Jacobi{T}(b, m+a))[2r^2-1,(ℓ-m) ÷ 2 + 1]
+orthogonalityweight(Z::Zernike) = ZernikeWeight(Z.a, Z.b)
+
+zerniker(ℓ, m, a, b, r::T) where T = sqrt(convert(T,2)^(m+a+b+2-iszero(m))/π) * r^m * normalizedjacobip((ℓ-m) ÷ 2, b, m+a, 2r^2-1)
+zerniker(ℓ, m, b, r) = zerniker(ℓ, m, zero(b), b, r)
+zerniker(ℓ, m, r) = zerniker(ℓ, m, zero(r), r)
 
 function zernikez(ℓ, ms, a, b, rθ::RadialCoordinate{T}) where T
     r,θ = rθ.r,rθ.θ
@@ -77,6 +113,8 @@ function zernikez(ℓ, ms, a, b, rθ::RadialCoordinate{T}) where T
 end
 
 zernikez(ℓ, ms, a, b, xy::StaticVector{2}) = zernikez(ℓ, ms, a, b, RadialCoordinate(xy))
+zernikez(ℓ, ms, b, xy::StaticVector{2}) = zernikez(ℓ, ms, zero(b), b, xy)
+zernikez(ℓ, ms, xy::StaticVector{2,T}) where T = zernikez(ℓ, ms, zero(T), xy)
 
 function getindex(Z::Zernike{T}, rθ::RadialCoordinate, B::BlockIndex{1}) where T
     ℓ = Int(block(B))-1
@@ -123,3 +161,61 @@ end
 *(P::ZernikeTransform{T}, f::Matrix{T}) where T = DiskTrav(P.disk2cxf \ (P.analysis * f))[Block.(1:P.N)]
 
 factorize(S::FiniteZernike{T}) where T = TransformFactorization(grid(S), ZernikeTransform{T}(blocksize(S,2), parent(S).a, parent(S).b))
+
+# gives the entries for the Laplacian times (1-r^2) * Zernike(1)
+struct WeightedZernikeLaplacianDiag{T} <: AbstractBlockVector{T} end
+
+axes(::WeightedZernikeLaplacianDiag) = (blockedrange(oneto(∞)),)
+
+function Base.view(W::WeightedZernikeLaplacianDiag{T}, K::Block{1}) where T
+    K̃ = Int(K)
+    d = K̃÷2 + 1
+    if isodd(K̃)
+        v = (d:K̃) .* (d:(-1):1)
+        convert(AbstractVector{T}, -4*interlace(v, v[2:end]))
+    else
+        v = (d:K̃) .* (d-1:(-1):1)
+        convert(AbstractVector{T}, -4 * interlace(v, v))
+    end
+end
+
+getindex(W::WeightedZernikeLaplacianDiag, k::Integer) = W[findblockindex(axes(W,1),k)]
+
+@simplify function *(Δ::Laplacian, WZ::Weighted{<:Any,<:Zernike})
+    @assert WZ.P.a == 0 && WZ.P.b == 1
+    WZ.P * Diagonal(WeightedZernikeLaplacianDiag{eltype(eltype(WZ))}())
+end
+
+struct ZernikeConversion{T} <: AbstractBandedBlockBandedMatrix{T} end
+ZernikeConversion() = ZernikeConversion{Float64}()
+
+axes(Z::ZernikeConversion) = (blockedrange(oneto(∞)), blockedrange(oneto(∞)))
+
+blockbandwidths(::ZernikeConversion) = (0,2)
+subblockbandwidths(::ZernikeConversion) = (0,0)
+
+
+function Base.view(W::ZernikeConversion{T}, KJ::Block{2}) where T
+    K,J = KJ.n
+    dat = Vector{T}()
+    if J == K
+        if iseven(K)
+            R0 = Normalized(Jacobi(1,0)) \ Normalized(Jacobi(0,0))
+            push!(dat, R0[K÷2-k+2,K÷2-k+2])
+        end
+        for m in enumerate(range(2+iseven(K); step=2, length=J))
+            Rm = Normalized(Jacobi(1,m)) \ Normalized(Jacobi(0,m))
+            dat[1,k] = Rm[K÷2-k+2,K÷2-k+2]
+        end
+    elseif J == K + 2
+        for (k,m) in enumerate(range(Int(iseven(K)); step=2, length=K))
+            Rm = Normalized(Jacobi(1,m)) \ Normalized(Jacobi(0,m))
+            dat[1,k] = Rm[K÷2-k+2,K÷2-k+3]
+        end
+    else
+        fill!(dat, zero(T))
+    end
+    _BandedMatrix(dat, K, 0, 0)
+end
+
+getindex(R::ZernikeConversion, k::Integer, j::Integer) = R[findblockindex.(axes(R),(k,j))...]
