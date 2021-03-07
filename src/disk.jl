@@ -197,24 +197,32 @@ subblockbandwidths(::ZernikeConversion) = (0,0)
 
 function Base.view(W::ZernikeConversion{T}, KJ::Block{2}) where T
     K,J = KJ.n
-    dat = Vector{T}()
+    dat = Matrix{T}(undef,1,J)
     if J == K
-        if iseven(K)
+        if isodd(K)
             R0 = Normalized(Jacobi(1,0)) \ Normalized(Jacobi(0,0))
-            push!(dat, R0[K÷2-k+2,K÷2-k+2])
+            dat[1,1] = R0[K÷2+1,K÷2+1]
         end
-        for m in enumerate(range(2+iseven(K); step=2, length=J))
+        for m in range(2-iseven(K); step=2, length=J÷2)
             Rm = Normalized(Jacobi(1,m)) \ Normalized(Jacobi(0,m))
-            dat[1,k] = Rm[K÷2-k+2,K÷2-k+2]
+            j = K÷2-m÷2+isodd(K)
+            dat[1,m] = dat[1,m+1] = Rm[j,j]
         end
     elseif J == K + 2
-        for (k,m) in enumerate(range(Int(iseven(K)); step=2, length=K))
+        if isodd(K)
+            R0 = Normalized(Jacobi(1,0)) \ Normalized(Jacobi(0,0))
+            j = K÷2+1
+            dat[1,1] = R0[j,j+1]
+        end
+        for m in range(2-iseven(K); step=2, length=K÷2)
             Rm = Normalized(Jacobi(1,m)) \ Normalized(Jacobi(0,m))
-            dat[1,k] = Rm[K÷2-k+2,K÷2-k+3]
+            j = K÷2-m÷2+isodd(K)
+            dat[1,m] = dat[1,m+1] = Rm[j,j+1]
         end
     else
         fill!(dat, zero(T))
     end
+    dat ./= sqrt(2one(T))
     _BandedMatrix(dat, K, 0, 0)
 end
 

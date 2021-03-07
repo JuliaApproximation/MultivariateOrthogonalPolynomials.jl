@@ -1,7 +1,6 @@
-using MultivariateOrthogonalPolynomials, ClassicalOrthogonalPolynomials, StaticArrays, BlockArrays, FastTransforms, LinearAlgebra, Test, ForwardDiff
+using MultivariateOrthogonalPolynomials, ClassicalOrthogonalPolynomials, StaticArrays, BlockArrays, FastTransforms, LinearAlgebra, Test
 import MultivariateOrthogonalPolynomials: DiskTrav, grid, ZernikeConversion
 import ClassicalOrthogonalPolynomials: HalfWeighted
-import ForwardDiff: hessian, derivative
 
 
 @testset "Disk" begin
@@ -56,35 +55,28 @@ import ForwardDiff: hessian, derivative
         # use L^6 and L^6'
         # 2t-1 = s, 2dt = ds
 
-        derivative2 = (f,x) -> hessian(t -> f(t[1]), SVector(x))[1]
 
-        lap = (f,x,y) -> tr(hessian(f, SVector(x,y)))
-        lapr = (fr,m,r) ->  derivative2(fr, r) + derivative(fr, r)/r - m^2 * fr(r)/r^2
-
-        ℓ, m, b = 6, 2 1
+        ℓ, m, b = 6, 2, 1
         x,y = 0.1,0.2
         r = sqrt(x^2+y^2)
         θ = atan(y,x)
         t = r^2
         u = xy -> zernikez(ℓ, m, b, xy)
         ur = r -> zerniker(ℓ, m, b, r)
-        @test lap(u, x, y) ≈ lapr(ur,m,r) * (signbit(m) ? sin(-m*θ) : cos(m*θ))
-        
-        f = t -> sqrt(2^(m+a+b+2-iszero(m))/π) * normalizedjacobip((ℓ-m) ÷ 2, b, m+a, 2t-1)
+
+        f = t -> sqrt(2^(m+b+2-iszero(m))/π) * normalizedjacobip((ℓ-m) ÷ 2, b, m, 2t-1)
         ur = r -> r^m*f(r^2)
         @test ur(r) ≈ zerniker(ℓ, m, b, r)
         @test f(r^2) ≈ r^(-m) * zerniker(ℓ, m, b, r)
-        u = xy -> ((x,y) = xy; ur(norm(xy)) * cos(m*atan(y,x)))
-        t = r^2; 4*(m+1)*derivative(f,t) + 4t*derivative2(f,t)
+        # u = xy -> ((x,y) = xy; ur(norm(xy)) * cos(m*atan(y,x)))
+        # t = r^2; 4*(m+1)*derivative(f,t) + 4t*derivative2(f,t)
         
-        @test derivative(ur,r) ≈  m*r^(m-1)*f(r^2) + 2r^(m+1)*derivative(f,r^2)
-        @test derivative2(ur,r) ≈ m*(m-1)*r^(m-2)*f(r^2) + (4m+2)*r^m * derivative(f,r^2) + 4r^(m+2)*derivative2(f,r^2)
-        @test lapr(ur, m, r) ≈ 4*((m+1) * derivative(f,r^2) + r^2*derivative2(f,r^2)) * r^m
-        @test lapr(ur, m, r) ≈ 4*((m+1) * derivative(f,t) + t*derivative2(f,t)) * t^(m/2)
+        # @test derivative(ur,r) ≈  m*r^(m-1)*f(r^2) + 2r^(m+1)*derivative(f,r^2)
+        # @test derivative2(ur,r) ≈ m*(m-1)*r^(m-2)*f(r^2) + (4m+2)*r^m * derivative(f,r^2) + 4r^(m+2)*derivative2(f,r^2)
+        # @test lapr(ur, m, r) ≈ 4*((m+1) * derivative(f,r^2) + r^2*derivative2(f,r^2)) * r^m
+        # @test lapr(ur, m, r) ≈ 4*((m+1) * derivative(f,t) + t*derivative2(f,t)) * t^(m/2)
         
 
-
-        ℓ, m, b = 6, 2, 1
         ℓ, m, b = 1, 1, 1
 
         f = t -> sqrt(2^(m+b+2-iszero(m))/π) * (1-t) * normalizedjacobip((ℓ-m) ÷ 2, b, m, 2t-1)
@@ -97,59 +89,45 @@ import ForwardDiff: hessian, derivative
 
         @test (D1 * D2)[band(0)][1:10] ≈ -((1:∞) .* ((1+m):∞))[1:10]
 
-        @test derivative(f,t) ≈ D1[(ℓ-m) ÷ 2+1,(ℓ-m) ÷ 2 + 1] * sqrt(2^(m+b+2-iszero(m))/π) * normalizedjacobip((ℓ-m) ÷ 2, b-1, m+1, 2t-1)
-        @test derivative(f,t) ≈ D1[(ℓ-m) ÷ 2+1,(ℓ-m) ÷ 2 + 1] * (iszero(m) ? inv(sqrt(2)) : 1) * r^(-m-1) * zerniker(ℓ+1, m+1, 0, b-1, r)
-        @test lapr(ur, m, r) ≈ 4D1[(ℓ-m) ÷ 2+1,(ℓ-m) ÷ 2 + 1] * (iszero(m) ? inv(sqrt(2)) : 1) * t^(-m/2) * derivative(t -> (r = sqrt(t); t^(m+1) * r^(-m-1) * zerniker(ℓ+1, m+1, 0, b-1, r)), t)
-
-        @test lapr(ur, m, r) ≈ 4D1[(ℓ-m) ÷ 2+1,(ℓ-m) ÷ 2 + 1] * t^(-m/2) * derivative(t -> (r = sqrt(t); t^(m+1) * sqrt(2^(m+b+2-iszero(m))/π) * normalizedjacobip((ℓ-m) ÷ 2, b-1, m+1, 2t-1)), t)
-
-        @test derivative(t -> (r = sqrt(t); t^(m+1) * sqrt(2^(m+b+2-iszero(m))/π) * normalizedjacobip((ℓ-m) ÷ 2, b-1, m+1, 2t-1)), t)  ≈ sqrt(2^(m+b+2-iszero(m))/π) * t^m * D2[(ℓ-m) ÷ 2 + 1, (ℓ-m) ÷ 2 + 1] * normalizedjacobip((ℓ-m) ÷ 2, b, m, 2t-1)
-
-        @test lapr(ur, m, r) ≈ 4D1[(ℓ-m) ÷ 2+1,(ℓ-m) ÷ 2 + 1]D2[(ℓ-m) ÷ 2 + 1, (ℓ-m) ÷ 2 + 1] *sqrt(2^(m+b+2-iszero(m))/π) * t^(m/2) *normalizedjacobip((ℓ-m) ÷ 2, b, m, 2t-1)
-        @test lapr(ur, m, r) ≈ 4D1[(ℓ-m) ÷ 2+1,(ℓ-m) ÷ 2 + 1]D2[(ℓ-m) ÷ 2 + 1, (ℓ-m) ÷ 2 + 1] * zerniker(ℓ, m, b, r)
-        @test lapr(ur, m, r) ≈ -4*((1:∞) .* ((1+m):∞))[(ℓ-m)÷2+1]zerniker(ℓ, m, b, r)
-        
+                
         ℓ = m = 0; b= 1
-
-        @test lapr(ur, m, r) ≈ -4*((1:∞) .* (3:∞))[(ℓ-m)÷2+1]zerniker(ℓ, m, b, r)
-
         d = -4*((1:∞) .* ((m+1):∞))
         xy = SVector(0.1,0.2)
-        ℓ = m = 0; b= 1
-        u = xy -> (1 - norm(xy)^2) * zernikez(0, 0, 1, xy)
-        @test lap(u, xy...) ≈ Zernike(1)[xy,1] * (-4)
+        # ℓ = m = 0; b= 1
+        # u = xy -> (1 - norm(xy)^2) * zernikez(0, 0, 1, xy)
+        # @test lap(u, xy...) ≈ Zernike(1)[xy,1] * (-4)
 
-        u = xy -> (1 - norm(xy)^2) * zernikez(1 , -1, 1, xy)
-        @test lap(u, xy...) ≈ Zernike(1)[xy,2] * (-4) * 1 * 2
-        u = xy -> (1 - norm(xy)^2) * zernikez(1 , 1, 1, xy)
-        @test lap(u, xy...) ≈ Zernike(1)[xy,3] * (-4) * 1 * 2
+        # u = xy -> (1 - norm(xy)^2) * zernikez(1 , -1, 1, xy)
+        # @test lap(u, xy...) ≈ Zernike(1)[xy,2] * (-4) * 1 * 2
+        # u = xy -> (1 - norm(xy)^2) * zernikez(1 , 1, 1, xy)
+        # @test lap(u, xy...) ≈ Zernike(1)[xy,3] * (-4) * 1 * 2
 
-        u = xy -> (1 - norm(xy)^2) * zernikez(2 , 0, 1, xy) # eval at 2
-        @test lap(u, xy...) ≈ Zernike(1)[xy,4] * (-4) * 2^2
-        u = xy -> (1 - norm(xy)^2) * zernikez(2 , -2, 1, xy) # eval at 1
-        @test lap(u, xy...) ≈ Zernike(1)[xy,5] * (-4) * 3
-        u = xy -> (1 - norm(xy)^2) * zernikez(2 , 2, 1, xy) # eval at 1
-        @test lap(u, xy...) ≈ Zernike(1)[xy,6] * (-4) * 3
+        # u = xy -> (1 - norm(xy)^2) * zernikez(2 , 0, 1, xy) # eval at 2
+        # @test lap(u, xy...) ≈ Zernike(1)[xy,4] * (-4) * 2^2
+        # u = xy -> (1 - norm(xy)^2) * zernikez(2 , -2, 1, xy) # eval at 1
+        # @test lap(u, xy...) ≈ Zernike(1)[xy,5] * (-4) * 3
+        # u = xy -> (1 - norm(xy)^2) * zernikez(2 , 2, 1, xy) # eval at 1
+        # @test lap(u, xy...) ≈ Zernike(1)[xy,6] * (-4) * 3
 
-        u = xy -> (1 - norm(xy)^2) * zernikez(3 , -1, 1, xy) # eval at 2
-        @test lap(u, xy...) ≈ Zernike(1)[xy,7] * (-4) * 2 * 3
-        u = xy -> (1 - norm(xy)^2) * zernikez(3 , 1, 1, xy)
-        @test lap(u, xy...) ≈ Zernike(1)[xy,8] * (-4) * 2 * 3
-        u = xy -> (1 - norm(xy)^2) * zernikez(3 , -3, 1, xy) # eval at 1
-        @test lap(u, xy...) ≈ Zernike(1)[xy,9] * (-4) * 4 * 1
-        u = xy -> (1 - norm(xy)^2) * zernikez(3 , 3, 1, xy) # eval at 1
-        @test lap(u, xy...) ≈ Zernike(1)[xy,10] * (-4) * 4 * 1
+        # u = xy -> (1 - norm(xy)^2) * zernikez(3 , -1, 1, xy) # eval at 2
+        # @test lap(u, xy...) ≈ Zernike(1)[xy,7] * (-4) * 2 * 3
+        # u = xy -> (1 - norm(xy)^2) * zernikez(3 , 1, 1, xy)
+        # @test lap(u, xy...) ≈ Zernike(1)[xy,8] * (-4) * 2 * 3
+        # u = xy -> (1 - norm(xy)^2) * zernikez(3 , -3, 1, xy) # eval at 1
+        # @test lap(u, xy...) ≈ Zernike(1)[xy,9] * (-4) * 4 * 1
+        # u = xy -> (1 - norm(xy)^2) * zernikez(3 , 3, 1, xy) # eval at 1
+        # @test lap(u, xy...) ≈ Zernike(1)[xy,10] * (-4) * 4 * 1
 
-        u = xy -> (1 - norm(xy)^2) * zernikez(4 , 0, 1, xy) # eval at 3
-        @test lap(u, xy...) ≈ Zernike(1)[xy,11] * (-4) * 3^2
-        u = xy -> (1 - norm(xy)^2) * zernikez(4 , -2, 1, xy) # eval at 2
-        @test lap(u, xy...) ≈ Zernike(1)[xy,12] * (-4) * 4 * 2
-        u = xy -> (1 - norm(xy)^2) * zernikez(4 , 2, 1, xy) # eval at 2
-        @test lap(u, xy...) ≈ Zernike(1)[xy,13] * (-4) * 4 * 2
-        u = xy -> (1 - norm(xy)^2) * zernikez(4 , -4, 1, xy) # eval at 1
-        @test lap(u, xy...) ≈ Zernike(1)[xy,14] * (-4) * 5 * 1
-        u = xy -> (1 - norm(xy)^2) * zernikez(4 , 4, 1, xy) # eval at 1
-        @test lap(u, xy...) ≈ Zernike(1)[xy,15] * (-4) * 5 * 1
+        # u = xy -> (1 - norm(xy)^2) * zernikez(4 , 0, 1, xy) # eval at 3
+        # @test lap(u, xy...) ≈ Zernike(1)[xy,11] * (-4) * 3^2
+        # u = xy -> (1 - norm(xy)^2) * zernikez(4 , -2, 1, xy) # eval at 2
+        # @test lap(u, xy...) ≈ Zernike(1)[xy,12] * (-4) * 4 * 2
+        # u = xy -> (1 - norm(xy)^2) * zernikez(4 , 2, 1, xy) # eval at 2
+        # @test lap(u, xy...) ≈ Zernike(1)[xy,13] * (-4) * 4 * 2
+        # u = xy -> (1 - norm(xy)^2) * zernikez(4 , -4, 1, xy) # eval at 1
+        # @test lap(u, xy...) ≈ Zernike(1)[xy,14] * (-4) * 5 * 1
+        # u = xy -> (1 - norm(xy)^2) * zernikez(4 , 4, 1, xy) # eval at 1
+        # @test lap(u, xy...) ≈ Zernike(1)[xy,15] * (-4) * 5 * 1
 
         WZ = Weighted(Zernike(1)) # Zernike(1) weighted by (1-r^2)
         Δ = Laplacian(axes(WZ,1))
@@ -164,8 +142,6 @@ import ForwardDiff: hessian, derivative
     end
 
     @testset "Conversion" begin
-
-        
         R0 = Normalized(Jacobi(1, 0)) \ Normalized(Jacobi(0, 0))
         R1 = Normalized(Jacobi(1, 1)) \ Normalized(Jacobi(0, 1))
         R2 = Normalized(Jacobi(1, 2)) \ Normalized(Jacobi(0, 2))
@@ -190,5 +166,6 @@ import ForwardDiff: hessian, derivative
 
 
         R = ZernikeConversion()
+        @test Zernike()[xy,Block.(1:5)]' ≈ Zernike(1)[xy,Block.(1:5)]'*R[Block.(1:5),Block.(1:5)] 
     end
 end
