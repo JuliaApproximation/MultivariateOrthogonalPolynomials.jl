@@ -165,7 +165,7 @@ import ClassicalOrthogonalPolynomials: HalfWeighted
         @test Zernike()[xy,Block(5)[1]] ≈ R0[2:3,3]'*Zernike(1)[xy,getindex.(Block.(3:2:5),1)]/sqrt(2)
 
 
-        R = ZernikeConversion()
+        R = Zernike(1) \ Zernike()
         @test Zernike()[xy,Block.(1:5)]' ≈ Zernike(1)[xy,Block.(1:5)]'*R[Block.(1:5),Block.(1:5)] 
     end
 end

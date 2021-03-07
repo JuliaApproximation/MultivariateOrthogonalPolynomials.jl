@@ -227,3 +227,9 @@ function Base.view(W::ZernikeConversion{T}, KJ::Block{2}) where T
 end
 
 getindex(R::ZernikeConversion, k::Integer, j::Integer) = R[findblockindex.(axes(R),(k,j))...]
+
+function \(A::Zernike{T}, B::Zernike{V}) where {T,V}
+    @assert A.a == 0 && A.b == 1
+    @assert B.a == 0 && B.b == 0
+    ZernikeConversion{promote_type(T,V)}()
+end
