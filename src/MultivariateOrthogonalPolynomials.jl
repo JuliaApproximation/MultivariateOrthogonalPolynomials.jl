@@ -21,7 +21,7 @@ import HarmonicOrthogonalPolynomials: BivariateOrthogonalPolynomial, Multivariat
 
 export UnitTriangle, UnitDisk, JacobiTriangle, TriangleWeight, WeightedTriangle, PartialDerivative, Laplacian, 
       MultivariateOrthogonalPolynomial, BivariateOrthogonalPolynomial, Zernike, RadialCoordinate,
-      zerniker, zernikez, Weighted
+      zerniker, zernikez, Weighted, Block
 
 if VERSION < v"1.6-"
       oneto(n) = Base.OneTo(n)
