@@ -187,7 +187,6 @@ getindex(W::WeightedZernikeLaplacianDiag, k::Integer) = W[findblockindex(axes(W,
 end
 
 struct ZernikeConversion{T} <: AbstractBandedBlockBandedMatrix{T} end
-ZernikeConversion() = ZernikeConversion{Float64}()
 
 axes(Z::ZernikeConversion) = (blockedrange(oneto(∞)), blockedrange(oneto(∞)))
 

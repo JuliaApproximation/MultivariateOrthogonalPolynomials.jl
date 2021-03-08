@@ -4,6 +4,14 @@ import ClassicalOrthogonalPolynomials: HalfWeighted
 
 
 @testset "Disk" begin
+    @testset "Basics" begin
+        @test ZernikeWeight(1)[SVector(0.1,0.2)] ≈ (1 - 0.1^2 - 0.2^2)
+        @test ZernikeWeight(1) == ZernikeWeight(1)
+
+        @test Zernike() == Zernike()
+        @test Zernike(1) ≠ Zernike()
+    end
+
     @testset "Evaluation" begin
         r,θ = 0.1, 0.2
         rθ = RadialCoordinate(r,θ)
@@ -13,6 +21,8 @@ import ClassicalOrthogonalPolynomials: HalfWeighted
         @test Zernike()[rθ,Block(2)] ≈ [2r/sqrt(π)*sin(θ), 2r/sqrt(π)*cos(θ)] ≈ [zernikez(1, -1, rθ), zernikez(1, 1, rθ)]
         @test Zernike()[rθ,Block(3)] ≈ [sqrt(3/π)*(2r^2-1),sqrt(6/π)*r^2*sin(2θ),sqrt(6/π)*r^2*cos(2θ)] ≈ [zernikez(2, 0, rθ), zernikez(2, -2, rθ), zernikez(2, 2, rθ)]
         @test Zernike()[rθ,Block(4)] ≈ [zernikez(3, -1, rθ), zernikez(3, 1, rθ), zernikez(3, -3, rθ), zernikez(3, 3, rθ)]
+
+        @test zerniker(5, 0, norm(xy)) ≈ zernikez(5, 0, xy)
     end
 
     @testset "DiskTrav" begin
