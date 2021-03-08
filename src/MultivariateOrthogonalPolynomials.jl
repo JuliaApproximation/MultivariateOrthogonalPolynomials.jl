@@ -11,16 +11,17 @@ import QuasiArrays: LazyQuasiMatrix, LazyQuasiArrayStyle
 import ContinuumArrays: @simplify, Weight, grid, TransformFactorization, Expansion
 
 import BlockArrays: block, blockindex, BlockSlice, viewblock
-import BlockBandedMatrices: _BandedBlockBandedMatrix
+import BlockBandedMatrices: _BandedBlockBandedMatrix, AbstractBandedBlockBandedMatrix, _BandedMatrix, blockbandwidths, subblockbandwidths
 import LinearAlgebra: factorize
 import LazyArrays: arguments, paddeddata
 
-import ClassicalOrthogonalPolynomials: jacobimatrix
+import ClassicalOrthogonalPolynomials: jacobimatrix, Weighted, orthogonalityweight
 import HarmonicOrthogonalPolynomials: BivariateOrthogonalPolynomial, MultivariateOrthogonalPolynomial, Plan,
                                           PartialDerivative, BlockOneTo, BlockRange1, interlace
 
 export UnitTriangle, UnitDisk, JacobiTriangle, TriangleWeight, WeightedTriangle, PartialDerivative, Laplacian, 
-      MultivariateOrthogonalPolynomial, BivariateOrthogonalPolynomial, Zernike, RadialCoordinate
+      MultivariateOrthogonalPolynomial, BivariateOrthogonalPolynomial, Zernike, RadialCoordinate,
+      zerniker, zernikez, Weighted, Block, ZernikeWeight
 
 if VERSION < v"1.6-"
       oneto(n) = Base.OneTo(n)
