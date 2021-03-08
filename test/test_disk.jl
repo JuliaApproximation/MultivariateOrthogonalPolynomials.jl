@@ -1,4 +1,4 @@
-using MultivariateOrthogonalPolynomials, ClassicalOrthogonalPolynomials, StaticArrays, BlockArrays, FastTransforms, LinearAlgebra, Test
+using MultivariateOrthogonalPolynomials, ClassicalOrthogonalPolynomials, StaticArrays, BlockArrays, BandedMatrices, FastTransforms, LinearAlgebra, Test
 import MultivariateOrthogonalPolynomials: DiskTrav, grid, ZernikeConversion
 import ClassicalOrthogonalPolynomials: HalfWeighted
 
