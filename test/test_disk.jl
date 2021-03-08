@@ -1,5 +1,5 @@
 using MultivariateOrthogonalPolynomials, ClassicalOrthogonalPolynomials, StaticArrays, BlockArrays, BandedMatrices, FastTransforms, LinearAlgebra, Test
-import MultivariateOrthogonalPolynomials: DiskTrav, grid, ZernikeConversion
+import MultivariateOrthogonalPolynomials: DiskTrav, grid
 import ClassicalOrthogonalPolynomials: HalfWeighted
 
 
@@ -188,22 +188,6 @@ import ClassicalOrthogonalPolynomials: HalfWeighted
         xy = SVector(0.1,0.2)
         r = norm(xy)
         w = 1 - r^2
-        x,y = xy
-        θ = atan(y,x)
-
-        sqrt(convert(T,2)^(m+a+b+2-iszero(m))/π) * r^m * normalizedjacobip((ℓ-m) ÷ 2, b, m+a, 2r^2-1)
-
-        T = Float64
-        @test sqrt(convert(T,2)^(2)/π) * (1 - (2r^2-1)) * normalizedjacobip(0, 1, 0, 2r^2-1) ≈ sqrt(convert(T,2)^(2)/π) * L0[1:2,1]'*normalizedjacobip.(0:1, 0, 0, 2r^2-1)
-        @test sqrt(convert(T,2)^(2)/π) * (1 - (2r^2-1)) * normalizedjacobip(0, 1, 0, 2r^2-1) ≈ L0[1:2,1]'*zerniker.(0:2:2, 0, r) * sqrt(2)
-        @test 2*sqrt(convert(T,2)^2/π) * (1- r^2) * normalizedjacobip(0, 1, 0, 2r^2-1) ≈ L0[1:2,1]'*zerniker.(0:2:2, 0, r) * sqrt(2)
-
-        @test Zernike(1)[xy,Block(2)[1]] ≈ zerniker(1,1,1,r) * sin(θ) ≈ sqrt(convert(T,2)^(4)/π)* r * normalizedjacobip(0, 1, 1, 2r^2-1) * sin(θ)
-        @test 2 * w * sqrt(convert(T,2)^(4)/π) *  normalizedjacobip(0, 1, 1, 2r^2-1) ≈ sqrt(convert(T,2)^(4)/π) * L1[1:2,1]'*normalizedjacobip.(0:1, 0, 1, 2r^2-1)
-        @test 2 * w * sqrt(convert(T,2)^(4)/π) * r * normalizedjacobip(0, 1, 1, 2r^2-1) ≈ sqrt(convert(T,2)^(4)/π) * L1[1:2,1]'* r * normalizedjacobip.(0:1, 0, 1, 2r^2-1)
-        @test 2 * w * zerniker(1,1,1,r) ≈ L1[1:2,1]'* zerniker.(1:2:3,1,r)*sqrt(2)
-        @test 2 * w * zerniker(1,1,1,r)sin(θ) ≈ L1[1:2,1]'* zerniker.(1:2:3,1,r)sin(θ)*sqrt(2)
-        
 
         @test w*Zernike(1)[xy,Block(1)[1]] ≈ L0[1:2,1]'*Zernike()[xy,getindex.(Block.(1:2:3),1)] / sqrt(2)
 
