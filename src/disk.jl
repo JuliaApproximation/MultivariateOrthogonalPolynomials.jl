@@ -186,50 +186,53 @@ getindex(W::WeightedZernikeLaplacianDiag, k::Integer) = W[findblockindex(axes(W,
     WZ.P * Diagonal(WeightedZernikeLaplacianDiag{eltype(eltype(WZ))}())
 end
 
-struct ZernikeConversion{T} <: AbstractBandedBlockBandedMatrix{T} end
 
-axes(Z::ZernikeConversion) = (blockedrange(oneto(∞)), blockedrange(oneto(∞)))
+"""
+    ModalInterlace
+"""
+struct ModalInterlace{T} <: AbstractBandedBlockBandedMatrix{T}
+    ops
+    bandwidths::NTuple{2,Int}
+end
 
-blockbandwidths(::ZernikeConversion) = (0,2)
-subblockbandwidths(::ZernikeConversion) = (0,0)
+axes(Z::ModalInterlace) = (blockedrange(oneto(∞)), blockedrange(oneto(∞)))
+
+blockbandwidths(R::ModalInterlace) = R.bandwidths
+subblockbandwidths(::ModalInterlace) = (0,0)
 
 
-function Base.view(W::ZernikeConversion{T}, KJ::Block{2}) where T
+function Base.view(R::ModalInterlace{T}, KJ::Block{2}) where T
     K,J = KJ.n
     dat = Matrix{T}(undef,1,J)
     if J == K
         if isodd(K)
-            R0 = Normalized(Jacobi(1,0)) \ Normalized(Jacobi(0,0))
-            dat[1,1] = R0[K÷2+1,K÷2+1]
+            dat[1,1] = R.ops[1][K÷2+1,K÷2+1]
         end
         for m in range(2-iseven(K); step=2, length=J÷2)
-            Rm = Normalized(Jacobi(1,m)) \ Normalized(Jacobi(0,m))
             j = K÷2-m÷2+isodd(K)
-            dat[1,m] = dat[1,m+1] = Rm[j,j]
+            dat[1,m] = dat[1,m+1] = R.ops[m+1][j,j]
         end
     elseif J == K + 2
         if isodd(K)
-            R0 = Normalized(Jacobi(1,0)) \ Normalized(Jacobi(0,0))
             j = K÷2+1
-            dat[1,1] = R0[j,j+1]
+            dat[1,1] = R.ops[1][j,j+1]
         end
         for m in range(2-iseven(K); step=2, length=K÷2)
-            Rm = Normalized(Jacobi(1,m)) \ Normalized(Jacobi(0,m))
             j = K÷2-m÷2+isodd(K)
-            dat[1,m] = dat[1,m+1] = Rm[j,j+1]
+            dat[1,m] = dat[1,m+1] = R.ops[m+1][j,j+1]
         end
     else
         fill!(dat, zero(T))
     end
-    dat ./= sqrt(2one(T))
     _BandedMatrix(dat, K, 0, 0)
 end
 
-getindex(R::ZernikeConversion, k::Integer, j::Integer) = R[findblockindex.(axes(R),(k,j))...]
+getindex(R::ModalInterlace, k::Integer, j::Integer) = R[findblockindex.(axes(R),(k,j))...]
 
 function \(A::Zernike{T}, B::Zernike{V}) where {T,V}
     A.a == B.a && A.b == B.b && return Eye{promote_type(T,V)}(∞)
     @assert A.a == 0 && A.b == 1
     @assert B.a == 0 && B.b == 0
-    ZernikeConversion{promote_type(T,V)}()
+    TV = promote_type(T,V)
+    ModalInterlace{TV}((Normalized.(Jacobi{TV}.(1,0:∞)) .\ Normalized.(Jacobi{TV}.(0,0:∞))) ./ sqrt(2one(TV)), (0,2))
 end

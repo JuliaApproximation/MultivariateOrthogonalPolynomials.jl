@@ -178,4 +178,13 @@ import ClassicalOrthogonalPolynomials: HalfWeighted
         R = Zernike(1) \ Zernike()
         @test Zernike()[xy,Block.(1:5)]' ≈ Zernike(1)[xy,Block.(1:5)]'*R[Block.(1:5),Block.(1:5)] 
     end
+
+    @testset "Lowering" begin
+        L0 = Normalized(Jacobi(0, 0)) \ HalfWeighted{:a}(Normalized(Jacobi(1, 0)))
+        L1 = Normalized(Jacobi(0, 1)) \ HalfWeighted{:a}(Normalized(Jacobi(1, 1)))
+        L2 = Normalized(Jacobi(0, 2)) \ HalfWeighted{:a}(Normalized(Jacobi(1, 2)))
+        L3 = Normalized(Jacobi(0, 3)) \ HalfWeighted{:a}(Normalized(Jacobi(1, 3)))
+
+        (Jacobi(0, 0)) \ HalfWeighted{:a}((Jacobi(1, 0)))
+    end
 end
