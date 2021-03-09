@@ -1,5 +1,5 @@
 using MultivariateOrthogonalPolynomials, ClassicalOrthogonalPolynomials, StaticArrays, BlockArrays, BandedMatrices, FastTransforms, LinearAlgebra, Test
-import MultivariateOrthogonalPolynomials: DiskTrav, grid, ZernikeConversion
+import MultivariateOrthogonalPolynomials: DiskTrav, grid
 import ClassicalOrthogonalPolynomials: HalfWeighted
 
 
@@ -10,6 +10,13 @@ import ClassicalOrthogonalPolynomials: HalfWeighted
 
         @test Zernike() == Zernike()
         @test Zernike(1) ≠ Zernike()
+        @test Zernike() ≡ copy(Zernike())
+
+        @test ZernikeWeight() == ZernikeWeight() == ZernikeWeight(0,0) == 
+                ZernikeWeight(0) == ZernikeWeight{Float64}() == 
+                ZernikeWeight{Float64}(0) == ZernikeWeight{Float64}(0, 0)
+        @test ZernikeWeight(1) ≠ ZernikeWeight()
+        @test ZernikeWeight() ≡ copy(ZernikeWeight())
     end
 
     @testset "Evaluation" begin
@@ -176,6 +183,29 @@ import ClassicalOrthogonalPolynomials: HalfWeighted
 
 
         R = Zernike(1) \ Zernike()
-        @test Zernike()[xy,Block.(1:5)]' ≈ Zernike(1)[xy,Block.(1:5)]'*R[Block.(1:5),Block.(1:5)] 
+        @test Zernike()[xy,Block.(1:6)]' ≈ Zernike(1)[xy,Block.(1:6)]'*R[Block.(1:6),Block.(1:6)] 
+    end
+
+    @testset "Lowering" begin
+        L0 = Normalized(Jacobi(0, 0)) \ HalfWeighted{:a}(Normalized(Jacobi(1, 0)))
+        L1 = Normalized(Jacobi(0, 1)) \ HalfWeighted{:a}(Normalized(Jacobi(1, 1)))
+        L2 = Normalized(Jacobi(0, 2)) \ HalfWeighted{:a}(Normalized(Jacobi(1, 2)))
+        L3 = Normalized(Jacobi(0, 3)) \ HalfWeighted{:a}(Normalized(Jacobi(1, 3)))
+
+        xy = SVector(0.1,0.2)
+        r = norm(xy)
+        w = 1 - r^2
+
+        @test w*Zernike(1)[xy,Block(1)[1]] ≈ L0[1:2,1]'*Zernike()[xy,getindex.(Block.(1:2:3),1)] / sqrt(2)
+
+        @test w*Zernike(1)[xy,Block(2)[1]] ≈ L1[1:2,1]'*Zernike()[xy,getindex.(Block.(2:2:4),1)]/sqrt(2)
+        @test w*Zernike(1)[xy,Block(2)[2]] ≈ L1[1:2,1]'*Zernike()[xy,getindex.(Block.(2:2:4),2)]/sqrt(2)
+
+        @test w*Zernike(1)[xy,Block(3)[1]] ≈ L0[2:3,2]'*Zernike()[xy,getindex.(Block.(3:2:5),1)]/sqrt(2)
+        @test w*Zernike(1)[xy,Block(3)[2]] ≈ L2[1:2,1]'*Zernike()[xy,getindex.(Block.(3:2:5),2)]/sqrt(2)
+        @test w*Zernike(1)[xy,Block(3)[3]] ≈ L2[1:2,1]'*Zernike()[xy,getindex.(Block.(3:2:5),3)]/sqrt(2)
+
+        L = Zernike() \ Weighted(Zernike(1))
+        @test w*Zernike(1)[xy,Block.(1:5)]' ≈ Zernike()[xy,Block.(1:7)]'*L[Block.(1:7),Block.(1:5)] 
     end
 end

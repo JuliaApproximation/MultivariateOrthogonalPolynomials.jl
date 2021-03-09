@@ -15,7 +15,7 @@ import BlockBandedMatrices: _BandedBlockBandedMatrix, AbstractBandedBlockBandedM
 import LinearAlgebra: factorize
 import LazyArrays: arguments, paddeddata
 
-import ClassicalOrthogonalPolynomials: jacobimatrix, Weighted, orthogonalityweight
+import ClassicalOrthogonalPolynomials: jacobimatrix, Weighted, orthogonalityweight, HalfWeighted
 import HarmonicOrthogonalPolynomials: BivariateOrthogonalPolynomial, MultivariateOrthogonalPolynomial, Plan,
                                           PartialDerivative, BlockOneTo, BlockRange1, interlace
 
