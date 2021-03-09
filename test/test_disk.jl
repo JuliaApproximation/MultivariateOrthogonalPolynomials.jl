@@ -10,6 +10,13 @@ import ClassicalOrthogonalPolynomials: HalfWeighted
 
         @test Zernike() == Zernike()
         @test Zernike(1) ≠ Zernike()
+        @test Zernike() ≡ copy(Zernike())
+
+        @test ZernikeWeight() == ZernikeWeight() == ZernikeWeight(0,0) == 
+                ZernikeWeight(0) == ZernikeWeight{Float64}() == 
+                ZernikeWeight{Float64}(0) == ZernikeWeight{Float64}(0, 0)
+        @test ZernikeWeight(1) ≠ ZernikeWeight()
+        @test ZernikeWeight() ≡ copy(ZernikeWeight())
     end
 
     @testset "Evaluation" begin

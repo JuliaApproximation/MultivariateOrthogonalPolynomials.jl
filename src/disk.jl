@@ -53,6 +53,7 @@ struct ZernikeWeight{T} <: Weight{T}
     b::T
 end
 
+
 """
     ZernikeWeight(b)
 
@@ -60,6 +61,11 @@ is a quasi-vector representing `(1-r^2)^b`
 """
 
 ZernikeWeight(b) = ZernikeWeight(zero(b), b)
+ZernikeWeight{T}(b) where T = ZernikeWeight{T}(zero(T), b)
+ZernikeWeight{T}() where T = ZernikeWeight{T}(zero(T))
+ZernikeWeight() = ZernikeWeight{Float64}()
+
+copy(w::ZernikeWeight) = w
 
 axes(::ZernikeWeight{T}) where T = (Inclusion(UnitDisk{T}()),)
 
