@@ -173,6 +173,9 @@ struct WeightedZernikeLaplacianDiag{T} <: AbstractBlockVector{T} end
 
 axes(::WeightedZernikeLaplacianDiag) = (blockedrange(oneto(∞)),)
 
+MemoryLayout(::Type{<:WeightedZernikeLaplacianDiag}) = LazyLayout()
+Base.BroadcastStyle(::Type{<:Diagonal{<:Any,<:WeightedZernikeLaplacianDiag}}) = LazyArrayStyle{2}()
+
 function Base.view(W::WeightedZernikeLaplacianDiag{T}, K::Block{1}) where T
     K̃ = Int(K)
     d = K̃÷2 + 1
@@ -196,12 +199,20 @@ end
 """
     ModalInterlace
 """
-struct ModalInterlace{T} <: AbstractBandedBlockBandedMatrix{T}
+struct ModalInterlace{T, MMNN<:Tuple} <: AbstractBandedBlockBandedMatrix{T}
     ops
+    MN::MMNN
     bandwidths::NTuple{2,Int}
 end
 
-axes(Z::ModalInterlace) = (blockedrange(oneto(∞)), blockedrange(oneto(∞)))
+ModalInterlace{T}(ops, MN::NTuple{2,Integer}, bandwidths::NTuple{2,Int}) where T = 
+    ModalInterlace{T,typeof(MN)}(ops, MN, bandwidths)
+
+# act like lazy array
+MemoryLayout(::Type{<:ModalInterlace{<:Any,NTuple{2,InfiniteCardinal{0}}}}) = LazyBandedBlockBandedLayout()
+Base.BroadcastStyle(::Type{<:ModalInterlace{<:Any,NTuple{2,InfiniteCardinal{0}}}}) = LazyArrayStyle{2}()
+
+axes(Z::ModalInterlace) = blockedrange.(oneto.(Z.MN))
 
 blockbandwidths(R::ModalInterlace) = R.bandwidths
 subblockbandwidths(::ModalInterlace) = (0,0)
@@ -229,18 +240,27 @@ end
 
 getindex(R::ModalInterlace, k::Integer, j::Integer) = R[findblockindex.(axes(R),(k,j))...]
 
+function getindex(R::ModalInterlace{T}, KR::BlockOneTo, JR::BlockOneTo) where T
+    M,N = Int(last(KR)), Int(last(JR))
+    ModalInterlace{T}([R.ops[m][1:(M-m+2)÷2,1:(N-m+2)÷2] for m=1:min(N,M)], (M,N), R.bandwidths)
+end
+
 function \(A::Zernike{T}, B::Zernike{V}) where {T,V}
     TV = promote_type(T,V)
     A.a == B.a && A.b == B.b && return Eye{TV}(∞)
     @assert A.a == 0 && A.b == 1
     @assert B.a == 0 && B.b == 0
-    ModalInterlace{TV}((Normalized.(Jacobi{TV}.(1,0:∞)) .\ Normalized.(Jacobi{TV}.(0,0:∞))) ./ sqrt(convert(TV, 2)), (0,2))
+    ModalInterlace{TV}((Normalized.(Jacobi{TV}.(1,0:∞)) .\ Normalized.(Jacobi{TV}.(0,0:∞))) ./ sqrt(convert(TV, 2)), (ℵ₀,ℵ₀), (0,2))
 end
 
 function \(A::Zernike{T}, B::Weighted{V,Zernike{V}}) where {T,V}
     TV = promote_type(T,V)
     A.a == B.P.a == A.b == B.P.b == 0 && return Eye{TV}(∞)
-    @assert A.a == A.b == 0
-    @assert B.P.a == 0 && B.P.b == 1
-    ModalInterlace{TV}((Normalized.(Jacobi{TV}.(0, 0:∞)) .\ HalfWeighted{:a}.(Normalized.(Jacobi{TV}.(1, 0:∞)))) ./ sqrt(convert(TV, 2)), (2,0))
+    if A.a == A.b == 0
+        @assert B.P.a == 0 && B.P.b == 1
+        ModalInterlace{TV}((Normalized.(Jacobi{TV}.(0, 0:∞)) .\ HalfWeighted{:a}.(Normalized.(Jacobi{TV}.(1, 0:∞)))) ./ sqrt(convert(TV, 2)), (ℵ₀,ℵ₀), (2,0))
+    else
+        Z = Zernike{TV}() 
+        (A \ Z) * (Z \ B)
+    end
 end

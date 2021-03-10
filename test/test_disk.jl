@@ -183,7 +183,9 @@ import ClassicalOrthogonalPolynomials: HalfWeighted
 
 
         R = Zernike(1) \ Zernike()
-        @test Zernike()[xy,Block.(1:6)]' ≈ Zernike(1)[xy,Block.(1:6)]'*R[Block.(1:6),Block.(1:6)] 
+
+        @test R[Block.(Base.OneTo(6)), Block.(Base.OneTo(7))] == R[Block.(1:6), Block.(1:7)]
+        @test Zernike()[xy,Block.(1:6)]' ≈ Zernike(1)[xy,Block.(1:6)]'*R[Block.(1:6),Block.(1:6)]
     end
 
     @testset "Lowering" begin
