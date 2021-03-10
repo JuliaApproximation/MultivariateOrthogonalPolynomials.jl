@@ -46,6 +46,15 @@ import ClassicalOrthogonalPolynomials: HalfWeighted
         @test_throws ArgumentError DiskTrav([1 2 3 4])
         @test_throws ArgumentError DiskTrav([1 2 3; 4 5 6])
         @test_throws ArgumentError DiskTrav([1 2 3 4; 5 6 7 8])
+
+        for N = 1:10
+            v = PseudoBlockArray(1:sum(1:N),1:N)
+            if iseven(N)
+                @test DiskTrav(v) == [v; zeros(N+1)]
+            else
+                @test DiskTrav(v) == v
+            end
+        end
     end
 
     @testset "Transform" begin

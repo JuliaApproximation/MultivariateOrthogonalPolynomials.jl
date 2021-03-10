@@ -8,14 +8,38 @@
 struct DiskTrav{T, AA<:AbstractMatrix{T}} <: AbstractBlockVector{T}
     matrix::AA
     function DiskTrav{T, AA}(matrix::AA) where {T,AA<:AbstractMatrix{T}}
-        n,m = size(matrix)
-        isodd(m) && n == m ÷ 4 + 1 || throw(ArgumentError("size must match"))
+        m,n = size(matrix)
+        isodd(n) && m == n ÷ 4 + 1 || throw(ArgumentError("size must match"))
         new{T,AA}(matrix)
     end
 end
 
 DiskTrav{T}(matrix::AbstractMatrix{T}) where T = DiskTrav{T,typeof(matrix)}(matrix)
 DiskTrav(matrix::AbstractMatrix{T}) where T = DiskTrav{T}(matrix)
+
+function DiskTrav(v::AbstractVector{T}) where T
+    N = blocksize(v,1)
+    m = N ÷ 2 + 1
+    n = 4(m-1) + 1
+    mat = zeros(T, m, n)
+    for K in blockaxes(v,1)
+        K̃ = Int(K)
+        w = v[K]
+        if isodd(K̃)
+            mat[K̃÷2 + 1,1] = w[1]
+            for j = 2:2:K̃-1
+                mat[K̃÷2-j÷2+1,2(j-1)+2] = w[j]
+                mat[K̃÷2-j÷2+1,2(j-1)+3] = w[j+1]
+            end
+        else
+            for j = 1:2:K̃
+                mat[K̃÷2-j÷2,2(j-1)+2] = w[j]
+                mat[K̃÷2-j÷2,2(j-1)+3] = w[j+1]
+            end
+        end
+    end
+    DiskTrav(mat)
+end
 
 axes(A::DiskTrav) = (blockedrange(oneto(div(size(A.matrix,2),2,RoundUp))),)
 
@@ -165,6 +189,7 @@ function ZernikeTransform{T}(N::Int, a::Number, b::Number) where T<:Real
     ZernikeTransform{T}(N, plan_disk2cxf(T, Ñ, a, b), plan_disk_analysis(T, Ñ, 4Ñ-3))
 end
 *(P::ZernikeTransform{T}, f::Matrix{T}) where T = DiskTrav(P.disk2cxf \ (P.analysis * f))[Block.(1:P.N)]
+\(P::ZernikeTransform, f::AbstractVector) = P.analysis \ (P.disk2cxf * DiskTrav(f).matrix)
 
 factorize(S::FiniteZernike{T}) where T = TransformFactorization(grid(S), ZernikeTransform{T}(blocksize(S,2), parent(S).a, parent(S).b))
 
