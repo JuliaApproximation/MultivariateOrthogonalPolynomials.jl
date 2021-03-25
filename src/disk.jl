@@ -197,6 +197,7 @@ factorize(S::FiniteZernike{T}) where T = TransformFactorization(grid(S), Zernike
 struct WeightedZernikeLaplacianDiag{T} <: AbstractBlockVector{T} end
 
 axes(::WeightedZernikeLaplacianDiag) = (blockedrange(oneto(∞)),)
+copy(R::WeightedZernikeLaplacianDiag) = R
 
 MemoryLayout(::Type{<:WeightedZernikeLaplacianDiag}) = LazyLayout()
 Base.BroadcastStyle(::Type{<:Diagonal{<:Any,<:WeightedZernikeLaplacianDiag}}) = LazyArrayStyle{2}()
