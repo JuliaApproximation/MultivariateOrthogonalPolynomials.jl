@@ -172,6 +172,7 @@ factorize(S::FiniteZernike{T}) where T = TransformFactorization(grid(S), Zernike
 struct WeightedZernikeLaplacianDiag{T} <: AbstractBlockVector{T} end
 
 axes(::WeightedZernikeLaplacianDiag) = (blockedrange(oneto(∞)),)
+copy(R::WeightedZernikeLaplacianDiag) = R
 
 function Base.view(W::WeightedZernikeLaplacianDiag{T}, K::Block{1}) where T
     K̃ = Int(K)
