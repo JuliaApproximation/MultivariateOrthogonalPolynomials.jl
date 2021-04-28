@@ -10,10 +10,13 @@ import DomainSets: boundary
 import QuasiArrays: LazyQuasiMatrix, LazyQuasiArrayStyle
 import ContinuumArrays: @simplify, Weight, grid, TransformFactorization, Expansion
 
+import ArrayLayouts: MemoryLayout
 import BlockArrays: block, blockindex, BlockSlice, viewblock
 import BlockBandedMatrices: _BandedBlockBandedMatrix, AbstractBandedBlockBandedMatrix, _BandedMatrix, blockbandwidths, subblockbandwidths
 import LinearAlgebra: factorize
-import LazyArrays: arguments, paddeddata
+import LazyArrays: arguments, paddeddata, LazyArrayStyle, LazyLayout
+import LazyBandedMatrices: LazyBandedBlockBandedLayout
+import InfiniteArrays: InfiniteCardinal
 
 import ClassicalOrthogonalPolynomials: jacobimatrix, Weighted, orthogonalityweight, HalfWeighted
 import HarmonicOrthogonalPolynomials: BivariateOrthogonalPolynomial, MultivariateOrthogonalPolynomial, Plan,

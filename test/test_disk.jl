@@ -46,6 +46,15 @@ import ClassicalOrthogonalPolynomials: HalfWeighted
         @test_throws ArgumentError DiskTrav([1 2 3 4])
         @test_throws ArgumentError DiskTrav([1 2 3; 4 5 6])
         @test_throws ArgumentError DiskTrav([1 2 3 4; 5 6 7 8])
+
+        for N = 1:10
+            v = PseudoBlockArray(1:sum(1:N),1:N)
+            if iseven(N)
+                @test DiskTrav(v) == [v; zeros(N+1)]
+            else
+                @test DiskTrav(v) == v
+            end
+        end
     end
 
     @testset "Transform" begin
@@ -149,6 +158,7 @@ import ClassicalOrthogonalPolynomials: HalfWeighted
         WZ = Weighted(Zernike(1)) # Zernike(1) weighted by (1-r^2)
         Δ = Laplacian(axes(WZ,1))
         Δ_Z = Zernike(1) \ (Δ * WZ)
+        @test exp.(Δ_Z)[1:10,1:10] == exp.(Δ_Z[1:10,1:10])
 
         xy = axes(WZ,1)
         x,y = first.(xy),last.(xy)
@@ -183,7 +193,9 @@ import ClassicalOrthogonalPolynomials: HalfWeighted
 
 
         R = Zernike(1) \ Zernike()
-        @test Zernike()[xy,Block.(1:6)]' ≈ Zernike(1)[xy,Block.(1:6)]'*R[Block.(1:6),Block.(1:6)] 
+
+        @test R[Block.(Base.OneTo(6)), Block.(Base.OneTo(7))] == R[Block.(1:6), Block.(1:7)]
+        @test Zernike()[xy,Block.(1:6)]' ≈ Zernike(1)[xy,Block.(1:6)]'*R[Block.(1:6),Block.(1:6)]
     end
 
     @testset "Lowering" begin
@@ -207,5 +219,10 @@ import ClassicalOrthogonalPolynomials: HalfWeighted
 
         L = Zernike() \ Weighted(Zernike(1))
         @test w*Zernike(1)[xy,Block.(1:5)]' ≈ Zernike()[xy,Block.(1:7)]'*L[Block.(1:7),Block.(1:5)] 
+
+        @test exp.(L)[1:10,1:10] == exp.(L[1:10,1:10])
+
+        L2 = Zernike(1) \ Weighted(Zernike(1))
+        @test w*Zernike(1)[xy,Block.(1:5)]' ≈ Zernike(1)[xy,Block.(1:7)]'*L2[Block.(1:7),Block.(1:5)] 
     end
 end
