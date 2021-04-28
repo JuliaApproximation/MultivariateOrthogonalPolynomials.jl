@@ -158,6 +158,7 @@ import ClassicalOrthogonalPolynomials: HalfWeighted
         WZ = Weighted(Zernike(1)) # Zernike(1) weighted by (1-r^2)
         Δ = Laplacian(axes(WZ,1))
         Δ_Z = Zernike(1) \ (Δ * WZ)
+        @test exp.(Δ_Z)[1:10,1:10] == exp.(Δ_Z[1:10,1:10])
 
         xy = axes(WZ,1)
         x,y = first.(xy),last.(xy)
@@ -218,5 +219,10 @@ import ClassicalOrthogonalPolynomials: HalfWeighted
 
         L = Zernike() \ Weighted(Zernike(1))
         @test w*Zernike(1)[xy,Block.(1:5)]' ≈ Zernike()[xy,Block.(1:7)]'*L[Block.(1:7),Block.(1:5)] 
+
+        @test exp.(L)[1:10,1:10] == exp.(L[1:10,1:10])
+
+        L2 = Zernike(1) \ Weighted(Zernike(1))
+        @test w*Zernike(1)[xy,Block.(1:5)]' ≈ Zernike(1)[xy,Block.(1:7)]'*L2[Block.(1:7),Block.(1:5)] 
     end
 end
