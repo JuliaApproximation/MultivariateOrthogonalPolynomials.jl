@@ -1,5 +1,5 @@
 using MultivariateOrthogonalPolynomials, ClassicalOrthogonalPolynomials, StaticArrays, BlockArrays, BandedMatrices, FastTransforms, LinearAlgebra, Test
-import MultivariateOrthogonalPolynomials: DiskTrav, grid
+import MultivariateOrthogonalPolynomials: DiskTrav, grid, FractionalDiskLaplacian, *
 import ClassicalOrthogonalPolynomials: HalfWeighted
 
 
@@ -225,4 +225,14 @@ import ClassicalOrthogonalPolynomials: HalfWeighted
         L2 = Zernike(1) \ Weighted(Zernike(1))
         @test w*Zernike(1)[xy,Block.(1:5)]' ≈ Zernike(1)[xy,Block.(1:7)]'*L2[Block.(1:7),Block.(1:5)] 
     end
+end
+
+@testset "Fractional Laplacian on Disk: (-Δ)^(γ/2) == -Δ when γ=2" begin
+    # setup 
+    WZ = Weighted(Zernike(1))
+    Δ = Laplacian(axes(WZ,1))
+    Δ_Z = Zernike(1) \ (Δ * WZ)
+    Δfrac = FractionalDiskLaplacian(2.)
+    Δ_Zfrac = Zernike(1) \ (Δfrac * WZ)
+    @test Δ_Z[1:100,1:100] ≈ -Δ_Zfrac[1:100,1:100]
 end
