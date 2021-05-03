@@ -226,12 +226,12 @@ end
 ###
 
 struct FractionalDiskLaplacian{T}
-    γ::T # (-Δ)^(γ/2) acting on (1-r^2)^β * Zernike(β) with arbitrary β
+    β::T # (-Δ)^(β) acting on (1-r^2)^β * Zernike(β)
 end
 
-# gives the entries for the (negative!) fractional Laplacian (-Δ)^(γ/2) times (1-r^2)^β * Zernike(β)
+# gives the entries for the (negative!) fractional Laplacian (-Δ)^(β) times (1-r^2)^β * Zernike(β)
 struct WeightedZernikeFractionalLaplacianDiag{T} <: AbstractBlockVector{T} 
-    γ::T
+    β::T
 end
 
 axes(::WeightedZernikeFractionalLaplacianDiag) = (blockedrange(oneto(∞)),)
@@ -249,21 +249,20 @@ function Base.view(W::WeightedZernikeFractionalLaplacianDiag{T}, K::Block{1}) wh
     else #if iseven(l)
         m = Vcat(interlace(Array(1:2:l),Array(1:2:l)))
     end
-    return convert(AbstractVector{T}, 2^W.γ*fractionalcfs2d.(l-1,m,W.γ))
+    return convert(AbstractVector{T}, 2^(2*W.β)*fractionalcfs2d.(l-1,m,W.β))
 end
 
-# generic d-dimensional ball fractional coefficients without the 2^γ factor. m is assumed to be entered as abs(m)
-function fractionalcfs(l::Integer,m::Integer,γ,d::Integer)
+# generic d-dimensional ball fractional coefficients without the 2^(2*β) factor. m is assumed to be entered as abs(m)
+function fractionalcfs(l::Integer, m::Integer, β, d::Integer)
     n = (l-m)÷2
-    # gamma(1+γ/2+n)*gamma((d+2*m+γ)/2+n)/(gamma(n+1)*gamma((d+2*m)/2+n))
-    return exp(loggamma(1+γ/2+n)+loggamma((d+2*m+γ)/2+n)-loggamma(n+1)-loggamma((d+2*m)/2+n))
+    return exp(loggamma(1+β+n)+loggamma((d+2*m)/2+β+n)-loggamma(n+1)-loggamma((d+2*m)/2+n))
 end
-# 2d special case, again without the 2^γ factor
-fractionalcfs2d(l::Integer,m::Integer,γ) = fractionalcfs(l,m,γ,2)
+# 2 dimensional special case, again without the 2^(2*β) factor
+fractionalcfs2d(l::Integer, m::Integer, β) = fractionalcfs(l,m,β,2)
 
 function *(L::FractionalDiskLaplacian, WZ::Weighted{<:Any,<:Zernike{<:Any}})
-    @assert WZ.P.a == 0
-    WZ.P * Diagonal(WeightedZernikeFractionalLaplacianDiag{typeof(L.γ)}(L.γ))
+    @assert WZ.P.a == 0 && WZ.P.b == L.β
+    WZ.P * Diagonal(WeightedZernikeFractionalLaplacianDiag{typeof(L.β)}(L.β))
 end
 
 
