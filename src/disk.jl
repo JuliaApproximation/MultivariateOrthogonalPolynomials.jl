@@ -210,7 +210,7 @@ function Base.view(W::WeightedZernikeLaplacianDiag{T}, K::Block{1}) where T
         convert(AbstractVector{T}, -4*interlace(v, v[2:end]))
     else
         v = (d:K̃) .* (d-1:(-1):1)
-        convert(AbstractVector{T}, -4 * interlace(v, v))
+        convert(AbstractVector{T}, -4*interlace(v, v))
     end
 end
 
@@ -219,6 +219,51 @@ getindex(W::WeightedZernikeLaplacianDiag, k::Integer) = W[findblockindex(axes(W,
 @simplify function *(Δ::Laplacian, WZ::Weighted{<:Any,<:Zernike})
     @assert WZ.P.a == 0 && WZ.P.b == 1
     WZ.P * Diagonal(WeightedZernikeLaplacianDiag{eltype(eltype(WZ))}())
+end
+
+###
+# Fractional Laplacian
+###
+
+struct FractionalDiskLaplacian{T}
+    γ::T # (-Δ)^(γ/2) acting on (1-r^2)^β * Zernike(β) with arbitrary β
+end
+
+# gives the entries for the (negative!) fractional Laplacian (-Δ)^(γ/2) times (1-r^2)^β * Zernike(β)
+struct WeightedZernikeFractionalLaplacianDiag{T} <: AbstractBlockVector{T} 
+    γ::T
+end
+
+axes(::WeightedZernikeFractionalLaplacianDiag) = (blockedrange(oneto(∞)),)
+copy(R::WeightedZernikeFractionalLaplacianDiag) = R
+
+MemoryLayout(::Type{<:WeightedZernikeFractionalLaplacianDiag}) = LazyLayout()
+Base.BroadcastStyle(::Type{<:Diagonal{<:Any,<:WeightedZernikeFractionalLaplacianDiag}}) = LazyArrayStyle{2}()
+
+getindex(W::WeightedZernikeFractionalLaplacianDiag, k::Integer) = W[findblockindex(axes(W,1),k)]
+
+function Base.view(W::WeightedZernikeFractionalLaplacianDiag{T}, K::Block{1}) where T
+    l = Int(K)
+    if isodd(l)
+        m = Vcat(0,interlace(Array(2:2:l),Array(2:2:l)))
+    else #if iseven(l)
+        m = Vcat(interlace(Array(1:2:l),Array(1:2:l)))
+    end
+    return convert(AbstractVector{T}, 2^W.γ*fractionalcfs2d.(l-1,m,W.γ))
+end
+
+# generic d-dimensional ball fractional coefficients without the 2^γ factor. m is assumed to be entered as abs(m)
+function fractionalcfs(l::Integer,m::Integer,γ,d::Integer)
+    n = (l-m)÷2
+    # gamma(1+γ/2+n)*gamma((d+2*m+γ)/2+n)/(gamma(n+1)*gamma((d+2*m)/2+n))
+    return exp(loggamma(1+γ/2+n)+loggamma((d+2*m+γ)/2+n)-loggamma(n+1)-loggamma((d+2*m)/2+n))
+end
+# 2d special case, again without the 2^γ factor
+fractionalcfs2d(l::Integer,m::Integer,γ) = fractionalcfs(l,m,γ,2)
+
+function *(L::FractionalDiskLaplacian, WZ::Weighted{<:Any,<:Zernike{<:Any}})
+    @assert WZ.P.a == 0
+    WZ.P * Diagonal(WeightedZernikeFractionalLaplacianDiag{typeof(L.γ)}(L.γ))
 end
 
 
