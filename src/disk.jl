@@ -178,6 +178,21 @@ function grid(S::FiniteZernike{T}) where T
     RadialCoordinate.(r, π*θ')
 end
 
+_angle(rθ::RadialCoordinate) = rθ.θ
+
+function plotgrid(S::FiniteZernike{T}) where T
+    N = blocksize(S,2) ÷ 2 + 1 # polynomial degree
+    g = grid(parent(S)[:,Block.(OneTo(2N))]) # double sampling
+    θ = [map(_angle,g[1,:]); 0]
+    [permutedims(RadialCoordinate.(1,θ)); g g[:,1]; permutedims(RadialCoordinate.(0,θ))]
+end
+
+function plotgrid(S::SubQuasiArray{<:Any,2,<:Zernike})
+    kr,jr = parentindices(S)
+    Z = parent(S)
+    plotgrid(Z[kr,Block.(OneTo(Int(findblock(axes(Z,2),maximum(jr)))))])
+end
+
 struct ZernikeTransform{T} <: Plan{T}
     N::Int
     disk2cxf::FastTransforms.FTPlan{T,2,FastTransforms.DISK}

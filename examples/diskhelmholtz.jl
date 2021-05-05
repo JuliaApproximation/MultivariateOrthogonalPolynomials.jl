@@ -1,7 +1,32 @@
-using MultivariateOrthogonalPolynomials, FastTransforms, BlockBandedMatrices, WGLMakie
-import MultivariateOrthogonalPolynomials: ZernikeITransform, grid
+using MultivariateOrthogonalPolynomials, FastTransforms, BlockBandedMatrices, Plots
+plotly()
+import MultivariateOrthogonalPolynomials: ZernikeITransform, grid, plotgrid
+
 
 Z = Zernike()[:,Block.(Base.OneTo(10))]
+g = grid(Z)
+θ = getproperty.(g[1,:],:θ)
+[permutedims(RadialCoordinate.(1,θ)); g; permutedims(RadialCoordinate.(0,θ))]
+import Mul
+
+plotgrid(Z)
+
+
+Z = Zernike()
+xy = axes(Z,1)
+x,y = first.(xy),last.(xy)
+u = Z * (Z \ @.(cos(10x*y)))
+surface(u)
+
+@.(cos(10x*y))
+
+plot(u)
+
+g = plotgrid(Z[:,Block.(Base.OneTo(10))])
+surface(first.(g), last.(g), u[g])
+plot(u)
+
+
 G = grid(Z)
 
 contourf(first.(G), last.(G), ones(size(G)...))

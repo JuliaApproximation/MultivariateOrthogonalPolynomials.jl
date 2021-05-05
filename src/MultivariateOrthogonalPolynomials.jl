@@ -8,7 +8,7 @@ import Base: axes, in, ==, *, ^, \, copy, OneTo, getindex, size
 import DomainSets: boundary
 
 import QuasiArrays: LazyQuasiMatrix, LazyQuasiArrayStyle
-import ContinuumArrays: @simplify, Weight, grid, TransformFactorization, Expansion
+import ContinuumArrays: @simplify, Weight, grid, plotgrid, TransformFactorization, Expansion
 
 import ArrayLayouts: MemoryLayout
 import BlockArrays: block, blockindex, BlockSlice, viewblock
