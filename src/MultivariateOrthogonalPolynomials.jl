@@ -4,7 +4,7 @@ using ClassicalOrthogonalPolynomials, FastTransforms, BlockBandedMatrices, Block
       LazyArrays, SpecialFunctions, LinearAlgebra, BandedMatrices, LazyBandedMatrices, ArrayLayouts,
       HarmonicOrthogonalPolynomials
 
-import Base: axes, in, ==, *, ^, \, copy, OneTo, getindex, size
+import Base: axes, in, ==, *, ^, \, copy, OneTo, getindex, size, oneto
 import DomainSets: boundary
 
 import QuasiArrays: LazyQuasiMatrix, LazyQuasiArrayStyle
@@ -25,13 +25,6 @@ import HarmonicOrthogonalPolynomials: BivariateOrthogonalPolynomial, Multivariat
 export UnitTriangle, UnitDisk, JacobiTriangle, TriangleWeight, WeightedTriangle, PartialDerivative, Laplacian, 
       MultivariateOrthogonalPolynomial, BivariateOrthogonalPolynomial, Zernike, RadialCoordinate,
       zerniker, zernikez, Weighted, Block, ZernikeWeight
-
-if VERSION < v"1.6-"
-      oneto(n) = Base.OneTo(n)
-else
-      import Base: oneto
-end
-
 
 
 include("disk.jl")

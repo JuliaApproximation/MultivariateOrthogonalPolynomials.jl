@@ -1,4 +1,4 @@
-using MultivariateOrthogonalPolynomials, ClassicalOrthogonalPolynomials, StaticArrays, BlockArrays, BandedMatrices, FastTransforms, LinearAlgebra, Test
+using MultivariateOrthogonalPolynomials, ClassicalOrthogonalPolynomials, StaticArrays, BlockArrays, BandedMatrices, FastTransforms, LinearAlgebra, RecipesBase, Test
 import MultivariateOrthogonalPolynomials: DiskTrav, grid
 import ClassicalOrthogonalPolynomials: HalfWeighted
 
@@ -224,5 +224,13 @@ import ClassicalOrthogonalPolynomials: HalfWeighted
 
         L2 = Zernike(1) \ Weighted(Zernike(1))
         @test w*Zernike(1)[xy,Block.(1:5)]' ≈ Zernike(1)[xy,Block.(1:7)]'*L2[Block.(1:7),Block.(1:5)] 
+    end
+
+    @testset "plotting" begin
+        Z = Zernike()
+        u = Z * [1; 2; zeros(∞)];
+        rep = RecipesBase.apply_recipe(Dict{Symbol, Any}(), u)
+        g = MultivariateOrthogonalPolynomials.plotgrid(Z[:,1:3])
+        @test rep[1].args == (first.(g),last.(g),u[g])
     end
 end
