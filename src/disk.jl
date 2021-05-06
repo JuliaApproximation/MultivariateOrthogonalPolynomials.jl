@@ -178,18 +178,45 @@ function grid(S::FiniteZernike{T}) where T
     RadialCoordinate.(r, π*θ')
 end
 
+_angle(rθ::RadialCoordinate) = rθ.θ
+
+function plotgrid(S::FiniteZernike{T}) where T
+    N = blocksize(S,2) ÷ 2 + 1 # polynomial degree
+    g = grid(parent(S)[:,Block.(OneTo(2N))]) # double sampling
+    θ = [map(_angle,g[1,:]); 0]
+    [permutedims(RadialCoordinate.(1,θ)); g g[:,1]; permutedims(RadialCoordinate.(0,θ))]
+end
+
+function plotgrid(S::SubQuasiArray{<:Any,2,<:Zernike})
+    kr,jr = parentindices(S)
+    Z = parent(S)
+    plotgrid(Z[kr,Block.(OneTo(Int(findblock(axes(Z,2),maximum(jr)))))])
+end
+
 struct ZernikeTransform{T} <: Plan{T}
     N::Int
     disk2cxf::FastTransforms.FTPlan{T,2,FastTransforms.DISK}
     analysis::FastTransforms.FTPlan{T,2,FastTransforms.DISKANALYSIS}
 end
 
+struct ZernikeITransform{T} <: Plan{T}
+    N::Int
+    disk2cxf::FastTransforms.FTPlan{T,2,FastTransforms.DISK}
+    synthesis::FastTransforms.FTPlan{T,2,FastTransforms.DISKSYNTHESIS}
+end
+
 function ZernikeTransform{T}(N::Int, a::Number, b::Number) where T<:Real
     Ñ = N ÷ 2 + 1
     ZernikeTransform{T}(N, plan_disk2cxf(T, Ñ, a, b), plan_disk_analysis(T, Ñ, 4Ñ-3))
 end
+function ZernikeITransform{T}(N::Int, a::Number, b::Number) where T<:Real
+    Ñ = N ÷ 2 + 1
+    ZernikeITransform{T}(N, plan_disk2cxf(T, Ñ, a, b), plan_disk_synthesis(T, Ñ, 4Ñ-3))
+end
+
+*(P::ZernikeTransform{T}, f::AbstractArray) where T = P * convert(Matrix{T}, f)
 *(P::ZernikeTransform{T}, f::Matrix{T}) where T = DiskTrav(P.disk2cxf \ (P.analysis * f))[Block.(1:P.N)]
-\(P::ZernikeTransform, f::AbstractVector) = P.analysis \ (P.disk2cxf * DiskTrav(f).matrix)
+*(P::ZernikeITransform, f::AbstractVector) = P.synthesis * (P.disk2cxf * DiskTrav(f).matrix)
 
 factorize(S::FiniteZernike{T}) where T = TransformFactorization(grid(S), ZernikeTransform{T}(blocksize(S,2), parent(S).a, parent(S).b))
 

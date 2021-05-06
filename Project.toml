@@ -1,6 +1,6 @@
 name = "MultivariateOrthogonalPolynomials"
 uuid = "4f6956fd-4f93-5457-9149-7bfc4b2ce06d"
-version = "0.0.9"
+version = "0.1.0"
 
 [deps]
 ArrayLayouts = "4c555306-a7a7-4459-81d9-ec55ddd5c99a"
@@ -18,18 +18,19 @@ InfiniteLinearAlgebra = "cde9dba0-b1de-11e9-2c62-0bab9446c55c"
 LazyArrays = "5078a376-72f3-5289-bfd5-ec5146d43c02"
 LazyBandedMatrices = "d7e5e226-e90b-4449-9968-0f923699bf6f"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
 QuasiArrays = "c4ea9172-b204-11e9-377d-29865faadc5c"
 SpecialFunctions = "276daf66-3868-5448-9aa4-cd146d93841b"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [compat]
-ArrayLayouts = "0.6"
+ArrayLayouts = "0.6, 0.7"
 BandedMatrices = "0.16"
 BlockArrays = "0.14.1, 0.15"
 BlockBandedMatrices = "0.10.1"
 ClassicalOrthogonalPolynomials = "0.3.2"
-ContinuumArrays = "0.6.3, 0.7"
+ContinuumArrays = "0.7.3"
 DomainSets = "0.4"
 FastTransforms = "0.11, 0.12"
 FillArrays = "0.11"
@@ -41,4 +42,11 @@ LazyBandedMatrices = "0.5"
 QuasiArrays = "0.4, 0.5"
 SpecialFunctions = "0.10, 1"
 StaticArrays = "0.12, 1"
-julia = "1.5"
+julia = "1.6"
+
+[extras]
+RecipesBase = "3cdcf5f2-1ef4-517c-9805-6587b60abb01"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["RecipesBase", "Test"]

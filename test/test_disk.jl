@@ -1,9 +1,20 @@
-using MultivariateOrthogonalPolynomials, ClassicalOrthogonalPolynomials, StaticArrays, BlockArrays, BandedMatrices, FastTransforms, LinearAlgebra, Test
-import MultivariateOrthogonalPolynomials: DiskTrav, grid
+using MultivariateOrthogonalPolynomials, ClassicalOrthogonalPolynomials, StaticArrays, BlockArrays, BandedMatrices, FastTransforms, LinearAlgebra, RecipesBase, Test
+import MultivariateOrthogonalPolynomials: DiskTrav, grid, ZernikeTransform, ZernikeITransform
 import ClassicalOrthogonalPolynomials: HalfWeighted
 
 
 @testset "Disk" begin
+    @testset "Transform" begin
+        N = 5
+        T = ZernikeTransform{Float64}(N, 0, 0)
+        Ti = ZernikeITransform{Float64}(N, 0, 0)
+
+        v = PseudoBlockArray(randn(sum(1:N)),1:N)
+        @test T * (Ti * v) ≈ v
+        
+
+        @test_throws MethodError T * randn(15)
+    end
     @testset "Basics" begin
         @test ZernikeWeight(1)[SVector(0.1,0.2)] ≈ (1 - 0.1^2 - 0.2^2)
         @test ZernikeWeight(1) == ZernikeWeight(1)
@@ -224,5 +235,13 @@ import ClassicalOrthogonalPolynomials: HalfWeighted
 
         L2 = Zernike(1) \ Weighted(Zernike(1))
         @test w*Zernike(1)[xy,Block.(1:5)]' ≈ Zernike(1)[xy,Block.(1:7)]'*L2[Block.(1:7),Block.(1:5)] 
+    end
+
+    @testset "plotting" begin
+        Z = Zernike()
+        u = Z * [1; 2; zeros(∞)];
+        rep = RecipesBase.apply_recipe(Dict{Symbol, Any}(), u)
+        g = MultivariateOrthogonalPolynomials.plotgrid(Z[:,1:3])
+        @test rep[1].args == (first.(g),last.(g),u[g])
     end
 end
