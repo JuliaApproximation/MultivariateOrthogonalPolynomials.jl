@@ -214,7 +214,7 @@ function ZernikeITransform{T}(N::Int, a::Number, b::Number) where T<:Real
     ZernikeITransform{T}(N, plan_disk2cxf(T, Ñ, a, b), plan_disk_synthesis(T, Ñ, 4Ñ-3))
 end
 
-
+*(P::ZernikeTransform{T}, f::AbstractArray) where T = P * convert(Matrix{T}, f)
 *(P::ZernikeTransform{T}, f::Matrix{T}) where T = DiskTrav(P.disk2cxf \ (P.analysis * f))[Block.(1:P.N)]
 *(P::ZernikeITransform, f::AbstractVector) = P.synthesis * (P.disk2cxf * DiskTrav(f).matrix)
 

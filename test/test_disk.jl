@@ -1,9 +1,20 @@
 using MultivariateOrthogonalPolynomials, ClassicalOrthogonalPolynomials, StaticArrays, BlockArrays, BandedMatrices, FastTransforms, LinearAlgebra, RecipesBase, Test
-import MultivariateOrthogonalPolynomials: DiskTrav, grid
+import MultivariateOrthogonalPolynomials: DiskTrav, grid, ZernikeTransform, ZernikeITransform
 import ClassicalOrthogonalPolynomials: HalfWeighted
 
 
 @testset "Disk" begin
+    @testset "Transform" begin
+        N = 5
+        T = ZernikeTransform{Float64}(N, 0, 0)
+        Ti = ZernikeITransform{Float64}(N, 0, 0)
+
+        v = PseudoBlockArray(randn(sum(1:N)),1:N)
+        @test T * (Ti * v) ≈ v
+        
+
+        @test_throws MethodError T * randn(15)
+    end
     @testset "Basics" begin
         @test ZernikeWeight(1)[SVector(0.1,0.2)] ≈ (1 - 0.1^2 - 0.2^2)
         @test ZernikeWeight(1) == ZernikeWeight(1)
