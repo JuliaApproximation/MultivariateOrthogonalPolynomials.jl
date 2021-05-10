@@ -245,3 +245,13 @@ import ClassicalOrthogonalPolynomials: HalfWeighted
         @test rep[1].args == (first.(g),last.(g),u[g])
     end
 end
+
+@testset "Fractional Laplacian on Disk: (-Δ)^(β) == -Δ when β=1" begin
+    # setup 
+    WZ = Weighted(Zernike(1.))
+    Δ = Laplacian(axes(WZ,1))
+    Δ_Z = Zernike(1) \ (Δ * WZ)
+    Δfrac = FractionalDiskLaplacian(1.)
+    Δ_Zfrac = Zernike(1) \ (Δfrac * WZ)
+    @test Δ_Z[1:100,1:100] ≈ -Δ_Zfrac[1:100,1:100]
+end
