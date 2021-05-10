@@ -5,7 +5,7 @@ using ApproxFun, MultivariateOrthogonalPolynomials, Plots, BlockArrays
 # Neumann
 
 d = Triangle()
-S = DirichletTriangle{1,1,1}(d))
+S = DirichletTriangle{1,1,1}(d)
 Dx = Derivative(S,[1,0])
 Dy = Derivative(S,[0,1])
 B₁ = I : S → Legendre(Vec(0,0) .. Vec(0,1))
