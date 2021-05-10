@@ -1,5 +1,5 @@
 using MultivariateOrthogonalPolynomials, ClassicalOrthogonalPolynomials, StaticArrays, BlockArrays, BandedMatrices, FastTransforms, LinearAlgebra, RecipesBase, Test
-import MultivariateOrthogonalPolynomials: DiskTrav, grid, ZernikeTransform, ZernikeITransform
+import MultivariateOrthogonalPolynomials: DiskTrav, grid, ZernikeTransform, ZernikeITransform, FractionalDiskLaplacian, *
 import ClassicalOrthogonalPolynomials: HalfWeighted
 
 
