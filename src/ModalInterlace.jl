@@ -48,7 +48,8 @@ sublayout(::Union{ModalInterlaceLayout,LazyModalInterlaceLayout}, ::Type{<:NTupl
 
 
 function sub_materialize(::ModalInterlaceLayout, V::AbstractMatrix{T}) where T
-    KR,JR = parentindices(V)
+    kr,jr = parentindices(V)
+    KR,JR = kr.block,jr.block
     M,N = Int(last(KR)), Int(last(JR))
     R = parent(V)
     ModalInterlace{T}([R.ops[m][1:(M-m+2)÷2,1:(N-m+2)÷2] for m=1:min(N,M)], (M,N), R.bandwidths)
