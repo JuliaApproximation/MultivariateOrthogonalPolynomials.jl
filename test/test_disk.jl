@@ -1,5 +1,5 @@
 using MultivariateOrthogonalPolynomials, ClassicalOrthogonalPolynomials, StaticArrays, BlockArrays, BandedMatrices, FastTransforms, LinearAlgebra, RecipesBase, Test
-import MultivariateOrthogonalPolynomials: DiskTrav, grid, ZernikeTransform, ZernikeITransform, FractionalDiskLaplacian, *
+import MultivariateOrthogonalPolynomials: DiskTrav, grid, ZernikeTransform, ZernikeITransform, *
 import ClassicalOrthogonalPolynomials: HalfWeighted
 
 
@@ -251,7 +251,7 @@ end
     WZ = Weighted(Zernike(1.))
     Δ = Laplacian(axes(WZ,1))
     Δ_Z = Zernike(1) \ (Δ * WZ)
-    Δfrac = FractionalDiskLaplacian(1.)
+    Δfrac = AbsLaplacianPower(axes(WZ,1),1.)
     Δ_Zfrac = Zernike(1) \ (Δfrac * WZ)
     @test Δ_Z[1:100,1:100] ≈ -Δ_Zfrac[1:100,1:100]
 end

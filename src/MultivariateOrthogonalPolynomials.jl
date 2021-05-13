@@ -24,7 +24,7 @@ import HarmonicOrthogonalPolynomials: BivariateOrthogonalPolynomial, Multivariat
 
 export UnitTriangle, UnitDisk, JacobiTriangle, TriangleWeight, WeightedTriangle, PartialDerivative, Laplacian, 
       MultivariateOrthogonalPolynomial, BivariateOrthogonalPolynomial, Zernike, RadialCoordinate,
-      zerniker, zernikez, Weighted, Block, ZernikeWeight
+      zerniker, zernikez, Weighted, Block, ZernikeWeight, AbsLaplacianPower
 
 
 include("disk.jl")

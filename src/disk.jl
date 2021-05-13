@@ -252,13 +252,14 @@ end
 # Fractional Laplacian
 ###
 
-struct FractionalDiskLaplacian{T}
-    β::T # (-Δ)^(β) acting on (1-r^2)^β * Zernike(β)
+function *(L::AbsLaplacianPower, WZ::Weighted{<:Any,<:Zernike{<:Any}})
+    @assert axes(L,1) == axes(WZ,1) && WZ.P.a == 0 && WZ.P.b == L.α
+    WZ.P * Diagonal(WeightedZernikeFractionalLaplacianDiag{typeof(L.α)}(L.α))
 end
 
-# gives the entries for the (negative!) fractional Laplacian (-Δ)^(β) times (1-r^2)^β * Zernike(β)
+# gives the entries for the (negative!) fractional Laplacian (-Δ)^(α) times (1-r^2)^α * Zernike(α)
 struct WeightedZernikeFractionalLaplacianDiag{T} <: AbstractBlockVector{T} 
-    β::T
+    α::T
 end
 
 axes(::WeightedZernikeFractionalLaplacianDiag) = (blockedrange(oneto(∞)),)
@@ -276,22 +277,16 @@ function Base.view(W::WeightedZernikeFractionalLaplacianDiag{T}, K::Block{1}) wh
     else #if iseven(l)
         m = Vcat(interlace(Array(1:2:l),Array(1:2:l)))
     end
-    return convert(AbstractVector{T}, 2^(2*W.β)*fractionalcfs2d.(l-1,m,W.β))
+    return convert(AbstractVector{T}, 2^(2*W.α)*fractionalcfs2d.(l-1,m,W.α))
 end
 
 # generic d-dimensional ball fractional coefficients without the 2^(2*β) factor. m is assumed to be entered as abs(m)
-function fractionalcfs(l::Integer, m::Integer, β, d::Integer)
+function fractionalcfs(l::Integer, m::Integer, α, d::Integer)
     n = (l-m)÷2
-    return exp(loggamma(1+β+n)+loggamma((d+2*m)/2+β+n)-loggamma(n+1)-loggamma((d+2*m)/2+n))
+    return exp(loggamma(α+n+1)+loggamma((d+2*m)/2+α+n)-loggamma(n+1)-loggamma((d+2*m)/2+n))
 end
 # 2 dimensional special case, again without the 2^(2*β) factor
 fractionalcfs2d(l::Integer, m::Integer, β) = fractionalcfs(l,m,β,2)
-
-function *(L::FractionalDiskLaplacian, WZ::Weighted{<:Any,<:Zernike{<:Any}})
-    @assert WZ.P.a == 0 && WZ.P.b == L.β
-    WZ.P * Diagonal(WeightedZernikeFractionalLaplacianDiag{typeof(L.β)}(L.β))
-end
-
 
 """
     ModalInterlace
