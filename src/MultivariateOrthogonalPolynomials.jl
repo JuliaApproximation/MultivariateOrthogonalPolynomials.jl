@@ -10,12 +10,12 @@ import DomainSets: boundary
 import QuasiArrays: LazyQuasiMatrix, LazyQuasiArrayStyle
 import ContinuumArrays: @simplify, Weight, grid, plotgrid, TransformFactorization, Expansion
 
-import ArrayLayouts: MemoryLayout
+import ArrayLayouts: MemoryLayout, sublayout, sub_materialize
 import BlockArrays: block, blockindex, BlockSlice, viewblock
 import BlockBandedMatrices: _BandedBlockBandedMatrix, AbstractBandedBlockBandedMatrix, _BandedMatrix, blockbandwidths, subblockbandwidths
 import LinearAlgebra: factorize
 import LazyArrays: arguments, paddeddata, LazyArrayStyle, LazyLayout
-import LazyBandedMatrices: LazyBandedBlockBandedLayout
+import LazyBandedMatrices: LazyBandedBlockBandedLayout, AbstractBandedBlockBandedLayout, AbstractLazyBandedBlockBandedLayout
 import InfiniteArrays: InfiniteCardinal
 
 import ClassicalOrthogonalPolynomials: jacobimatrix, Weighted, orthogonalityweight, HalfWeighted
@@ -26,7 +26,7 @@ export UnitTriangle, UnitDisk, JacobiTriangle, TriangleWeight, WeightedTriangle,
       MultivariateOrthogonalPolynomial, BivariateOrthogonalPolynomial, Zernike, RadialCoordinate,
       zerniker, zernikez, Weighted, Block, ZernikeWeight
 
-
+include("ModalInterlace.jl")
 include("disk.jl")
 include("triangle.jl")
 
