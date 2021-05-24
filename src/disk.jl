@@ -281,9 +281,9 @@ function Base.view(W::WeightedZernikeFractionalLaplacianDiag{T}, K::Block{1}) wh
 end
 
 # generic d-dimensional ball fractional coefficients without the 2^(2*β) factor. m is assumed to be entered as abs(m)
-function fractionalcfs(l::Integer, m::Integer, α, d::Integer)
+function fractionalcfs(l::Integer, m::Integer, α::T, d::Integer) where T
     n = (l-m)÷2
-    return exp(loggamma(α+n+1)+loggamma((d+2*m)/2+α+n)-loggamma(n+1)-loggamma((d+2*m)/2+n))
+    return exp(loggamma(α+n+1)+loggamma((2*α+2*n+d+2*m)/2)-loggamma(one(T)+n)-loggamma((2*one(T)*m+2*n+d)/2))
 end
 # 2 dimensional special case, again without the 2^(2*β) factor
 fractionalcfs2d(l::Integer, m::Integer, β) = fractionalcfs(l,m,β,2)
