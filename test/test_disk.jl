@@ -1,5 +1,5 @@
-using MultivariateOrthogonalPolynomials, ClassicalOrthogonalPolynomials, StaticArrays, BlockArrays, BandedMatrices, FastTransforms, LinearAlgebra, RecipesBase, Test
-import MultivariateOrthogonalPolynomials: DiskTrav, grid, ZernikeTransform, ZernikeITransform
+using MultivariateOrthogonalPolynomials, ClassicalOrthogonalPolynomials, StaticArrays, BlockArrays, BandedMatrices, FastTransforms, LinearAlgebra, RecipesBase, Test, SpecialFunctions
+import MultivariateOrthogonalPolynomials: DiskTrav, grid, ZernikeTransform, ZernikeITransform, *
 import ClassicalOrthogonalPolynomials: HalfWeighted
 
 
@@ -243,5 +243,246 @@ import ClassicalOrthogonalPolynomials: HalfWeighted
         rep = RecipesBase.apply_recipe(Dict{Symbol, Any}(), u)
         g = MultivariateOrthogonalPolynomials.plotgrid(Z[:,1:3])
         @test rep[1].args == (first.(g),last.(g),u[g])
+    end
+end
+
+@testset "Fractional Laplacian on Unit Disk" begin
+    @testset "Fractional Laplacian on Disk: (-Δ)^(β) == -Δ when β=1" begin
+        WZ = Weighted(Zernike(1.))
+        Δ = Laplacian(axes(WZ,1))
+        Δ_Z = Zernike(1) \ (Δ * WZ)
+        Δfrac = AbsLaplacianPower(axes(WZ,1),1.)
+        Δ_Zfrac = Zernike(1) \ (Δfrac * WZ)
+        @test Δ_Z[1:100,1:100] ≈ -Δ_Zfrac[1:100,1:100]
+    end
+
+    @testset "Fractional Laplacian on Disk: Computing f where (-Δ)^(β) u = f" begin
+        @testset "Set 1 - Explicitly known constant f" begin
+            # set up basis
+            β = 1.34
+            Z = Zernike(β)
+            WZ = Weighted(Z)
+            xy = axes(WZ,1)
+            x,y = first.(xy),last.(xy)
+            # generate fractional Laplacian
+            Δfrac = AbsLaplacianPower(axes(WZ,1),β)
+            Δ_Zfrac = Z \ (Δfrac * WZ)
+            # define function whose fractional Laplacian is known
+            u = @. (1 - x^2 - y^2).^β
+            # explicit and computed solutions
+            fexplicit0(d,α) = 2^α*gamma(α/2+1)*gamma((d+α)/2)/gamma(d/2) # note that here, α = 2*β
+            f = Z*(Δ_Zfrac*(WZ \ u))
+            # compare
+            @test fexplicit0(2,2*β) ≈ f[(0.1,0.4)] ≈ f[(0.1137,0.001893)] ≈ f[(0.3721,0.3333)]
+
+            # again for different β
+            β = 2.11
+            Z = Zernike(β)
+            WZ = Weighted(Z)
+            xy = axes(WZ,1)
+            x,y = first.(xy),last.(xy)
+            # generate fractional Laplacian
+            Δfrac = AbsLaplacianPower(axes(WZ,1),β)
+            Δ_Zfrac = Z \ (Δfrac * WZ)
+            # define function whose fractional Laplacian is known
+            u = @. (1 - x^2 - y^2).^β
+            # computed solution
+            f = Z*(Δ_Zfrac*(WZ \ u))
+            # compare
+            @test fexplicit0(2,2*β) ≈ f[(0.14,0.41)] ≈ f[(0.1731,0.091893)] ≈ f[(0.3791,0.333333)]
+
+            # again for different β
+            β = 3.14159
+            Z = Zernike(β)
+            WZ = Weighted(Z)
+            xy = axes(WZ,1)
+            x,y = first.(xy),last.(xy)
+            # generate fractional Laplacian
+            Δfrac = AbsLaplacianPower(axes(WZ,1),β)
+            Δ_Zfrac = Z \ (Δfrac * WZ)
+            # define function whose fractional Laplacian is known
+            u = @. (1 - x^2 - y^2).^β
+            # computed solution
+            f = Z*(Δ_Zfrac*(WZ \ u))
+            # compare
+            @test fexplicit0(2,2*β) ≈ f[(0.14,0.41)] ≈ f[(0.1837,0.101893)] ≈ f[(0.37222,0.2222)]
+        end
+        @testset "Set 2 - Explicitly known radially symmetric f" begin
+            β = 1.1
+            Z = Zernike(β)
+            WZ = Weighted(Z)
+            xy = axes(WZ,1)
+            x,y = first.(xy),last.(xy)
+            # generate fractional Laplacian
+            Δfrac = AbsLaplacianPower(axes(WZ,1),β)
+            Δ_Zfrac = Z \ (Δfrac * WZ)
+            # define function whose fractional Laplacian is known
+            u = @. (1 - x^2 - y^2).^(β+1)
+            # explicit and computed solutions
+            fexplicit1(d,α,x) = 2^α*gamma(α/2+2)*gamma((d+α)/2)/gamma(d/2)*(1-(1+α/d)*norm(x)^2) # α = 2*β
+            f = Z*(Δ_Zfrac*(WZ \ u))
+            # compare
+            @test fexplicit1(2,2*β,(0.94,0.01)) ≈ f[(0.94,0.01)]
+            @test fexplicit1(2,2*β,(0.14,0.41)) ≈ f[(0.14,0.41)]
+            @test fexplicit1(2,2*β,(0.221,0.333)) ≈ f[(0.221,0.333)]
+
+            # again for different β
+            β = 2.71999
+            Z = Zernike(β)
+            WZ = Weighted(Z)
+            xy = axes(WZ,1)
+            x,y = first.(xy),last.(xy)
+            # generate fractional Laplacian
+            Δfrac = AbsLaplacianPower(axes(WZ,1),β)
+            Δ_Zfrac = Z \ (Δfrac * WZ)
+            # define function whose fractional Laplacian is known
+            u = @. (1 - x^2 - y^2).^(β+1)
+            # explicit and computed solutions
+            f = Z*(Δ_Zfrac*(WZ \ u))
+            # compare
+            @test fexplicit1(2,2*β,(0.94,0.01)) ≈ f[(0.94,0.01)]
+            @test fexplicit1(2,2*β,(0.14,0.41)) ≈ f[(0.14,0.41)]
+            @test fexplicit1(2,2*β,(0.221,0.333)) ≈ f[(0.221,0.333)]
+        end
+        @testset "Set 3 - Explicitly known f, not radially symmetric" begin
+            # dependence on x
+            β = 2.71999
+            Z = Zernike(β)
+            WZ = Weighted(Z)
+            xy = axes(WZ,1)
+            x,y = first.(xy),last.(xy)
+            # generate fractional Laplacian
+            Δfrac = AbsLaplacianPower(axes(WZ,1),β)
+            Δ_Zfrac = Z \ (Δfrac * WZ)
+            # define function whose fractional Laplacian is known
+            u = @. (1 - x^2 - y^2).^(β)*x
+            # explicit and computed solutions
+            fexplicit2(d,α,x) = 2^α*gamma(α/2+1)*gamma((d+α)/2+1)/gamma(d/2+1)*x[1] # α = 2*β
+            f = Z*(Δ_Zfrac*(WZ \ u))
+            # compare
+            @test fexplicit2(2,2*β,(0.94,0.01)) ≈ f[(0.94,0.01)]
+            @test fexplicit2(2,2*β,(0.14,0.41)) ≈ f[(0.14,0.41)]
+            @test fexplicit2(2,2*β,(0.221,0.333)) ≈ f[(0.221,0.333)]
+
+            # different β, dependence on y
+            β = 1.91239
+            Z = Zernike(β)
+            WZ = Weighted(Z)
+            xy = axes(WZ,1)
+            x,y = first.(xy),last.(xy)
+            # generate fractional Laplacian
+            Δfrac = AbsLaplacianPower(axes(WZ,1),β)
+            Δ_Zfrac = Z \ (Δfrac * WZ)
+            # define function whose fractional Laplacian is known
+            u = @. (1 - x^2 - y^2).^(β)*y
+            # explicit and computed solutions
+            fexplicit3(d,α,x) = 2^α*gamma(α/2+1)*gamma((d+α)/2+1)/gamma(d/2+1)*x[2] # α = 2*β
+            f = Z*(Δ_Zfrac*(WZ \ u))
+            # compare
+            @test fexplicit3(2,2*β,(0.94,0.01)) ≈ f[(0.94,0.01)]
+            @test fexplicit3(2,2*β,(0.14,0.41)) ≈ f[(0.14,0.41)]
+            @test fexplicit3(2,2*β,(0.221,0.333)) ≈ f[(0.221,0.333)]
+        end
+        @testset "Set 4 - Explicitly known f, different non-radially-symmetric example" begin
+            # dependence on x
+            β = 1.21999
+            Z = Zernike(β)
+            WZ = Weighted(Z)
+            xy = axes(WZ,1)
+            x,y = first.(xy),last.(xy)
+            # generate fractional Laplacian
+            Δfrac = AbsLaplacianPower(axes(WZ,1),β)
+            Δ_Zfrac = Z \ (Δfrac * WZ)
+            # define function whose fractional Laplacian is known
+            u = @. (1 - x^2 - y^2).^(β+1)*x
+            # explicit and computed solutions
+            fexplicit4(d,α,x) = 2^α*gamma(α/2+2)*gamma((d+α)/2+1)/gamma(d/2+1)*(1-(1+α/(d+2))*norm(x)^2)*x[1] # α = 2*β
+            f = Z*(Δ_Zfrac*(WZ \ u))
+            # compare
+            @test fexplicit4(2,2*β,(0.94,0.01)) ≈ f[(0.94,0.01)]
+            @test fexplicit4(2,2*β,(0.14,0.41)) ≈ f[(0.14,0.41)]
+            @test fexplicit4(2,2*β,(0.221,0.333)) ≈ f[(0.221,0.333)]
+
+            # different β, dependence on y
+            β = 0.141
+            Z = Zernike(β)
+            WZ = Weighted(Z)
+            xy = axes(WZ,1)
+            x,y = first.(xy),last.(xy)
+            # generate fractional Laplacian
+            Δfrac = AbsLaplacianPower(axes(WZ,1),β)
+            Δ_Zfrac = Z \ (Δfrac * WZ)
+            # define function whose fractional Laplacian is known
+            u = @. (1 - x^2 - y^2).^(β+1)*y
+            # explicit and computed solutions
+            fexplicit5(d,α,x) = 2^α*gamma(α/2+2)*gamma((d+α)/2+1)/gamma(d/2+1)*(1-(1+α/(d+2))*norm(x)^2)*x[2] # α = 2*β
+            f = Z*(Δ_Zfrac*(WZ \ u))
+            # compare
+            @test fexplicit5(2,2*β,(0.94,0.01)) ≈ f[(0.94,0.01)]
+            @test fexplicit5(2,2*β,(0.14,0.41)) ≈ f[(0.14,0.41)]
+            @test fexplicit5(2,2*β,(0.221,0.333)) ≈ f[(0.221,0.333)]
+        end
+
+        @testset "Fractional Poisson equation on Disk: Comparison with explicitly known solutions" begin
+            @testset "Set 1 - Radially symmetric solution" begin
+                # define basis
+                β = 1.1812
+                Z = Zernike(β)
+                WZ = Weighted(Z)
+                xy = axes(WZ,1)
+                x,y = first.(xy),last.(xy)
+                # generate fractional Laplacian
+                Δfrac = AbsLaplacianPower(axes(WZ,1),β)
+                Δ_Zfrac = Z \ (Δfrac * WZ)
+                # define function whose fractional Laplacian is known
+                uexplicit = @. (1 - x^2 - y^2).^(β+1)
+                uexplicitcfs = WZ \ uexplicit
+                # RHS
+                RHS(d,α,x) = 2^α*gamma(α/2+2)*gamma((d+α)/2)/gamma(d/2)*(1-(1+α/d)*norm(x)^2) # α = 2*β
+                RHScfs = Z \ @. RHS.(2,2*β,xy)
+                # compute solution
+                ucomputed = Δ_Zfrac \ RHScfs
+                @test uexplicitcfs[1:100] ≈ ucomputed[1:100]
+            end
+            @testset "Set 2 - Non-radially-symmetric solutions" begin
+                # dependence on y
+                β = 0.98812
+                Z = Zernike(β)
+                WZ = Weighted(Z)
+                xy = axes(WZ,1)
+                x,y = first.(xy),last.(xy)
+                # generate fractional Laplacian
+                Δfrac = AbsLaplacianPower(axes(WZ,1),β)
+                Δ_Zfrac = Z \ (Δfrac * WZ)
+                # define function whose fractional Laplacian is known
+                uexplicit = @. (1 - x^2 - y^2).^(β+1)*y
+                uexplicitcfs = WZ \ uexplicit
+                # RHS
+                RHS2(d,α,x) = 2^α*gamma(α/2+2)*gamma((d+α)/2+1)/gamma(d/2+1)*(1-(1+α/(d+2))*norm(x)^2)*x[2] # α = 2*β
+                RHS2cfs = Z \ @. RHS2.(2,2*β,xy)
+                # compute solution
+                ucomputed = Δ_Zfrac \ RHS2cfs
+                @test uexplicitcfs[1:100] ≈ ucomputed[1:100]
+        
+                # different β, dependence on x
+                β = 0.506
+                Z = Zernike(β)
+                WZ = Weighted(Z)
+                xy = axes(WZ,1)
+                x,y = first.(xy),last.(xy)
+                # generate fractional Laplacian
+                Δfrac = AbsLaplacianPower(axes(WZ,1),β)
+                Δ_Zfrac = Z \ (Δfrac * WZ)
+                # define function whose fractional Laplacian is known
+                uexplicit = @. (1 - x^2 - y^2).^(β+1)*x
+                uexplicitcfs = WZ \ uexplicit
+                # RHS
+                RHS3(d,α,x) = 2^α*gamma(α/2+2)*gamma((d+α)/2+1)/gamma(d/2+1)*(1-(1+α/(d+2))*norm(x)^2)*x[1] # α = 2*β
+                RHS3cfs = Z \ @. RHS3.(2,2*β,xy)
+                # compute solution
+                ucomputed = Δ_Zfrac \ RHS3cfs
+                @test uexplicitcfs[1:100] ≈ ucomputed[1:100]
+            end
+        end
     end
 end

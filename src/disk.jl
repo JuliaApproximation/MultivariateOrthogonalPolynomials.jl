@@ -237,7 +237,7 @@ function Base.view(W::WeightedZernikeLaplacianDiag{T}, K::Block{1}) where T
         convert(AbstractVector{T}, -4*interlace(v, v[2:end]))
     else
         v = (d:K̃) .* (d-1:(-1):1)
-        convert(AbstractVector{T}, -4 * interlace(v, v))
+        convert(AbstractVector{T}, -4*interlace(v, v))
     end
 end
 
@@ -248,6 +248,45 @@ getindex(W::WeightedZernikeLaplacianDiag, k::Integer) = W[findblockindex(axes(W,
     WZ.P * Diagonal(WeightedZernikeLaplacianDiag{eltype(eltype(WZ))}())
 end
 
+###
+# Fractional Laplacian
+###
+
+function *(L::AbsLaplacianPower, WZ::Weighted{<:Any,<:Zernike{<:Any}})
+    @assert axes(L,1) == axes(WZ,1) && WZ.P.a == 0 && WZ.P.b == L.α
+    WZ.P * Diagonal(WeightedZernikeFractionalLaplacianDiag{typeof(L.α)}(L.α))
+end
+
+# gives the entries for the (negative!) fractional Laplacian (-Δ)^(α) times (1-r^2)^α * Zernike(α)
+struct WeightedZernikeFractionalLaplacianDiag{T} <: AbstractBlockVector{T} 
+    α::T
+end
+
+axes(::WeightedZernikeFractionalLaplacianDiag) = (blockedrange(oneto(∞)),)
+copy(R::WeightedZernikeFractionalLaplacianDiag) = R
+
+MemoryLayout(::Type{<:WeightedZernikeFractionalLaplacianDiag}) = LazyLayout()
+Base.BroadcastStyle(::Type{<:Diagonal{<:Any,<:WeightedZernikeFractionalLaplacianDiag}}) = LazyArrayStyle{2}()
+
+getindex(W::WeightedZernikeFractionalLaplacianDiag, k::Integer) = W[findblockindex(axes(W,1),k)]
+
+function Base.view(W::WeightedZernikeFractionalLaplacianDiag{T}, K::Block{1}) where T
+    l = Int(K)
+    if isodd(l)
+        m = Vcat(0,interlace(Array(2:2:l),Array(2:2:l)))
+    else #if iseven(l)
+        m = Vcat(interlace(Array(1:2:l),Array(1:2:l)))
+    end
+    return convert(AbstractVector{T}, 2^(2*W.α)*fractionalcfs2d.(l-1,m,W.α))
+end
+
+# generic d-dimensional ball fractional coefficients without the 2^(2*β) factor. m is assumed to be entered as abs(m)
+function fractionalcfs(l::Integer, m::Integer, α::T, d::Integer) where T
+    n = (l-m)÷2
+    return exp(loggamma(α+n+1)+loggamma((2*α+2*n+d+2*m)/2)-loggamma(one(T)+n)-loggamma((2*one(T)*m+2*n+d)/2))
+end
+# 2 dimensional special case, again without the 2^(2*β) factor
+fractionalcfs2d(l::Integer, m::Integer, β) = fractionalcfs(l,m,β,2)
 
 function \(A::Zernike{T}, B::Zernike{V}) where {T,V}
     TV = promote_type(T,V)
