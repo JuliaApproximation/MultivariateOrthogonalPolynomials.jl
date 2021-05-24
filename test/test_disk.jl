@@ -267,7 +267,7 @@ end
             # generate fractional Laplacian
             Δfrac = AbsLaplacianPower(axes(WZ,1),β)
             Δ_Zfrac = Z \ (Δfrac * WZ)
-            # define function whose fractional Laplacian is a known constant
+            # define function whose fractional Laplacian is known
             u = @. (1 - x^2 - y^2).^β
             # explicit and computed solutions
             fexplicit0(d,α) = 2^α*gamma(α/2+1)*gamma((d+α)/2)/gamma(d/2) # note that here, α = 2*β
@@ -284,7 +284,7 @@ end
             # generate fractional Laplacian
             Δfrac = AbsLaplacianPower(axes(WZ,1),β)
             Δ_Zfrac = Z \ (Δfrac * WZ)
-            # define function whose fractional Laplacian is a known constant
+            # define function whose fractional Laplacian is known
             u = @. (1 - x^2 - y^2).^β
             # computed solution
             f = Z*(Δ_Zfrac*(WZ \ u))
@@ -300,7 +300,7 @@ end
             # generate fractional Laplacian
             Δfrac = AbsLaplacianPower(axes(WZ,1),β)
             Δ_Zfrac = Z \ (Δfrac * WZ)
-            # define function whose fractional Laplacian is a known constant
+            # define function whose fractional Laplacian is known
             u = @. (1 - x^2 - y^2).^β
             # computed solution
             f = Z*(Δ_Zfrac*(WZ \ u))
@@ -316,7 +316,7 @@ end
             # generate fractional Laplacian
             Δfrac = AbsLaplacianPower(axes(WZ,1),β)
             Δ_Zfrac = Z \ (Δfrac * WZ)
-            # define function whose fractional Laplacian is a known constant
+            # define function whose fractional Laplacian is known
             u = @. (1 - x^2 - y^2).^(β+1)
             # explicit and computed solutions
             fexplicit1(d,α,x) = 2^α*gamma(α/2+2)*gamma((d+α)/2)/gamma(d/2)*(1-(1+α/d)*norm(x)^2) # α = 2*β
@@ -335,7 +335,7 @@ end
             # generate fractional Laplacian
             Δfrac = AbsLaplacianPower(axes(WZ,1),β)
             Δ_Zfrac = Z \ (Δfrac * WZ)
-            # define function whose fractional Laplacian is a known constant
+            # define function whose fractional Laplacian is known
             u = @. (1 - x^2 - y^2).^(β+1)
             # explicit and computed solutions
             f = Z*(Δ_Zfrac*(WZ \ u))
@@ -354,7 +354,7 @@ end
             # generate fractional Laplacian
             Δfrac = AbsLaplacianPower(axes(WZ,1),β)
             Δ_Zfrac = Z \ (Δfrac * WZ)
-            # define function whose fractional Laplacian is a known constant
+            # define function whose fractional Laplacian is known
             u = @. (1 - x^2 - y^2).^(β)*x
             # explicit and computed solutions
             fexplicit2(d,α,x) = 2^α*gamma(α/2+1)*gamma((d+α)/2+1)/gamma(d/2+1)*x[1] # α = 2*β
@@ -373,7 +373,7 @@ end
             # generate fractional Laplacian
             Δfrac = AbsLaplacianPower(axes(WZ,1),β)
             Δ_Zfrac = Z \ (Δfrac * WZ)
-            # define function whose fractional Laplacian is a known constant
+            # define function whose fractional Laplacian is known
             u = @. (1 - x^2 - y^2).^(β)*y
             # explicit and computed solutions
             fexplicit3(d,α,x) = 2^α*gamma(α/2+1)*gamma((d+α)/2+1)/gamma(d/2+1)*x[2] # α = 2*β
@@ -393,7 +393,7 @@ end
             # generate fractional Laplacian
             Δfrac = AbsLaplacianPower(axes(WZ,1),β)
             Δ_Zfrac = Z \ (Δfrac * WZ)
-            # define function whose fractional Laplacian is a known constant
+            # define function whose fractional Laplacian is known
             u = @. (1 - x^2 - y^2).^(β+1)*x
             # explicit and computed solutions
             fexplicit4(d,α,x) = 2^α*gamma(α/2+2)*gamma((d+α)/2+1)/gamma(d/2+1)*(1-(1+α/(d+2))*norm(x)^2)*x[1] # α = 2*β
@@ -412,7 +412,7 @@ end
             # generate fractional Laplacian
             Δfrac = AbsLaplacianPower(axes(WZ,1),β)
             Δ_Zfrac = Z \ (Δfrac * WZ)
-            # define function whose fractional Laplacian is a known constant
+            # define function whose fractional Laplacian is known
             u = @. (1 - x^2 - y^2).^(β+1)*y
             # explicit and computed solutions
             fexplicit5(d,α,x) = 2^α*gamma(α/2+2)*gamma((d+α)/2+1)/gamma(d/2+1)*(1-(1+α/(d+2))*norm(x)^2)*x[2] # α = 2*β
@@ -434,7 +434,7 @@ end
                 # generate fractional Laplacian
                 Δfrac = AbsLaplacianPower(axes(WZ,1),β)
                 Δ_Zfrac = Z \ (Δfrac * WZ)
-                # define function whose fractional Laplacian is a known constant
+                # define function whose fractional Laplacian is known
                 uexplicit = @. (1 - x^2 - y^2).^(β+1)
                 uexplicitcfs = WZ \ uexplicit
                 # RHS
@@ -454,7 +454,7 @@ end
                 # generate fractional Laplacian
                 Δfrac = AbsLaplacianPower(axes(WZ,1),β)
                 Δ_Zfrac = Z \ (Δfrac * WZ)
-                # define function whose fractional Laplacian is a known constant
+                # define function whose fractional Laplacian is known
                 uexplicit = @. (1 - x^2 - y^2).^(β+1)*y
                 uexplicitcfs = WZ \ uexplicit
                 # RHS
@@ -473,7 +473,7 @@ end
                 # generate fractional Laplacian
                 Δfrac = AbsLaplacianPower(axes(WZ,1),β)
                 Δ_Zfrac = Z \ (Δfrac * WZ)
-                # define function whose fractional Laplacian is a known constant
+                # define function whose fractional Laplacian is known
                 uexplicit = @. (1 - x^2 - y^2).^(β+1)*x
                 uexplicitcfs = WZ \ uexplicit
                 # RHS
