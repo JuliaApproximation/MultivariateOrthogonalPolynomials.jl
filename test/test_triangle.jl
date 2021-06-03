@@ -317,4 +317,20 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
             end
         end
     end
+
+    @testset "AngularMomentum" begin
+        P = JacobiTriangle()
+        P¹ = JacobiTriangle(1,1,1)
+        xy = axes(P,1)
+        x,y = first.(xy),last.(xy)
+        ∂ˣ = PartialDerivative{1}(xy)
+        ∂ʸ = PartialDerivative{2}(xy)
+        L1 = x .* ∂ʸ
+        L2 = y .* ∂ˣ
+        L = x .* ∂ʸ - y .* ∂ˣ
+        A = P¹ \ (L1 * P)
+        B = P¹ \ (L2 * P)
+        C = P¹ \ (L * P)
+        @test C[1:10,1:10] ≈ A[1:10,1:10] - B[1:10,1:10]
+    end
 end
