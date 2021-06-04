@@ -55,6 +55,12 @@ import MultivariateOrthogonalPolynomials: dunklxu_raising, dunklxu_lowering
 
         @test λ ≈ im*imag(λ)
 
+        ∂θ = AngularMomentum(P)
+
+        A = P \ (∂θ * P)
+
+        @test A[Block.(1:N), Block.(1:N)] ≈ C
+
         @testset "truncations" begin
             KR,JR = Block.(1:N),Block.(1:N)
 
