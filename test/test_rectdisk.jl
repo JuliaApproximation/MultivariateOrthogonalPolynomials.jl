@@ -6,6 +6,7 @@ import MultivariateOrthogonalPolynomials: dunklxu_raising, dunklxu_lowering, Ang
     @testset "basics" begin
         P = DunklXuDisk()
         @test copy(P) ≡ P
+        @test P ≠ DunklXuDisk(0.123)
 
         xy = axes(P,1)
         x,y = first.(xy),last.(xy)
@@ -32,7 +33,7 @@ import MultivariateOrthogonalPolynomials: dunklxu_raising, dunklxu_lowering, Ang
         X = P \ (x .* P)
         Y = P \ (y .* P)
 
-        @test (L*R)[Block.(1:N), Block.(1:N)] ≈ (I - X^2 - Y^2)[Block.(1:N), Block.(1:N)]
+        @test (L * R)[Block.(1:N), Block.(1:N)] ≈ (I - X^2 - Y^2)[Block.(1:N), Block.(1:N)]
 
         ∂x = PartialDerivative{1}(axes(P, 1))
         ∂y = PartialDerivative{2}(axes(P, 1))
@@ -43,7 +44,7 @@ import MultivariateOrthogonalPolynomials: dunklxu_raising, dunklxu_lowering, Ang
         Mx = Q \ (x .* Q)
         My = Q \ (y .* Q)
 
-        A = Mx[Block.(1:N), Block.(1:N+1)]*Dy[Block.(1:N+1), Block.(1:N)] - My[Block.(1:N), Block.(1:N+1)]*Dx[Block.(1:N+1), Block.(1:N)]
+        A = (Mx * Dy - My * Dx)[Block.(1:N), Block.(1:N)]
 
         B = (Q \ P)[Block.(1:N), Block.(1:N)]
 
@@ -55,11 +56,15 @@ import MultivariateOrthogonalPolynomials: dunklxu_raising, dunklxu_lowering, Ang
 
         @test λ ≈ im*imag(λ)
 
-        ∂θ = AngularMomentum(P)
+        ∂θ = AngularMomentum(axes(P, 1))
+        @test axes(∂θ) == (axes(P, 1), axes(P, 1))
+        @test ∂θ == AngularMomentum(axes(Q, 1))
+        @test copy(∂θ) ≡ ∂θ
 
         A = P \ (∂θ * P)
 
         @test A[Block.(1:N), Block.(1:N)] ≈ C
+        @test (A^2)[Block.(1:N), Block.(1:N)] ≈ A[Block.(1:N), Block.(1:N)]^2
 
         ∂x = PartialDerivative{1}(axes(WQ, 1))
         ∂y = PartialDerivative{2}(axes(WQ, 1))
