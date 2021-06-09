@@ -35,6 +35,8 @@ import MultivariateOrthogonalPolynomials: dunklxu_raising, dunklxu_lowering, Ang
 
         @test (L * R)[Block.(1:N), Block.(1:N)] ≈ (I - X^2 - Y^2)[Block.(1:N), Block.(1:N)]
 
+        @test (DunklXuDisk() \ WeightedDunklXuDisk(1.0))[Block.(1:N), Block.(1:N)] ≈ (WeightedDunklXuDisk(0.0) \ WeightedDunklXuDisk(1.0))[Block.(1:N), Block.(1:N)]
+
         ∂x = PartialDerivative{1}(axes(P, 1))
         ∂y = PartialDerivative{2}(axes(P, 1))
 
@@ -58,13 +60,15 @@ import MultivariateOrthogonalPolynomials: dunklxu_raising, dunklxu_lowering, Ang
 
         ∂θ = AngularMomentum(axes(P, 1))
         @test axes(∂θ) == (axes(P, 1), axes(P, 1))
-        @test ∂θ == AngularMomentum(axes(Q, 1))
+        @test ∂θ == AngularMomentum(axes(Q, 1)) == AngularMomentum(axes(P, 1).domain)
         @test copy(∂θ) ≡ ∂θ
 
         A = P \ (∂θ * P)
 
         @test A[Block.(1:N), Block.(1:N)] ≈ C
-        @test (A^2)[Block.(1:N), Block.(1:N)] ≈ A[Block.(1:N), Block.(1:N)]^2
+
+        A2 = P \ (∂θ^2 * P)
+        @test A2[Block.(1:N), Block.(1:N)] ≈ (A^2)[Block.(1:N), Block.(1:N)] ≈ A[Block.(1:N), Block.(1:N)]^2
 
         ∂x = PartialDerivative{1}(axes(WQ, 1))
         ∂y = PartialDerivative{2}(axes(WQ, 1))
