@@ -1,6 +1,6 @@
 using MultivariateOrthogonalPolynomials, StaticArrays, BlockArrays, BlockBandedMatrices, ArrayLayouts,
         QuasiArrays, Test, ClassicalOrthogonalPolynomials, BandedMatrices, FastTransforms, LinearAlgebra
-import MultivariateOrthogonalPolynomials: dunklxu_raising, dunklxu_lowering
+import MultivariateOrthogonalPolynomials: dunklxu_raising, dunklxu_lowering, AngularMomentum
 
 @testset "Dunkl-Xu disk" begin
     @testset "basics" begin
@@ -34,8 +34,8 @@ import MultivariateOrthogonalPolynomials: dunklxu_raising, dunklxu_lowering
 
         @test (L*R)[Block.(1:N), Block.(1:N)] ≈ (I - X^2 - Y^2)[Block.(1:N), Block.(1:N)]
 
-        ∂x = PartialDerivative{1}(P)
-        ∂y = PartialDerivative{2}(P)
+        ∂x = PartialDerivative{1}(axes(P, 1))
+        ∂y = PartialDerivative{2}(axes(P, 1))
 
         Dx = Q \ (∂x * P)
         Dy = Q \ (∂y * P)
@@ -60,6 +60,12 @@ import MultivariateOrthogonalPolynomials: dunklxu_raising, dunklxu_lowering
         A = P \ (∂θ * P)
 
         @test A[Block.(1:N), Block.(1:N)] ≈ C
+
+        ∂x = PartialDerivative{1}(axes(WQ, 1))
+        ∂y = PartialDerivative{2}(axes(WQ, 1))
+
+        wDx = WP \ (∂x * WQ)
+        wDy = WP \ (∂y * WQ)
 
         @testset "truncations" begin
             KR,JR = Block.(1:N),Block.(1:N)

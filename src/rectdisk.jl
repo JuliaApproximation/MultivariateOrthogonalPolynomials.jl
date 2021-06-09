@@ -57,6 +57,28 @@ end
     DunklXuDisk(β+1) * _BandedBlockBandedMatrix(((k .+ T(2β)) ./ 2)', axes(k,1), (-1,1), (-1,1))
 end
 
+@simplify function *(Dx::PartialDerivative{1}, w_P::WeightedDunklXuDisk)
+    wP, P = w_P.args
+    @assert P.β == wP.β
+    β = P.β
+    n = mortar(Fill.(oneto(∞),oneto(∞)))
+    k = mortar(Base.OneTo.(oneto(∞)))
+    dat = BlockBroadcastArray(hcat,
+        (-4 .* (k .+ (β - 1)).*(n .- k .+ 1)./(2k .+ (2β - 1))),
+        0 .* n,
+        (-k .* (k .+ 1) ./ ((2k .+ (2β - 1)) .* (k .+ β)) .* (n .+ k .+ 2β))
+        )
+    WeightedDunklXuDisk(β-1) * _BandedBlockBandedMatrix(dat', axes(k,1), (1,-1), (2,0))
+end
+
+@simplify function *(Dy::PartialDerivative{2}, w_P::WeightedDunklXuDisk)
+    wP, P = w_P.args
+    @assert P.β == wP.β
+    k = mortar(Base.OneTo.(oneto(∞)))
+    T = promote_type(eltype(Dy), eltype(P)) # avoid bug in convert
+    WeightedDunklXuDisk(P.β-1) * _BandedBlockBandedMatrix((T(-2).*k)', axes(k,1), (1,-1), (1,-1))
+end
+
 # P^{(β)} ↗ P^{(β+1)}
 function dunklxu_raising(β)
     n = mortar(Fill.(oneto(∞),oneto(∞)))
