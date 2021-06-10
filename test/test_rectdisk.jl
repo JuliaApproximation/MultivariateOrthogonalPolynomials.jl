@@ -59,15 +59,10 @@ import MultivariateOrthogonalPolynomials: dunklxu_raising, dunklxu_lowering, Ang
         @test λ ≈ im*imag(λ)
 
         ∂θ = AngularMomentum(axes(P, 1))
-        @test axes(∂θ) == (axes(P, 1), axes(P, 1))
-        @test ∂θ == AngularMomentum(axes(Q, 1)) == AngularMomentum(axes(P, 1).domain)
-        @test copy(∂θ) ≡ ∂θ
-
         A = P \ (∂θ * P)
+        A2 = P \ (∂θ^2 * P)
 
         @test A[Block.(1:N), Block.(1:N)] ≈ C
-
-        A2 = P \ (∂θ^2 * P)
         @test A2[Block.(1:N), Block.(1:N)] ≈ (A^2)[Block.(1:N), Block.(1:N)] ≈ A[Block.(1:N), Block.(1:N)]^2
 
         ∂x = PartialDerivative{1}(axes(WQ, 1))

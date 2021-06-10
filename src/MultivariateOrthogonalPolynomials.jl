@@ -20,14 +20,14 @@ import InfiniteArrays: InfiniteCardinal
 
 import ClassicalOrthogonalPolynomials: jacobimatrix, Weighted, orthogonalityweight, HalfWeighted
 import HarmonicOrthogonalPolynomials: BivariateOrthogonalPolynomial, MultivariateOrthogonalPolynomial, Plan,
-                                          PartialDerivative, BlockOneTo, BlockRange1, interlace
+                                          PartialDerivative, AngularMomentum, BlockOneTo, BlockRange1, interlace
 
 export MultivariateOrthogonalPolynomial, BivariateOrthogonalPolynomial,
        UnitTriangle, UnitDisk,
        JacobiTriangle, TriangleWeight, WeightedTriangle,
        DunklXuDisk, DunklXuDiskWeight, WeightedDunklXuDisk,
        Zernike, ZernikeWeight, zerniker, zernikez,
-       PartialDerivative, Laplacian, AbsLaplacianPower,
+       PartialDerivative, Laplacian, AbsLaplacianPower, AngularMomentum,
        RadialCoordinate, Weighted, Block
 
 include("ModalInterlace.jl")

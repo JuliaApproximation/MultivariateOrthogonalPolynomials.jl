@@ -176,29 +176,6 @@ function jacobimatrix(::Val{2}, P::DunklXuDisk)
     _BandedBlockBandedMatrix(dat, axes(k,1), (1,1), (1,1))
 end
 
-
-
-#########
-# AngularMomentum
-# Applies the partial derivative with respect to the last angular variable in the coordinate system.
-# For example, in polar coordinates (r, θ) in ℝ² or cylindrical coordinates (r, θ, z) in ℝ³, we apply ∂ / ∂θ = (x ∂ / ∂y - y ∂ / ∂x).
-# In spherical coordinates (ρ, θ, φ) in ℝ³, we apply ∂ / ∂φ = (x ∂ / ∂y - y ∂ / ∂x).
-#########
-
-struct AngularMomentum{T,Ax<:Inclusion} <: LazyQuasiMatrix{T}
-    axis::Ax
-end
-
-AngularMomentum{T}(axis::Inclusion) where T = AngularMomentum{T,typeof(axis)}(axis)
-AngularMomentum{T}(domain) where T = AngularMomentum{T}(Inclusion(domain))
-AngularMomentum(axis) = AngularMomentum{eltype(eltype(axis))}(axis)
-
-axes(A::AngularMomentum) = (A.axis, A.axis)
-==(a::AngularMomentum, b::AngularMomentum) = a.axis == b.axis
-copy(A::AngularMomentum) = AngularMomentum(copy(A.axis))
-
-^(A::AngularMomentum, k::Integer) = ApplyQuasiArray(^, A, k)
-
 @simplify function *(A::AngularMomentum, P::DunklXuDisk)
     β = P.β
     n = mortar(Fill.(oneto(∞),oneto(∞)))
