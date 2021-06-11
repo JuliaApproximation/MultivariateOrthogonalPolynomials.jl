@@ -1,6 +1,6 @@
 module MultivariateOrthogonalPolynomials
-using ClassicalOrthogonalPolynomials, FastTransforms, BlockBandedMatrices, BlockArrays, DomainSets, 
-      QuasiArrays, StaticArrays, ContinuumArrays, InfiniteArrays, InfiniteLinearAlgebra, 
+using ClassicalOrthogonalPolynomials, FastTransforms, BlockBandedMatrices, BlockArrays, DomainSets,
+      QuasiArrays, StaticArrays, ContinuumArrays, InfiniteArrays, InfiniteLinearAlgebra,
       LazyArrays, SpecialFunctions, LinearAlgebra, BandedMatrices, LazyBandedMatrices, ArrayLayouts,
       HarmonicOrthogonalPolynomials
 
@@ -20,14 +20,19 @@ import InfiniteArrays: InfiniteCardinal
 
 import ClassicalOrthogonalPolynomials: jacobimatrix, Weighted, orthogonalityweight, HalfWeighted
 import HarmonicOrthogonalPolynomials: BivariateOrthogonalPolynomial, MultivariateOrthogonalPolynomial, Plan,
-                                          PartialDerivative, BlockOneTo, BlockRange1, interlace
+                                          PartialDerivative, AngularMomentum, BlockOneTo, BlockRange1, interlace
 
-export UnitTriangle, UnitDisk, JacobiTriangle, TriangleWeight, WeightedTriangle, PartialDerivative, Laplacian, 
-      MultivariateOrthogonalPolynomial, BivariateOrthogonalPolynomial, Zernike, RadialCoordinate,
-      zerniker, zernikez, Weighted, Block, ZernikeWeight, AbsLaplacianPower
+export MultivariateOrthogonalPolynomial, BivariateOrthogonalPolynomial,
+       UnitTriangle, UnitDisk,
+       JacobiTriangle, TriangleWeight, WeightedTriangle,
+       DunklXuDisk, DunklXuDiskWeight, WeightedDunklXuDisk,
+       Zernike, ZernikeWeight, zerniker, zernikez,
+       PartialDerivative, Laplacian, AbsLaplacianPower, AngularMomentum,
+       RadialCoordinate, Weighted, Block
 
 include("ModalInterlace.jl")
 include("disk.jl")
+include("rectdisk.jl")
 include("triangle.jl")
 
 
