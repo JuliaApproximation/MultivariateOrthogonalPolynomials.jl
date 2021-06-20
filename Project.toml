@@ -26,7 +26,7 @@ Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 [compat]
 ArrayLayouts = "0.7"
 BandedMatrices = "0.16"
-BlockArrays = "0.15"
+BlockArrays = "0.15, 0.16"
 BlockBandedMatrices = "0.10.1"
 ClassicalOrthogonalPolynomials = "0.4"
 ContinuumArrays = "0.8"
