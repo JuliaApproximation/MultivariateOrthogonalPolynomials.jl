@@ -211,11 +211,11 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
                         if N > 1
                             @test TriangleRecurrenceC(N, X, Y) ≈ B⁺(N)*[Cˣ; Cʸ]
                         end
-                        
+
                         x,y = 0.1,0.2
                         v = randn(N)
                         w = randn(N+1)
-                        @test xy_muladd!((x,y), TriangleRecurrenceA(N,X,Y),  v, 2.0, copy(w)) ≈ 
+                        @test xy_muladd!((x,y), TriangleRecurrenceA(N,X,Y),  v, 2.0, copy(w)) ≈
                             B⁺(N) * [x*Eye(N); y*Eye(N)]*v + 2w
                         @test xy_muladd!((x,y), TriangleRecurrenceA(N,X,Y)', w, 2.0, copy(v)) ≈
                             (B⁺(N) * [x*Eye(N); y*Eye(N)])'*w + 2v
@@ -228,9 +228,9 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
 
                         if N > 1
                             u = randn(N-1)
-                            @test muladd!(3.0, TriangleRecurrenceC(N, X, Y), u, 2.0, copy(w)) ≈ 
+                            @test muladd!(3.0, TriangleRecurrenceC(N, X, Y), u, 2.0, copy(w)) ≈
                                 3B⁺(N)*[Cˣ; Cʸ]*u + 2w
-                            @test muladd!(3.0, TriangleRecurrenceC(N, X, Y)', w, 2.0, copy(u)) ≈ 
+                            @test muladd!(3.0, TriangleRecurrenceC(N, X, Y)', w, 2.0, copy(u)) ≈
                                 3(B⁺(N)*[Cˣ; Cʸ])'*w + 2u
 
                             # need in-place to minimise buffers in Clenshaw
