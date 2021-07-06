@@ -1,4 +1,4 @@
-const UnitTriangle{T} = UnitSimplex{2,T,:closed}
+const UnitTriangle{T} = EuclideanUnitSimplex{2,T,:closed}
 
 ClassicalOrthogonalPolynomials.checkpoints(d::UnitTriangle{T}) where T = [SVector{2,T}(0.1,0.2), SVector{2,T}(0.2,0.3)]
 
