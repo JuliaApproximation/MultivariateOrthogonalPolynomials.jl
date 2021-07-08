@@ -101,7 +101,7 @@ function getindex(w::ZernikeWeight, xy::StaticVector{2})
 end
 
 
-abstract type AbstractZernike{T} <: BivariateOrthogonalPolynomial{T}
+abstract type AbstractZernike{T} <: BivariateOrthogonalPolynomial{T} end
 
 """
     Zernike(a, b)
@@ -126,24 +126,32 @@ struct ComplexZernike{T} <: AbstractZernike{T}
     ComplexZernike{T}(a::T, b::T) where T = new{T}(a, b)
 end
 
-for Typ in (:Zernike, :ComplexZernike)
+for Zer in (:Zernike, :ComplexZernike)
     @eval begin
-        $Typ{T}(a, b) where T = $Typ{T}(convert(T,a), convert(T,b))
-        $Typ(a::T, b::V) where {T,V} = $Typ{float(promote_type(T,V))}(a, b)
-        $Typ{T}(b) where T = $Typ{T}(zero(b), b)
-        $Typ{T}() where T = $Typ{T}(zero(T))
+        $Zer{T}(a, b) where T = $Zer{T}(convert(T,a), convert(T,b))
+        $Zer(a::T, b::V) where {T,V} = $Zer{float(promote_type(T,V))}(a, b)
+        $Zer{T}(b) where T = $Zer{T}(zero(b), b)
+        $Zer{T}() where T = $Zer{T}(zero(T))
 
-        """
-            $Typ(b)
+        $Zer() = $Zer{Float64}()
 
-        is a quasi-matrix orthogonal `(1-r^2)^b`
-        """
-        $Typ(b) = $Typ(zero(b), b)
-        $Typ() = $Typ{Float64}()
-
-        ==(w::$Typ, v::$Typ) = w.a == v.a && w.b == v.b
+        ==(w::$Zer, v::$Zer) = w.a == v.a && w.b == v.b
     end
 end
+
+"""
+    Zernike(b)
+
+is a quasi-matrix orthogonal `(1-r^2)^b`
+"""
+Zernike(b) = Zernike(zero(b), b)
+
+"""
+    ComplexZernike(b)
+
+is a complex quasi-matrix orthogonal `(1-r^2)^b`
+"""
+ComplexZernike(b) = ComplexZernike(zero(b), b)
 
 axes(P::AbstractZernike{T}) where T = (Inclusion(UnitDisk{T}()),blockedrange(oneto(∞)))
 copy(A::AbstractZernike) = A
@@ -255,7 +263,11 @@ end
 
 factorize(S::FiniteZernike{T}) where T = TransformFactorization(grid(S), ZernikeTransform{T}(blocksize(S,2), parent(S).a, parent(S).b))
 
-# gives the entries for the Laplacian times (1-r^2) * Zernike(1)
+"""
+    WeightedZernikeLaplacianDiag{T}()
+
+gives the entries for the Laplacian times (1-r^2) * Zernike(1)
+"""
 struct WeightedZernikeLaplacianDiag{T} <: AbstractBlockVector{T} end
 
 axes(::WeightedZernikeLaplacianDiag) = (blockedrange(oneto(∞)),)
@@ -323,25 +335,55 @@ end
 # 2 dimensional special case, again without the 2^(2*β) factor
 fractionalcfs2d(l::Integer, m::Integer, β) = fractionalcfs(l,m,β,2)
 
-for Typ in (:Zernike, :ComplexZernike)
+for Zer in (:Zernike, :ComplexZernike)
     @eval begin
-    function \(A::$Zer{T}, B::$Zer{V}) where {T,V}
-        TV = promote_type(T,V)
-        A.a == B.a && A.b == B.b && return Eye{TV}(∞)
-        @assert A.a == 0 && A.b == 1
-        @assert B.a == 0 && B.b == 0
-        ModalInterlace{TV}((Normalized.(Jacobi{TV}.(1,0:∞)) .\ Normalized.(Jacobi{TV}.(0,0:∞))) ./ sqrt(convert(TV, 2)), (ℵ₀,ℵ₀), (0,2))
-    end
+        function \(A::$Zer{T}, B::$Zer{V}) where {T,V}
+            TV = promote_type(T,V)
+            A.a == B.a && A.b == B.b && return Eye{TV}(∞)
+            @assert A.a == 0 && A.b == 1
+            @assert B.a == 0 && B.b == 0
+            ModalInterlace{TV}((Normalized.(Jacobi{TV}.(1,0:∞)) .\ Normalized.(Jacobi{TV}.(0,0:∞))) ./ sqrt(convert(TV, 2)), (ℵ₀,ℵ₀), (0,2))
+        end
 
-    function \(A::$Zer{T}, B::Weighted{V,$Zer{V}}) where {T,V}
-        TV = promote_type(T,V)
-        A.a == B.P.a == A.b == B.P.b == 0 && return Eye{TV}(∞)
-        if A.a == A.b == 0
-            @assert B.P.a == 0 && B.P.b == 1
-            ModalInterlace{TV}((Normalized.(Jacobi{TV}.(0, 0:∞)) .\ HalfWeighted{:a}.(Normalized.(Jacobi{TV}.(1, 0:∞)))) ./ sqrt(convert(TV, 2)), (ℵ₀,ℵ₀), (2,0))
-        else
-            Z = $Zer{TV}() 
-            (A \ Z) * (Z \ B)
+        function \(A::$Zer{T}, B::Weighted{V,$Zer{V}}) where {T,V}
+            TV = promote_type(T,V)
+            A.a == B.P.a == A.b == B.P.b == 0 && return Eye{TV}(∞)
+            if A.a == A.b == 0
+                @assert B.P.a == 0 && B.P.b == 1
+                ModalInterlace{TV}((Normalized.(Jacobi{TV}.(0, 0:∞)) .\ HalfWeighted{:a}.(Normalized.(Jacobi{TV}.(1, 0:∞)))) ./ sqrt(convert(TV, 2)), (ℵ₀,ℵ₀), (2,0))
+            else
+                Z = $Zer{TV}() 
+                (A \ Z) * (Z \ B)
+            end
         end
     end
 end
+
+
+#########
+# ComplexDerivative
+# is the complex differential (∂ˣ - im*∂ʸ)/2
+#########
+
+
+for Der in (:ComplexDerivative, :ConjComplexDerivative) 
+    @eval begin
+        struct $Der{T,Ax<:Inclusion} <: LazyQuasiMatrix{Complex{T}}
+            axis::Ax
+        end
+
+        $Der{T}(axis::Inclusion) where {k,T} = $Der{T,typeof(axis)}(axis)
+        $Der{T}(domain) where {k,T} = $Der{T}(Inclusion(domain))
+        $Der(axis) where k = $Der{eltype(eltype(axis))}(axis)
+
+        axes(D::$Der) = (D.axis, D.axis)
+        ==(a::$Der, b::$Der) where k = a.axis == b.axis
+        copy(D::$Der) where k = $Der(copy(D.axis))
+
+        ^(D::$Der, k::Integer) = ApplyQuasiArray(^, D, k)
+    end
+end
+
+conj(D::ComplexDerivative{T}) where T = ConjComplexDerivative{T}(D.axis)
+conj(D::ConjComplexDerivative{T}) where T = ComplexDerivative{T}(D.axis)
+
