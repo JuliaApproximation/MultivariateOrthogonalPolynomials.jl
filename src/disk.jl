@@ -101,20 +101,43 @@ function getindex(w::ZernikeWeight, xy::StaticVector{2})
 end
 
 
+abstract type AbstractZernike{T} <: BivariateOrthogonalPolynomial{T} end
+
 """
     Zernike(a, b)
 
 is a quasi-matrix orthogonal `r^(2a) * (1-r^2)^b`
 """
-struct Zernike{T} <: BivariateOrthogonalPolynomial{T}
+struct Zernike{T} <: AbstractZernike{T}
     a::T
     b::T
     Zernike{T}(a::T, b::T) where T = new{T}(a, b)
 end
-Zernike{T}(a, b) where T = Zernike{T}(convert(T,a), convert(T,b))
-Zernike(a::T, b::V) where {T,V} = Zernike{float(promote_type(T,V))}(a, b)
-Zernike{T}(b) where T = Zernike{T}(zero(b), b)
-Zernike{T}() where T = Zernike{T}(zero(T))
+
+
+"""
+    ComplexZernike(a, b)
+
+is a complex-valued quasi-matrix orthogonal `r^(2a) * (1-r^2)^b`
+"""
+struct ComplexZernike{T} <: AbstractZernike{T}
+    a::T
+    b::T
+    ComplexZernike{T}(a::T, b::T) where T = new{T}(a, b)
+end
+
+for Zer in (:Zernike, :ComplexZernike)
+    @eval begin
+        $Zer{T}(a, b) where T = $Zer{T}(convert(T,a), convert(T,b))
+        $Zer(a::T, b::V) where {T,V} = $Zer{float(promote_type(T,V))}(a, b)
+        $Zer{T}(b) where T = $Zer{T}(zero(b), b)
+        $Zer{T}() where T = $Zer{T}(zero(T))
+
+        $Zer() = $Zer{Float64}()
+
+        ==(w::$Zer, v::$Zer) = w.a == v.a && w.b == v.b
+    end
+end
 
 """
     Zernike(b)
@@ -122,15 +145,18 @@ Zernike{T}() where T = Zernike{T}(zero(T))
 is a quasi-matrix orthogonal `(1-r^2)^b`
 """
 Zernike(b) = Zernike(zero(b), b)
-Zernike() = Zernike{Float64}()
 
-axes(P::Zernike{T}) where T = (Inclusion(UnitDisk{T}()),blockedrange(oneto(∞)))
+"""
+    ComplexZernike(b)
 
-==(w::Zernike, v::Zernike) = w.a == v.a && w.b == v.b
+is a complex quasi-matrix orthogonal `(1-r^2)^b`
+"""
+ComplexZernike(b) = ComplexZernike(zero(b), b)
 
-copy(A::Zernike) = A
+axes(P::AbstractZernike{T}) where T = (Inclusion(UnitDisk{T}()),blockedrange(oneto(∞)))
+copy(A::AbstractZernike) = A
 
-orthogonalityweight(Z::Zernike) = ZernikeWeight(Z.a, Z.b)
+orthogonalityweight(Z::AbstractZernike) = ZernikeWeight(Z.a, Z.b)
 
 zerniker(ℓ, m, a, b, r::T) where T = sqrt(convert(T,2)^(m+a+b+2-iszero(m))/π) * r^m * normalizedjacobip((ℓ-m) ÷ 2, b, m+a, 2r^2-1)
 zerniker(ℓ, m, b, r) = zerniker(ℓ, m, zero(b), b, r)
@@ -142,9 +168,19 @@ function zernikez(ℓ, ms, a, b, rθ::RadialCoordinate{T}) where T
     zerniker(ℓ, m, a, b, r) * (signbit(ms) ? sin(m*θ) : cos(m*θ))
 end
 
-zernikez(ℓ, ms, a, b, xy::StaticVector{2}) = zernikez(ℓ, ms, a, b, RadialCoordinate(xy))
-zernikez(ℓ, ms, b, xy::StaticVector{2}) = zernikez(ℓ, ms, zero(b), b, xy)
-zernikez(ℓ, ms, xy::StaticVector{2,T}) where T = zernikez(ℓ, ms, zero(T), xy)
+function complexzernikez(ℓ, ms, a, b, rθ::RadialCoordinate{T}) where T
+    r,θ = rθ.r,rθ.θ
+    m = abs(ms)
+    zerniker(ℓ, m, a, b, r) * exp(im*m*θ)
+end
+
+for func in (:zernikez, :complexzernikez)
+    @eval begin
+        $func(ℓ, ms, a, b, xy::StaticVector{2}) = $func(ℓ, ms, a, b, RadialCoordinate(xy))
+        $func(ℓ, ms, b, xy::StaticVector{2}) = $func(ℓ, ms, zero(b), b, xy)
+        $func(ℓ, ms, xy::StaticVector{2,T}) where T = $func(ℓ, ms, zero(T), xy)
+    end
+end
 
 function getindex(Z::Zernike{T}, rθ::RadialCoordinate, B::BlockIndex{1}) where T
     ℓ = Int(block(B))-1
@@ -153,10 +189,17 @@ function getindex(Z::Zernike{T}, rθ::RadialCoordinate, B::BlockIndex{1}) where 
     zernikez(ℓ, (isodd(k+ℓ) ? 1 : -1) * m, Z.a, Z.b, rθ)
 end
 
+function getindex(Z::ComplexZernike{T}, rθ::RadialCoordinate, B::BlockIndex{1}) where T
+    ℓ = Int(block(B))-1
+    k = blockindex(B)
+    m = iseven(ℓ) ? k-isodd(k) : k-iseven(k)
+    complexzernikez(ℓ, (isodd(k+ℓ) ? 1 : -1) * m, Z.a, Z.b, rθ)
+end
 
-getindex(Z::Zernike, xy::StaticVector{2}, B::BlockIndex{1}) = Z[RadialCoordinate(xy), B]
-getindex(Z::Zernike, xy::StaticVector{2}, B::Block{1}) = [Z[xy, B[j]] for j=1:Int(B)]
-getindex(Z::Zernike, xy::StaticVector{2}, JR::BlockOneTo) = mortar([Z[xy,Block(J)] for J = 1:Int(JR[end])])
+
+getindex(Z::AbstractZernike, xy::StaticVector{2}, B::BlockIndex{1}) = Z[RadialCoordinate(xy), B]
+getindex(Z::AbstractZernike, xy::StaticVector{2}, B::Block{1}) = [Z[xy, B[j]] for j=1:Int(B)]
+getindex(Z::AbstractZernike, xy::StaticVector{2}, JR::BlockOneTo) = mortar([Z[xy,Block(J)] for J = 1:Int(JR[end])])
 
 
 
@@ -220,7 +263,11 @@ end
 
 factorize(S::FiniteZernike{T}) where T = TransformFactorization(grid(S), ZernikeTransform{T}(blocksize(S,2), parent(S).a, parent(S).b))
 
-# gives the entries for the Laplacian times (1-r^2) * Zernike(1)
+"""
+    WeightedZernikeLaplacianDiag{T}()
+
+gives the entries for the Laplacian times (1-r^2) * Zernike(1)
+"""
 struct WeightedZernikeLaplacianDiag{T} <: AbstractBlockVector{T} end
 
 axes(::WeightedZernikeLaplacianDiag) = (blockedrange(oneto(∞)),)
@@ -243,7 +290,7 @@ end
 
 getindex(W::WeightedZernikeLaplacianDiag, k::Integer) = W[findblockindex(axes(W,1),k)]
 
-@simplify function *(Δ::Laplacian, WZ::Weighted{<:Any,<:Zernike})
+@simplify function *(Δ::Laplacian, WZ::Weighted{<:Any,<:AbstractZernike})
     @assert WZ.P.a == 0 && WZ.P.b == 1
     WZ.P * Diagonal(WeightedZernikeLaplacianDiag{eltype(eltype(WZ))}())
 end
@@ -288,22 +335,55 @@ end
 # 2 dimensional special case, again without the 2^(2*β) factor
 fractionalcfs2d(l::Integer, m::Integer, β) = fractionalcfs(l,m,β,2)
 
-function \(A::Zernike{T}, B::Zernike{V}) where {T,V}
-    TV = promote_type(T,V)
-    A.a == B.a && A.b == B.b && return Eye{TV}(∞)
-    @assert A.a == 0 && A.b == 1
-    @assert B.a == 0 && B.b == 0
-    ModalInterlace{TV}((Normalized.(Jacobi{TV}.(1,0:∞)) .\ Normalized.(Jacobi{TV}.(0,0:∞))) ./ sqrt(convert(TV, 2)), (ℵ₀,ℵ₀), (0,2))
-end
+for Zer in (:Zernike, :ComplexZernike)
+    @eval begin
+        function \(A::$Zer{T}, B::$Zer{V}) where {T,V}
+            TV = promote_type(T,V)
+            A.a == B.a && A.b == B.b && return Eye{TV}(∞)
+            @assert A.a == 0 && A.b == 1
+            @assert B.a == 0 && B.b == 0
+            ModalInterlace{TV}((Normalized.(Jacobi{TV}.(1,0:∞)) .\ Normalized.(Jacobi{TV}.(0,0:∞))) ./ sqrt(convert(TV, 2)), (ℵ₀,ℵ₀), (0,2))
+        end
 
-function \(A::Zernike{T}, B::Weighted{V,Zernike{V}}) where {T,V}
-    TV = promote_type(T,V)
-    A.a == B.P.a == A.b == B.P.b == 0 && return Eye{TV}(∞)
-    if A.a == A.b == 0
-        @assert B.P.a == 0 && B.P.b == 1
-        ModalInterlace{TV}((Normalized.(Jacobi{TV}.(0, 0:∞)) .\ HalfWeighted{:a}.(Normalized.(Jacobi{TV}.(1, 0:∞)))) ./ sqrt(convert(TV, 2)), (ℵ₀,ℵ₀), (2,0))
-    else
-        Z = Zernike{TV}() 
-        (A \ Z) * (Z \ B)
+        function \(A::$Zer{T}, B::Weighted{V,$Zer{V}}) where {T,V}
+            TV = promote_type(T,V)
+            A.a == B.P.a == A.b == B.P.b == 0 && return Eye{TV}(∞)
+            if A.a == A.b == 0
+                @assert B.P.a == 0 && B.P.b == 1
+                ModalInterlace{TV}((Normalized.(Jacobi{TV}.(0, 0:∞)) .\ HalfWeighted{:a}.(Normalized.(Jacobi{TV}.(1, 0:∞)))) ./ sqrt(convert(TV, 2)), (ℵ₀,ℵ₀), (2,0))
+            else
+                Z = $Zer{TV}() 
+                (A \ Z) * (Z \ B)
+            end
+        end
     end
 end
+
+
+#########
+# ComplexDerivative
+# is the complex differential (∂ˣ - im*∂ʸ)/2
+#########
+
+
+for Der in (:ComplexDerivative, :ConjComplexDerivative) 
+    @eval begin
+        struct $Der{T,Ax<:Inclusion} <: LazyQuasiMatrix{Complex{T}}
+            axis::Ax
+        end
+
+        $Der{T}(axis::Inclusion) where {k,T} = $Der{T,typeof(axis)}(axis)
+        $Der{T}(domain) where {k,T} = $Der{T}(Inclusion(domain))
+        $Der(axis) where k = $Der{eltype(eltype(axis))}(axis)
+
+        axes(D::$Der) = (D.axis, D.axis)
+        ==(a::$Der, b::$Der) where k = a.axis == b.axis
+        copy(D::$Der) where k = $Der(copy(D.axis))
+
+        ^(D::$Der, k::Integer) = ApplyQuasiArray(^, D, k)
+    end
+end
+
+conj(D::ComplexDerivative{T}) where T = ConjComplexDerivative{T}(D.axis)
+conj(D::ConjComplexDerivative{T}) where T = ComplexDerivative{T}(D.axis)
+

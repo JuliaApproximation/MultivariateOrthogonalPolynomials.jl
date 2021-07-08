@@ -4,7 +4,7 @@ using ClassicalOrthogonalPolynomials, FastTransforms, BlockBandedMatrices, Block
       LazyArrays, SpecialFunctions, LinearAlgebra, BandedMatrices, LazyBandedMatrices, ArrayLayouts,
       HarmonicOrthogonalPolynomials
 
-import Base: axes, in, ==, *, ^, \, copy, OneTo, getindex, size, oneto
+import Base: axes, in, ==, *, ^, \, copy, OneTo, getindex, size, oneto, conj
 import DomainSets: boundary
 
 import QuasiArrays: LazyQuasiMatrix, LazyQuasiArrayStyle
@@ -26,8 +26,8 @@ export MultivariateOrthogonalPolynomial, BivariateOrthogonalPolynomial,
        UnitTriangle, UnitDisk,
        JacobiTriangle, TriangleWeight, WeightedTriangle,
        DunklXuDisk, DunklXuDiskWeight, WeightedDunklXuDisk,
-       Zernike, ZernikeWeight, zerniker, zernikez,
-       PartialDerivative, Laplacian, AbsLaplacianPower, AngularMomentum,
+       Zernike, ComplexZernike, ZernikeWeight, zerniker, zernikez,
+       PartialDerivative, ComplexDerivative, Laplacian, AbsLaplacianPower, AngularMomentum,
        RadialCoordinate, Weighted, Block
 
 include("ModalInterlace.jl")
