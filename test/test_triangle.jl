@@ -148,9 +148,10 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
 
         Rx = JacobiTriangle(1,0,0) \ P
         Ry = JacobiTriangle(0,1,0) \ P
-        # Rz = JacobiTriangle(0,0,1) \ P
+        Rz = JacobiTriangle(0,0,1) \ P
 
 
+        x,y = 0.1,0.2
         for n=1:5, k=0:n-1
             @test p(n,k,0,0,0,x,y) ≈ p(n-1,k,1,0,0,x,y) *  Rx[Block(n)[k+1], Block(n+1)[k+1]] + p(n,k,1,0,0,x,y) *  Rx[Block(n+1)[k+1], Block(n+1)[k+1]]
         end
@@ -159,10 +160,15 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
             @test p(n,k,0,0,0,x,y) ≈ p(n,k,1,0,0,x,y) *  Rx[Block(n+1)[k+1], Block(n+1)[k+1]]
         end
 
+        @test P[SVector(x,y),Block.(1:5)]' ≈ JacobiTriangle(1,0,0)[xy,Block.(1:5)]' * Rx[Block.(1:5),Block.(1:5)]
+        @test P[SVector(x,y),Block.(1:5)]' ≈ JacobiTriangle(0,1,0)[xy,Block.(1:5)]' * Ry[Block.(1:5),Block.(1:5)]
+        @test P[SVector(x,y),Block.(1:5)]' ≈ JacobiTriangle(0,0,1)[xy,Block.(1:5)]' * Rz[Block.(1:5),Block.(1:5)]
+
 
         c = [randn(100); zeros(∞)]
         @test (P*c)[SVector(0.1,0.2)] ≈ (JacobiTriangle(1,0,0)*(Rx*c))[SVector(0.1,0.2)]
         @test (P*c)[SVector(0.1,0.2)] ≈ (JacobiTriangle(0,1,0)*(Ry*c))[SVector(0.1,0.2)]
+        @test (P*c)[SVector(0.1,0.2)] ≈ (JacobiTriangle(0,0,1)*(Rz*c))[SVector(0.1,0.2)]
 
         Lx = P \ WeightedTriangle(1,0,0)
         Ly = P \ WeightedTriangle(0,1,0)
@@ -172,10 +178,13 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
             @test x*p(n,k,1,0,0,x,y) ≈ p(n,k,0,0,0,x,y) *  Lx[Block(n+1)[k+1], Block(n+1)[k+1]] + p(n+1,k,0,0,0,x,y) *  Lx[Block(n+2)[k+1], Block(n+1)[k+1]]
         end
 
-        @test P[SVector(0.1,0.2),1:10]'Lx[1:10,1] ≈ 0.1
-        @test P[SVector(0.1,0.2),1:10]'Lx[1:10,2] ≈ WeightedTriangle(1,0,0)[SVector(0.1,0.2),2]
+        @test WeightedTriangle(1,0,0)[SVector(x,y),Block.(1:5)]' ≈ P[xy,Block.(1:6)]' * Lx[Block.(1:6),Block.(1:5)]
+        @test WeightedTriangle(0,1,0)[SVector(x,y),Block.(1:5)]' ≈ P[xy,Block.(1:6)]' * Ly[Block.(1:6),Block.(1:5)]
+        @test WeightedTriangle(0,0,1)[SVector(x,y),Block.(1:5)]' ≈ P[xy,Block.(1:6)]' * Lz[Block.(1:6),Block.(1:5)]
 
         @test (WeightedTriangle(1,0,0)*c)[SVector(0.1,0.2)] ≈ (P*(Lx*c))[SVector(0.1,0.2)]
+        @test (WeightedTriangle(0,1,0)*c)[SVector(0.1,0.2)] ≈ (P*(Ly*c))[SVector(0.1,0.2)]
+        @test (WeightedTriangle(0,0,1)*c)[SVector(0.1,0.2)] ≈ (P*(Lz*c))[SVector(0.1,0.2)]
 
         ∂ˣ² = (∂ˣ)^2
         ∂ʸ² = (∂ʸ)^2

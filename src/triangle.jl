@@ -121,6 +121,18 @@ function Ry(a,b,c)
     _BandedBlockBandedMatrix(dat, axes(k,1), (0,1), (0,1))
 end
 
+function Rz(a,b,c)
+    n = mortar(Fill.(oneto(∞),oneto(∞)))
+    k = mortar(Base.OneTo.(oneto(∞)))
+    dat = PseudoBlockArray(Vcat(
+        (-(k .+ (b-1) ) .* (n .+ k .+ (b+c-1)) ./ ((2n .+ (a+b+c)) .* (2k .+ (b+c-1) )))',
+        ((k .- n .- a ) .* (k .+ (b+c)) ./ ((2n .+ (a+b+c)) .* (2k .+ (b+c-1) )))',
+        (-(k .+ (b-1) ) .* (k .- n .- 1) ./ ((2n .+ (a+b+c)) .* (2k .+ (b+c-1) )))',
+        ((n .+ k .+ (a+b+c) ) .* (k .+ (b+c)) ./ ((2n .+ (a+b+c)) .* (2k .+ (b+c-1) )))'
+        ), (blockedrange(Fill(2,2)), axes(n,1)))
+    _BandedBlockBandedMatrix(dat, axes(k,1), (0,1), (0,1))
+end
+
 function Lx(a,b,c)
     n = mortar(Fill.(oneto(∞),oneto(∞)))
     k = mortar(Base.OneTo.(oneto(∞)))
