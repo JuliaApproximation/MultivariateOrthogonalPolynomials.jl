@@ -1,5 +1,5 @@
-using MultivariateOrthogonalPolynomials, ClassicalOrthogonalPolynomials, StaticArrays, BlockArrays, BandedMatrices, FastTransforms, LinearAlgebra, RecipesBase, Test, SpecialFunctions
-import MultivariateOrthogonalPolynomials: DiskTrav, grid, ZernikeTransform, ZernikeITransform, *
+using MultivariateOrthogonalPolynomials, ClassicalOrthogonalPolynomials, StaticArrays, BlockArrays, BandedMatrices, FastTransforms, LinearAlgebra, RecipesBase, Test, SpecialFunctions, LazyArrays
+import MultivariateOrthogonalPolynomials: DiskTrav, grid, ZernikeTransform, ZernikeITransform, *, ModalInterlace
 import ClassicalOrthogonalPolynomials: HalfWeighted
 
 
@@ -11,7 +11,7 @@ import ClassicalOrthogonalPolynomials: HalfWeighted
 
         v = PseudoBlockArray(randn(sum(1:N)),1:N)
         @test T * (Ti * v) ≈ v
-        
+
 
         @test_throws MethodError T * randn(15)
     end
@@ -23,8 +23,8 @@ import ClassicalOrthogonalPolynomials: HalfWeighted
         @test Zernike(1) ≠ Zernike()
         @test Zernike() ≡ copy(Zernike())
 
-        @test ZernikeWeight() == ZernikeWeight() == ZernikeWeight(0,0) == 
-                ZernikeWeight(0) == ZernikeWeight{Float64}() == 
+        @test ZernikeWeight() == ZernikeWeight() == ZernikeWeight(0,0) ==
+                ZernikeWeight(0) == ZernikeWeight{Float64}() ==
                 ZernikeWeight{Float64}(0) == ZernikeWeight{Float64}(0, 0)
         @test ZernikeWeight(1) ≠ ZernikeWeight()
         @test ZernikeWeight() ≡ copy(ZernikeWeight())
@@ -107,12 +107,12 @@ import ClassicalOrthogonalPolynomials: HalfWeighted
         @test f(r^2) ≈ r^(-m) * zerniker(ℓ, m, b, r)
         # u = xy -> ((x,y) = xy; ur(norm(xy)) * cos(m*atan(y,x)))
         # t = r^2; 4*(m+1)*derivative(f,t) + 4t*derivative2(f,t)
-        
+
         # @test derivative(ur,r) ≈  m*r^(m-1)*f(r^2) + 2r^(m+1)*derivative(f,r^2)
         # @test derivative2(ur,r) ≈ m*(m-1)*r^(m-2)*f(r^2) + (4m+2)*r^m * derivative(f,r^2) + 4r^(m+2)*derivative2(f,r^2)
         # @test lapr(ur, m, r) ≈ 4*((m+1) * derivative(f,r^2) + r^2*derivative2(f,r^2)) * r^m
         # @test lapr(ur, m, r) ≈ 4*((m+1) * derivative(f,t) + t*derivative2(f,t)) * t^(m/2)
-        
+
 
         ℓ, m, b = 1, 1, 1
 
@@ -126,7 +126,7 @@ import ClassicalOrthogonalPolynomials: HalfWeighted
 
         @test (D1 * D2)[band(0)][1:10] ≈ -((1:∞) .* ((1+m):∞))[1:10]
 
-                
+
         ℓ = m = 0; b= 1
         d = -4*((1:∞) .* ((m+1):∞))
         xy = SVector(0.1,0.2)
@@ -176,7 +176,15 @@ import ClassicalOrthogonalPolynomials: HalfWeighted
         u = @. (1 - x^2 - y^2) * exp(x*cos(y))
         Δu = @. (-exp(x*cos(y)) * (4 - x*(-5 + x^2 + y^2)cos(y) + (-1 + x^2 + y^2)cos(y)^2 - 4x*y*sin(y) + x^2*(x^2 + y^2-1)*sin(y)^2))
         @test (WZ * (WZ \ u))[SVector(0.1,0.2)] ≈ u[SVector(0.1,0.2)]
-        @test (Δ_Z * (WZ \ u))[1:100]  ≈ (Zernike(1) \ Δu)[1:100] 
+        @test (Δ_Z * (WZ \ u))[1:100]  ≈ (Zernike(1) \ Δu)[1:100]
+
+        @testset "Unweighted" begin
+            a = b = 0
+            D = Derivative(axes(Legendre(),1))
+            Δs = BroadcastVector{AbstractMatrix{Float64}}((C,B,A) -> (HalfWeighted{:b}(C)\(D*HalfWeighted{:b}(B)))*(B\(D*A)), Normalized.(Jacobi.(b+2,a:∞)), Normalized.(Jacobi.(b+1,(a+1):∞)), Normalized.(Jacobi.(b,a:∞)));
+
+            Δ = ModalInterlace(Δs, size(Δs[1]), (-2,2))
+        end
     end
 
     @testset "Conversion" begin
@@ -229,12 +237,12 @@ import ClassicalOrthogonalPolynomials: HalfWeighted
         @test w*Zernike(1)[xy,Block(3)[3]] ≈ L2[1:2,1]'*Zernike()[xy,getindex.(Block.(3:2:5),3)]/sqrt(2)
 
         L = Zernike() \ Weighted(Zernike(1))
-        @test w*Zernike(1)[xy,Block.(1:5)]' ≈ Zernike()[xy,Block.(1:7)]'*L[Block.(1:7),Block.(1:5)] 
+        @test w*Zernike(1)[xy,Block.(1:5)]' ≈ Zernike()[xy,Block.(1:7)]'*L[Block.(1:7),Block.(1:5)]
 
         @test exp.(L)[1:10,1:10] == exp.(L[1:10,1:10])
 
         L2 = Zernike(1) \ Weighted(Zernike(1))
-        @test w*Zernike(1)[xy,Block.(1:5)]' ≈ Zernike(1)[xy,Block.(1:7)]'*L2[Block.(1:7),Block.(1:5)] 
+        @test w*Zernike(1)[xy,Block.(1:5)]' ≈ Zernike(1)[xy,Block.(1:7)]'*L2[Block.(1:7),Block.(1:5)]
     end
 
     @testset "plotting" begin
@@ -463,7 +471,7 @@ end
                 # compute solution
                 ucomputed = Δ_Zfrac \ RHS2cfs
                 @test uexplicitcfs[1:100] ≈ ucomputed[1:100]
-        
+
                 # different β, dependence on x
                 β = 0.506
                 Z = Zernike(β)
