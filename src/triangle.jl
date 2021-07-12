@@ -44,6 +44,10 @@ const WeightedTriangle{T} = WeightedBasis{T,<:TriangleWeight,<:JacobiTriangle}
 WeightedTriangle(a, b, c) = TriangleWeight(a,b,c) .* JacobiTriangle(a,b,c)
 
 axes(P::TriangleWeight{T}) where T = (Inclusion(UnitTriangle{T}()),)
+function getindex(P::TriangleWeight, xy::StaticVector{2})
+    x,y = xy
+    x^P.a * y^P.b * (1-x-y)^P.c
+end
 
 Base.summary(io::IO, P::TriangleWeight) = print(io, "x^$(P.a)*y^$(P.b)*(1-x-y)^$(P.c) on the unit triangle")
 
@@ -172,14 +176,23 @@ end
     (TriangleWeight(0,0,0) .* w_A) \ w_B
 
 function \(A::JacobiTriangle, B::JacobiTriangle)
-    if A.a == B.a && A.b == B.b && A.c == B.c
+    if A == B
         Eye((axes(B,2),))
     elseif A.a == B.a + 1 && A.b == B.b && A.c == B.c
         Rx(B.a, B.b, B.c)
     elseif A.a == B.a && A.b == B.b + 1 && A.c == B.c
         Ry(B.a, B.b, B.c)
-    # elseif A.a == B.a && A.b == B.b && A.c == B.c + 1
-    #     Rz(B.a, B.b, B.c)
+    elseif A.a == B.a && A.b == B.b && A.c == B.c + 1
+        Rz(B.a, B.b, B.c)
+    elseif A.a > B.a
+        C = JacobiTriangle(B.a+1,B.b,B.c)
+        (A \ C) * (C \ B)
+    elseif A.b > B.b
+        C = JacobiTriangle(B.a,B.b+1,B.c)
+        (A \ C) * (C \ B)
+    elseif A.c > B.c
+        C = JacobiTriangle(B.a,B.b,B.c+1)
+        (A \ C) * (C \ B)
     else
         error("not implemented for $A and $B")
     end
@@ -431,14 +444,18 @@ function tri_forwardrecurrence(N::Int, X, Y, x, y)
     N < 1 && return ret
     ret[1] = 1
     N < 2 && return ret
-    ret[2] = x/X[1,1]-1
-    ret[3] = -Y[2,1]/(Y[3,1]*X[1,1]) * (x-X[1,1]) + (y-Y[1,1])/Y[3,1]
 
     X_N = X[Block.(1:N), Block.(1:N-1)]
     Y_N = Y[Block.(1:N), Block.(1:N-1)]
 
+    let n = 1
+        A = TriangleRecurrenceA(n, X_N, Y_N)
+        B = TriangleRecurrenceB(n, X_N, Y_N)
+        ret[Block(2)] .= A*[x; y] + vec(B)
+    end
+
     for n = 2:N-1
-        # P[n+1,xy] == (A[n]*[x*Eye(n); y*Eye(n)] + B[n])*P[n,xy] - C[n]*P[n-1,xy]
+        # P[n+1,xy] == (A*[x*Eye(n); y*Eye(n)] + B)*P[n,xy] - C*P[n-1,xy]
         A = TriangleRecurrenceA(n, X_N, Y_N)
         B = TriangleRecurrenceB(n, X_N, Y_N)
         C = TriangleRecurrenceC(n, X_N, Y_N)
