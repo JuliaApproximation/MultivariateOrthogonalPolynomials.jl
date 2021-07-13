@@ -41,7 +41,7 @@ TriangleWeight(a::T, b::T, c::T) where T = TriangleWeight{float(T),T}(a, b, c)
 
 const WeightedTriangle{T,V} = Weighted{T,JacobiTriangle{T,V}}
 
-WeightedTriangle(a, b, c) = TriangleWeight(a,b,c) .* JacobiTriangle(a,b,c)
+WeightedTriangle(a, b, c) = Weighted(JacobiTriangle(a,b,c))
 
 axes(P::TriangleWeight{T}) where T = (Inclusion(UnitTriangle{T}()),)
 function getindex(P::TriangleWeight, xy::StaticVector{2})
