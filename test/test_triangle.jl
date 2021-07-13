@@ -388,6 +388,7 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
 
             xy = SVector(0.1,0.2)
             @test P[xy,1:10]' ≈ Q[xy,1:10]' * R[1:10,1:10]
+            @test Weighted(Q)[xy,1:10]' ≈ P[xy,1:50]'*L[1:50,1:10]
         end
     end
 

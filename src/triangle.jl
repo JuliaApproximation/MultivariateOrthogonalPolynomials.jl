@@ -49,7 +49,24 @@ function getindex(P::TriangleWeight, xy::StaticVector{2})
     x^P.a * y^P.b * (1-x-y)^P.c
 end
 
+all(::typeof(isone), w::TriangleWeight) = iszero(w.a) && iszero(w.b) && iszero(w.c)
 ==(w::TriangleWeight, v::TriangleWeight) = w.a == v.a && w.b == v.b && w.c == v.c
+
+==(w_A::WeightedBasis{<:Any,<:TriangleWeight,<:JacobiTriangle}, w_B::WeightedBasis{<:Any,<:TriangleWeight,<:JacobiTriangle}) = arguments(w_A) == arguments(w_B)
+
+function ==(w_A::WeightedBasis{<:Any,<:TriangleWeight,<:JacobiTriangle}, B::JacobiTriangle)
+    w,A = arguments(w_A)
+    all(isone,w) && A == B
+end
+
+==(B::JacobiTriangle, w_A::WeightedBasis{<:Any,<:TriangleWeight,<:JacobiTriangle}) = w_A == B
+
+function ==(w_A::WeightedBasis{<:Any,<:TriangleWeight,<:JacobiTriangle}, wB::WeightedTriangle)
+    w,A = arguments(w_A)
+    w.a == A.a && w.b == A.b && w.c == A.c && A == wB.P
+end
+
+==(wB::WeightedTriangle, w_A::WeightedBasis{<:Any,<:TriangleWeight,<:JacobiTriangle}) = w_A == wB
 
 Base.summary(io::IO, P::TriangleWeight) = print(io, "x^$(P.a)*y^$(P.b)*(1-x-y)^$(P.c) on the unit triangle")
 
@@ -182,27 +199,34 @@ function \(w_A::WeightedTriangle, w_B::WeightedTriangle)
     elseif A.a == B.a && A.b == B.b && A.c + 1 == B.c
         Lz(B.a, B.b, B.c)
     elseif A.a < B.a
-        C = WeightedTriangle(A.a+1,A.b,A.c)
-        (A \ C) * (C \ B)
+        w_C = WeightedTriangle(A.a+1,A.b,A.c)
+        (w_A \ w_C) * (w_C \ w_B)
     elseif A.b < B.b
-        C = WeightedTriangle(A.a,A.b+1,A.c)
-        (A \ C) * (C \ B)
+        w_C = WeightedTriangle(A.a,A.b+1,A.c)
+        (w_A \ w_C) * (w_C \ w_B)
     elseif A.c < B.c
-        C = WeightedTriangle(A.a,A.b,A.c+1)
-        (A \ C) * (C \ B)
+        w_C = WeightedTriangle(A.a,A.b,A.c+1)
+        (w_A \ w_C) * (w_C \ w_B)
     else
         error("not implemented for $w_A and $w_B")
     end
 end
 
-function \(w_A::WeightedBasis{T,<:TriangleWeight,<:JacobiTriangle}, w_B::WeightedTriangle)
+function \(w_A::WeightedBasis{<:Any,<:TriangleWeight,<:JacobiTriangle}, w_B::WeightedTriangle)
     wA,A = w_A.args
-
-    @assert wA.a == A.a && wA.b == A.b && wA.c == A.c
+    w_A == Weighted(A) || error("Not implemented")
     Weighted(A) \ w_B
 end
 
-\(w_A::JacobiTriangle, w_B::WeightedTriangle) = (TriangleWeight(0,0,0) .* w_A) \ w_B
+function \(w_A::WeightedBasis{<:Any,<:TriangleWeight,<:JacobiTriangle}, B::JacobiTriangle)
+    wA,A = w_A.args
+    w_A == Weighted(A) && return Weighted(A) \ B
+    all(isone,wA) && return A \ B
+    error("Not implemented")
+end
+
+\(A::JacobiTriangle, w_B::WeightedTriangle) = (TriangleWeight(0,0,0) .* A) \ w_B
+\(w_A::WeightedTriangle, B::JacobiTriangle) = w_A \ (TriangleWeight(0,0,0) .* B)
 
 function \(A::JacobiTriangle, B::JacobiTriangle)
     if A == B
