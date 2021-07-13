@@ -47,6 +47,13 @@ axes(P::TriangleWeight{T}) where T = (Inclusion(UnitTriangle{T}()),)
 
 Base.summary(io::IO, P::TriangleWeight) = print(io, "x^$(P.a)*y^$(P.b)*(1-x-y)^$(P.c) on the unit triangle")
 
+function getindex(P::TriangleWeight{T}, xy::StaticVector{2}) where T
+    x,y = xy
+    convert(T, x^P.a * y^P.b * (1-x-y)^P.c)
+end
+
+orthogonalityweight(P::JacobiTriangle) = TriangleWeight(P.a, P.b, P.c)
+
 @simplify function *(Dx::PartialDerivative{1}, P::JacobiTriangle)
     a,b,c = P.a,P.b,P.c
     n = mortar(Fill.(oneto(∞),oneto(∞)))

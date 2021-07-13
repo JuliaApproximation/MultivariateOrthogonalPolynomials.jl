@@ -333,4 +333,14 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
         C = P¹ \ (L * P)
         @test C[1:10,1:10] ≈ A[1:10,1:10] - B[1:10,1:10]
     end
+
+    @testset "Weighted" begin
+        P¹ = JacobiTriangle(1,1,1)
+        W = Weighted(P¹)
+        @test W[SVector(0.1,0.2),1:5] ≈ 0.1 * 0.2 * (1 - 0.1 - 0.2) * P¹[SVector(0.1,0.2),1:5]
+        xy = axes(W,1)
+        ∂ˣ = PartialDerivative{1}(xy)
+        P = JacobiTriangle()
+        P \ W
+    end
 end
