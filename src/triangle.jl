@@ -49,6 +49,8 @@ function getindex(P::TriangleWeight, xy::StaticVector{2})
     x^P.a * y^P.b * (1-x-y)^P.c
 end
 
+==(w::TriangleWeight, v::TriangleWeight) = w.a == v.a && w.b == v.b && w.c == v.c
+
 Base.summary(io::IO, P::TriangleWeight) = print(io, "x^$(P.a)*y^$(P.b)*(1-x-y)^$(P.c) on the unit triangle")
 
 orthogonalityweight(P::JacobiTriangle) = TriangleWeight(P.a, P.b, P.c)
@@ -169,11 +171,7 @@ end
 
 
 function \(w_A::WeightedTriangle, w_B::WeightedTriangle)
-    wA,A = w_A.args
-    wB,B = w_B.args
-
-    @assert wA.a == A.a && wA.b == A.b && wA.c == A.c
-    @assert wB.a == B.a && wB.b == B.b && wB.c == B.c
+    A,B = w_A.P,w_B.P
 
     if A.a == B.a && A.b == B.b && A.c == B.c
         Eye{promote_type(eltype(A),eltype(B))}((axes(B,2),))
@@ -197,8 +195,14 @@ function \(w_A::WeightedTriangle, w_B::WeightedTriangle)
     end
 end
 
-\(w_A::JacobiTriangle, w_B::WeightedTriangle) =
-    (TriangleWeight(0,0,0) .* w_A) \ w_B
+function \(w_A::WeightedBasis{T,<:TriangleWeight,<:JacobiTriangle}, w_B::WeightedTriangle)
+    wA,A = w_A.args
+
+    @assert wA.a == A.a && wA.b == A.b && wA.c == A.c
+    Weighted(A) \ w_B
+end
+
+\(w_A::JacobiTriangle, w_B::WeightedTriangle) = (TriangleWeight(0,0,0) .* w_A) \ w_B
 
 function \(A::JacobiTriangle, B::JacobiTriangle)
     if A == B
