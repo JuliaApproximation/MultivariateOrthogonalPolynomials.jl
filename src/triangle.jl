@@ -39,7 +39,7 @@ end
 
 TriangleWeight(a::T, b::T, c::T) where T = TriangleWeight{float(T),T}(a, b, c)
 
-const WeightedTriangle{T} = WeightedBasis{T,<:TriangleWeight,<:JacobiTriangle}
+const WeightedTriangle{T,V} = Weighted{T,JacobiTriangle{T,V}}
 
 WeightedTriangle(a, b, c) = TriangleWeight(a,b,c) .* JacobiTriangle(a,b,c)
 
@@ -50,6 +50,8 @@ function getindex(P::TriangleWeight, xy::StaticVector{2})
 end
 
 Base.summary(io::IO, P::TriangleWeight) = print(io, "x^$(P.a)*y^$(P.b)*(1-x-y)^$(P.c) on the unit triangle")
+
+orthogonalityweight(P::JacobiTriangle) = TriangleWeight(P.a, P.b, P.c)
 
 @simplify function *(Dx::PartialDerivative{1}, P::JacobiTriangle)
     a,b,c = P.a,P.b,P.c
@@ -173,14 +175,25 @@ function \(w_A::WeightedTriangle, w_B::WeightedTriangle)
     @assert wA.a == A.a && wA.b == A.b && wA.c == A.c
     @assert wB.a == B.a && wB.b == B.b && wB.c == B.c
 
-    if A.a + 1 == B.a && A.b == B.b && A.c == B.c
+    if A.a == B.a && A.b == B.b && A.c == B.c
+        Eye{promote_type(eltype(A),eltype(B))}((axes(B,2),))
+    elseif A.a + 1 == B.a && A.b == B.b && A.c == B.c
         Lx(B.a, B.b, B.c)
     elseif A.a == B.a && A.b + 1 == B.b && A.c == B.c
         Ly(B.a, B.b, B.c)
     elseif A.a == B.a && A.b == B.b && A.c + 1 == B.c
         Lz(B.a, B.b, B.c)
+    elseif A.a < B.a
+        C = WeightedTriangle(A.a+1,A.b,A.c)
+        (A \ C) * (C \ B)
+    elseif A.b < B.b
+        C = WeightedTriangle(A.a,A.b+1,A.c)
+        (A \ C) * (C \ B)
+    elseif A.c < B.c
+        C = WeightedTriangle(A.a,A.b,A.c+1)
+        (A \ C) * (C \ B)
     else
-        error("not implemented for $A and $wB")
+        error("not implemented for $w_A and $w_B")
     end
 end
 
@@ -189,7 +202,7 @@ end
 
 function \(A::JacobiTriangle, B::JacobiTriangle)
     if A == B
-        Eye((axes(B,2),))
+        Eye{promote_type(eltype(A),eltype(B))}((axes(B,2),))
     elseif A.a == B.a + 1 && A.b == B.b && A.c == B.c
         Rx(B.a, B.b, B.c)
     elseif A.a == B.a && A.b == B.b + 1 && A.c == B.c

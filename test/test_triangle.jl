@@ -379,6 +379,16 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
                 @test P[SVector(0.1,0.2),Block.(1:5)]'*X[Block.(1:5),Block.(1:4)] ≈ 0.1 * P[SVector(0.1,0.2),Block.(1:4)]'
             end
         end
+
+        @testset "higher order conversion" begin
+            P = JacobiTriangle()
+            Q = JacobiTriangle(1,1,1)
+            R = Q \ P
+            L = P \ Weighted(Q)
+
+            xy = SVector(0.1,0.2)
+            @test P[xy,1:10]' ≈ Q[xy,1:10]' * R[1:10,1:10]
+        end
     end
 
     @testset "AngularMomentum" begin
