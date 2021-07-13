@@ -389,6 +389,35 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
             xy = SVector(0.1,0.2)
             @test P[xy,1:10]' ≈ Q[xy,1:10]' * R[1:10,1:10]
             @test Weighted(Q)[xy,1:10]' ≈ P[xy,1:50]'*L[1:50,1:10]
+
+            Q = JacobiTriangle(0,0,2)
+            R = Q \ P
+            L = P \ Weighted(Q)
+            xy = SVector(0.1,0.2)
+            @test P[xy,1:10]' ≈ Q[xy,1:10]' * R[1:10,1:10]
+            @test Weighted(Q)[xy,1:10]' ≈ P[xy,1:50]'*L[1:50,1:10]
+        end
+
+        @testset "WeightedBasis" begin
+            P = JacobiTriangle()
+            Q = JacobiTriangle(1,1,1)
+            w_0 = TriangleWeight(0,0,0)
+            @test all(isone,w_0)
+            @test !all(isone,TriangleWeight(0,0,1))
+            @test w_0 == w_0
+            @test w_0 .* P == w_0 .* P
+            @test w_0 .* P == P
+            @test P == w_0 .* P
+            @test w_0 .* P == Weighted(P)
+            @test Weighted(P)== w_0 .* P
+            @test P == Weighted(P)
+            @test Weighted(P)== P
+
+            @test Weighted(P) \ Weighted(P) == P \ Weighted(P) == Weighted(P) \ P == 
+                        P \ P == (w_0 .* P) \ P == P \ (w_0 .* P) == (w_0 .* P) \ (w_0 .* P) ==
+                        (w_0 .* P) \ Weighted(P) == Weighted(P) \ (w_0 .* P)
+
+            @test ((w_0 .* Q) \ P)[1:10,1:10] == ((w_0 .* Q) \ (w_0 .* P))[1:10,1:10] == (Q \ (w_0 .* P))[1:10,1:10] == (Q \ P)[1:10,1:10]
         end
     end
 

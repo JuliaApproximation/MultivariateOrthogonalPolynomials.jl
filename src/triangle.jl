@@ -52,6 +52,9 @@ end
 all(::typeof(isone), w::TriangleWeight) = iszero(w.a) && iszero(w.b) && iszero(w.c)
 ==(w::TriangleWeight, v::TriangleWeight) = w.a == v.a && w.b == v.b && w.c == v.c
 
+==(wA::WeightedTriangle, B::JacobiTriangle) = wA.P == B == JacobiTriangle(0,0,0)
+==(B::JacobiTriangle, wA::WeightedTriangle) = wA == B
+
 ==(w_A::WeightedBasis{<:Any,<:TriangleWeight,<:JacobiTriangle}, w_B::WeightedBasis{<:Any,<:TriangleWeight,<:JacobiTriangle}) = arguments(w_A) == arguments(w_B)
 
 function ==(w_A::WeightedBasis{<:Any,<:TriangleWeight,<:JacobiTriangle}, B::JacobiTriangle)
@@ -214,8 +217,16 @@ end
 
 function \(w_A::WeightedBasis{<:Any,<:TriangleWeight,<:JacobiTriangle}, w_B::WeightedTriangle)
     wA,A = w_A.args
-    w_A == Weighted(A) || error("Not implemented")
-    Weighted(A) \ w_B
+    w_A == Weighted(A) && Weighted(A) \ w_B
+    all(isone,wA) && return A \ w_B
+    error("Not implemented")
+end
+
+function \(w_A::WeightedBasis{<:Any,<:TriangleWeight,<:JacobiTriangle}, w_B::WeightedBasis{<:Any,<:TriangleWeight,<:JacobiTriangle})
+    wA,A = w_A.args
+    w_A == Weighted(A) && Weighted(A) \ w_B
+    all(isone,wA) && return A \ w_B
+    error("Not implemented")
 end
 
 function \(w_A::WeightedBasis{<:Any,<:TriangleWeight,<:JacobiTriangle}, B::JacobiTriangle)
@@ -225,7 +236,17 @@ function \(w_A::WeightedBasis{<:Any,<:TriangleWeight,<:JacobiTriangle}, B::Jacob
     error("Not implemented")
 end
 
-\(A::JacobiTriangle, w_B::WeightedTriangle) = (TriangleWeight(0,0,0) .* A) \ w_B
+function \(A::JacobiTriangle, w_B::WeightedBasis{<:Any,<:TriangleWeight,<:JacobiTriangle})
+    wB,B = w_B.args
+    w_B == Weighted(B) && return A \ Weighted(B)
+    all(isone,wB) && return A \ B
+    error("Not implemented")
+end
+
+function \(A::JacobiTriangle, w_B::WeightedTriangle)
+    w_B.P == JacobiTriangle(0,0,0) && return A \ w_B.P
+    (TriangleWeight(0,0,0) .* A) \ w_B
+end
 \(w_A::WeightedTriangle, B::JacobiTriangle) = w_A \ (TriangleWeight(0,0,0) .* B)
 
 function \(A::JacobiTriangle, B::JacobiTriangle)
