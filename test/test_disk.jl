@@ -219,6 +219,9 @@ import ForwardDiff: hessian
 
         @test R[Block.(Base.OneTo(6)), Block.(Base.OneTo(7))] == R[Block.(1:6), Block.(1:7)]
         @test Zernike()[xy,Block.(1:6)]' ≈ Zernike(1)[xy,Block.(1:6)]'*R[Block.(1:6),Block.(1:6)]
+
+        R = Zernike(2) \ Zernike()
+        @test Zernike()[xy,Block.(1:6)]' ≈ Zernike(2)[xy,Block.(1:6)]'*R[Block.(1:6),Block.(1:6)]
     end
 
     @testset "Lowering" begin
@@ -245,8 +248,11 @@ import ForwardDiff: hessian
 
         @test exp.(L)[1:10,1:10] == exp.(L[1:10,1:10])
 
-        L2 = Zernike(1) \ Weighted(Zernike(1))
-        @test w*Zernike(1)[xy,Block.(1:5)]' ≈ Zernike(1)[xy,Block.(1:7)]'*L2[Block.(1:7),Block.(1:5)]
+        L = Zernike(1) \ Weighted(Zernike(1))
+        @test 2w*Zernike(1)[xy,Block.(1:5)]' ≈ Zernike(1)[xy,Block.(1:7)]'*L[Block.(1:7),Block.(1:5)]
+
+        L = Zernike() \ Weighted(Zernike(2))
+        @test w^2*Zernike(2)[xy,Block.(1:5)]' ≈ Zernike()[xy,Block.(1:9)]'*L[Block.(1:9),Block.(1:5)]
     end
 
     @testset "plotting" begin

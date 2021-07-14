@@ -304,17 +304,14 @@ function \(A::Zernike{T}, B::Zernike{V}) where {T,V}
     TV = promote_type(T,V)
     A.a == B.a && A.b == B.b && return Eye{TV}((axes(A,2),))
     st = Int(A.a - B.a + A.b - B.b)
-    ModalInterlace{TV}((Normalized.(Jacobi{TV}.(A.b,A.a:∞)) .\ Normalized.(Jacobi{TV}.(B.b,B.a:∞))) .* sqrt(convert(TV, 2)^(-st)), (ℵ₀,ℵ₀), (0,2st))
+    ModalInterlace{TV}((Normalized.(Jacobi{TV}.(A.b,A.a:∞)) .\ Normalized.(Jacobi{TV}.(B.b,B.a:∞))) .* convert(TV, 2)^(-st/2), (ℵ₀,ℵ₀), (0,2st))
 end
 
-function \(A::Zernike{T}, B::Weighted{V,Zernike{V}}) where {T,V}
+function \(A::Zernike{T}, wB::Weighted{V,Zernike{V}}) where {T,V}
     TV = promote_type(T,V)
-    A.a == B.P.a == A.b == B.P.b == 0 && return Eye{TV}((axes(A,2),))
-    if A.a == A.b == 0
-        @assert B.P.a == 0 && B.P.b == 1
-        ModalInterlace{TV}((Normalized.(Jacobi{TV}.(0, 0:∞)) .\ HalfWeighted{:a}.(Normalized.(Jacobi{TV}.(1, 0:∞)))) ./ sqrt(convert(TV, 2)), (ℵ₀,ℵ₀), (2,0))
-    else
-        Z = Zernike{TV}() 
-        (A \ Z) * (Z \ B)
-    end
+    B = wB.P
+    A.a == B.a == A.b == B.b == 0 && return Eye{TV}((axes(A,2),))
+    c = Int(B.a - A.a + B.b - A.b)
+    @assert iszero(B.a)
+    ModalInterlace{TV}((Normalized.(Jacobi{TV}.(A.b, A.a:∞)) .\ HalfWeighted{:a}.(Normalized.(Jacobi{TV}.(B.b, B.a:∞)))) .* convert(TV, 2)^(-c/2), (ℵ₀,ℵ₀), (2Int(B.b), 2Int(A.a+A.b)))
 end
