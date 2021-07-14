@@ -1,7 +1,7 @@
 using MultivariateOrthogonalPolynomials, ClassicalOrthogonalPolynomials, StaticArrays, BlockArrays, BandedMatrices, FastTransforms, LinearAlgebra, RecipesBase, Test, SpecialFunctions, LazyArrays
 import MultivariateOrthogonalPolynomials: DiskTrav, grid, ZernikeTransform, ZernikeITransform, *, ModalInterlace
 import ClassicalOrthogonalPolynomials: HalfWeighted
-
+import ForwardDiff: hessian
 
 @testset "Disk" begin
     @testset "Transform" begin
@@ -179,11 +179,15 @@ import ClassicalOrthogonalPolynomials: HalfWeighted
         @test (Δ_Z * (WZ \ u))[1:100]  ≈ (Zernike(1) \ Δu)[1:100]
 
         @testset "Unweighted" begin
-            a = b = 0
-            D = Derivative(axes(Legendre(),1))
-            Δs = BroadcastVector{AbstractMatrix{Float64}}((C,B,A) -> (HalfWeighted{:b}(C)\(D*HalfWeighted{:b}(B)))*(B\(D*A)), Normalized.(Jacobi.(b+2,a:∞)), Normalized.(Jacobi.(b+1,(a+1):∞)), Normalized.(Jacobi.(b,a:∞)));
+            c = [randn(100); zeros(∞)]
+            Z = Zernike()
+            Δ = Zernike(2) \ (Laplacian(axes(Z,1)) * Z)
+            @test tr(hessian(xy -> (Zernike{eltype(xy)}()*c)[xy], SVector(0.1,0.2))) ≈ (Zernike(2)*(Δ*c))[SVector(0.1,0.2)]
 
-            Δ = ModalInterlace(Δs, size(Δs[1]), (-2,2))
+            a,b = 0.2
+            Z = Zernike(b)
+            Δ = Zernike(b+2) \ (Laplacian(axes(Z,1)) * Z)
+            @test tr(hessian(xy -> (Zernike{eltype(xy)}(b)*c)[xy], SVector(0.1,0.2))) ≈ (Zernike(b+2)*(Δ*c))[SVector(0.1,0.2)]
         end
     end
 
