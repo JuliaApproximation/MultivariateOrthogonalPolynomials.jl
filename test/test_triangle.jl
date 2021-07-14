@@ -419,6 +419,21 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
 
             @test ((w_0 .* Q) \ P)[1:10,1:10] == ((w_0 .* Q) \ (w_0 .* P))[1:10,1:10] == (Q \ (w_0 .* P))[1:10,1:10] == (Q \ P)[1:10,1:10]
         end
+
+        @testset "general (broken)" begin
+            P = JacobiTriangle()
+            Q = JacobiTriangle(0.1,0.2,0.3)
+            w = TriangleWeight(0.2,0.3,0.4)
+            @test_throws ErrorException Q\P
+            @test_throws ErrorException Weighted(Q)\Weighted(P)
+            @test_throws ErrorException (w.*Q)\(w.*P)
+            @test_throws ErrorException Weighted(Q)\P
+            @test_throws ErrorException Q\Weighted(P)
+            @test_throws ErrorException (w .* Q)\P
+            @test_throws ErrorException Q\( w.* P)
+            @test_throws ErrorException Weighted(Q)\(w .* P)
+            @test_throws ErrorException (w .* Q)\Weighted(P)
+        end
     end
 
     @testset "AngularMomentum" begin
