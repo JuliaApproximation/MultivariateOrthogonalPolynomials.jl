@@ -20,7 +20,7 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
             x,y = xy = SVector(0.1,0.2)
             for (a,b,c) in ((0,0,0), (1,0,0), (0,1,0), (0,0,1), (0.1,0.2,0.3))
                 P = JacobiTriangle(a,b,c)
-            
+
                 for n = 0:5, k=0:n
                     @test P[xy,Block(n+1)[k+1]] ≈ p(n,k,a,b,c,x,y) atol=1E-13
                 end
@@ -152,7 +152,7 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
 
 
         x,y = 0.1,0.2
-    
+
         for n=1:5, k=0:n-1
             @test p(n,k,0,0,0,x,y) ≈ p(n-1,k,1,0,0,x,y) *  Rx[Block(n)[k+1], Block(n+1)[k+1]] + p(n,k,1,0,0,x,y) *  Rx[Block(n+1)[k+1], Block(n+1)[k+1]]
         end
@@ -413,7 +413,7 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
             @test P == Weighted(P)
             @test Weighted(P)== P
 
-            @test Weighted(P) \ Weighted(P) == P \ Weighted(P) == Weighted(P) \ P == 
+            @test Weighted(P) \ Weighted(P) == P \ Weighted(P) == Weighted(P) \ P ==
                         P \ P == (w_0 .* P) \ P == P \ (w_0 .* P) == (w_0 .* P) \ (w_0 .* P) ==
                         (w_0 .* P) \ Weighted(P) == Weighted(P) \ (w_0 .* P)
 
