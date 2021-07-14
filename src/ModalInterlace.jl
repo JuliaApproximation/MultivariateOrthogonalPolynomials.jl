@@ -14,6 +14,7 @@ axes(Z::ModalInterlace) = blockedrange.(oneto.(Z.MN))
 
 blockbandwidths(R::ModalInterlace) = R.bandwidths
 subblockbandwidths(::ModalInterlace) = (0,0)
+copy(M::ModalInterlace) = M
 
 
 function Base.view(R::ModalInterlace{T}, KJ::Block{2}) where T

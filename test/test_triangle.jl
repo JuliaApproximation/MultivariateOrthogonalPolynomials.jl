@@ -13,24 +13,35 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
         @test x[SVector(0.1,0.2)] == 0.1
         @test y[SVector(0.1,0.2)] == 0.2
     end
-    P̃ = (n,k,x,y) -> Jacobi(2k+1,0)[2x-1,n-k+1] * (1-x)^k * Legendre()[2y/(1-x)-1, k+1]
+    p = (n,k,a,b,c,x,y) -> jacobip(n-k,2k+b+c+1,a,2x-1) * (1-x)^k * jacobip(k,c,b,2y/(1-x)-1)
 
     @testset "evaluation" begin
+        @testset "versus explicit" begin
+            x,y = xy = SVector(0.1,0.2)
+            for (a,b,c) in ((0,0,0), (1,0,0), (0,1,0), (0,0,1), (0.1,0.2,0.3))
+                P = JacobiTriangle(a,b,c)
+
+                for n = 0:5, k=0:n
+                    @test P[xy,Block(n+1)[k+1]] ≈ p(n,k,a,b,c,x,y) atol=1E-13
+                end
+            end
+        end
+
         @testset "forwardrecurrnce" begin
             P = JacobiTriangle()
             xy = SVector(0.1,0.2)
             P_N = P[xy, Block.(Base.OneTo(10))]
             @test P_N == P[xy,Block.(1:10)]
             for N = 1:10
-                @test P[xy, Block(N)] ≈ P_N[Block(N)] ≈ P̃.(N-1, 0:N-1, xy...)
+                @test P[xy, Block(N)] ≈ P_N[Block(N)] ≈ p.(N-1, 0:N-1, 0,0,0, xy...)
                 for j=1:N
-                    P[xy,Block(N)[j]] ≈ P̃(N-1,j-1,xy...)
+                    P[xy,Block(N)[j]] ≈ p(N-1,j-1,0,0,0,xy...)
                 end
             end
             @test P[xy,1] == 1
-            @test P[xy,2] ≈ P̃(1,0,xy...)
-            @test P[xy,3] ≈ P̃(1,1,xy...)
-            @test P[xy,4] ≈ P̃(2,0,xy...)
+            @test P[xy,2] ≈ p(1,0,0,0,0,xy...)
+            @test P[xy,3] ≈ p(1,1,0,0,0,xy...)
+            @test P[xy,4] ≈ p(2,0,0,0,0,xy...)
 
             @test P[[SVector(0.1,0.2),SVector(0.2,0.3)],1] ≈ [1,1]
             @test P[[SVector(0.1,0.2),SVector(0.2,0.3)],Block(2)] ≈ [P[SVector(0.1,0.2),2] P[SVector(0.1,0.2),3];
@@ -136,9 +147,45 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
         @test M[5,5] ≈ 1/18
 
         Rx = JacobiTriangle(1,0,0) \ P
-        Lx = P \ WeightedTriangle(1,0,0)
         Ry = JacobiTriangle(0,1,0) \ P
+        Rz = JacobiTriangle(0,0,1) \ P
+
+
+        x,y = 0.1,0.2
+
+        for n=1:5, k=0:n-1
+            @test p(n,k,0,0,0,x,y) ≈ p(n-1,k,1,0,0,x,y) *  Rx[Block(n)[k+1], Block(n+1)[k+1]] + p(n,k,1,0,0,x,y) *  Rx[Block(n+1)[k+1], Block(n+1)[k+1]]
+        end
+        for n=0:5
+            k = n
+            @test p(n,k,0,0,0,x,y) ≈ p(n,k,1,0,0,x,y) *  Rx[Block(n+1)[k+1], Block(n+1)[k+1]]
+        end
+
+        @test P[SVector(x,y),Block.(1:5)]' ≈ JacobiTriangle(1,0,0)[SVector(x,y),Block.(1:5)]' * Rx[Block.(1:5),Block.(1:5)]
+        @test P[SVector(x,y),Block.(1:5)]' ≈ JacobiTriangle(0,1,0)[SVector(x,y),Block.(1:5)]' * Ry[Block.(1:5),Block.(1:5)]
+        @test P[SVector(x,y),Block.(1:5)]' ≈ JacobiTriangle(0,0,1)[SVector(x,y),Block.(1:5)]' * Rz[Block.(1:5),Block.(1:5)]
+
+
+        c = [randn(100); zeros(∞)]
+        @test (P*c)[SVector(x,y)] ≈ (JacobiTriangle(1,0,0)*(Rx*c))[SVector(x,y)]
+        @test (P*c)[SVector(x,y)] ≈ (JacobiTriangle(0,1,0)*(Ry*c))[SVector(x,y)]
+        @test (P*c)[SVector(x,y)] ≈ (JacobiTriangle(0,0,1)*(Rz*c))[SVector(x,y)]
+
+        Lx = P \ WeightedTriangle(1,0,0)
         Ly = P \ WeightedTriangle(0,1,0)
+        Lz = P \ WeightedTriangle(0,0,1)
+
+        for n=0:5, k=0:n
+            @test x*p(n,k,1,0,0,x,y) ≈ p(n,k,0,0,0,x,y) *  Lx[Block(n+1)[k+1], Block(n+1)[k+1]] + p(n+1,k,0,0,0,x,y) *  Lx[Block(n+2)[k+1], Block(n+1)[k+1]]
+        end
+
+        @test WeightedTriangle(1,0,0)[SVector(x,y),Block.(1:5)]' ≈ P[SVector(x,y),Block.(1:6)]' * Lx[Block.(1:6),Block.(1:5)]
+        @test WeightedTriangle(0,1,0)[SVector(x,y),Block.(1:5)]' ≈ P[SVector(x,y),Block.(1:6)]' * Ly[Block.(1:6),Block.(1:5)]
+        @test WeightedTriangle(0,0,1)[SVector(x,y),Block.(1:5)]' ≈ P[SVector(x,y),Block.(1:6)]' * Lz[Block.(1:6),Block.(1:5)]
+
+        @test (WeightedTriangle(1,0,0)*c)[SVector(x,y)] ≈ (P*(Lx*c))[SVector(x,y)]
+        @test (WeightedTriangle(0,1,0)*c)[SVector(x,y)] ≈ (P*(Ly*c))[SVector(x,y)]
+        @test (WeightedTriangle(0,0,1)*c)[SVector(x,y)] ≈ (P*(Lz*c))[SVector(x,y)]
 
         ∂ˣ² = (∂ˣ)^2
         ∂ʸ² = (∂ʸ)^2
@@ -171,11 +218,11 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
             @testset "Test with exact" begin
                 x,y = 0.1,0.2
                 N = 0
-                @test [P̃.(N,0:N,x,y); P̃.(N+1,0:N+1,x,y)]'* X[Block.(N+1:N+2),1] ≈ x
-                @test [P̃.(N,0:N,x,y); P̃.(N+1,0:N+1,x,y)]'* Y[Block.(N+1:N+2),1] ≈ y
+                @test [p.(N,0:N,0,0,0,x,y); p.(N+1,0:N+1,0,0,0,x,y)]'* X[Block.(N+1:N+2),1] ≈ x
+                @test [p.(N,0:N,0,0,0,x,y); p.(N+1,0:N+1,0,0,0,x,y)]'* Y[Block.(N+1:N+2),1] ≈ y
                 for N = 1:5
-                    @test [P̃.(N-1,0:N-1,x,y); P̃.(N,0:N,x,y); P̃.(N+1,0:N+1,x,y)]'* X[Block.(N:N+2),Block(N+1)] ≈ x * P̃.(N,0:N,x,y)'
-                    @test [P̃.(N-1,0:N-1,x,y); P̃.(N,0:N,x,y); P̃.(N+1,0:N+1,x,y)]'* Y[Block.(N:N+2),Block(N+1)] ≈ y * P̃.(N,0:N,x,y)'
+                    @test [p.(N-1,0:N-1,0,0,0,x,y); p.(N,0:N,0,0,0,x,y); p.(N+1,0:N+1,0,0,0,x,y)]'* X[Block.(N:N+2),Block(N+1)] ≈ x * p.(N,0:N,0,0,0,x,y)'
+                    @test [p.(N-1,0:N-1,0,0,0,x,y); p.(N,0:N,0,0,0,x,y); p.(N+1,0:N+1,0,0,0,x,y)]'* Y[Block.(N:N+2),Block(N+1)] ≈ y * p.(N,0:N,0,0,0,x,y)'
                 end
             end
 
@@ -248,22 +295,22 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
                         Aʸ = Y[Block(N,N)]'
                         P_0 = [1]
                         P_1 = B⁺(1)*[x*I-Aˣ; y*I-Aʸ]*P_0
-                        @test P_1 ≈ P̃.(N,0:N,x,y)
+                        @test P_1 ≈ p.(N,0:N,0,0,0,x,y)
 
                         N = 2
                         Aˣ = X[Block(N,N)]'; Aʸ = Y[Block(N,N)]'; A = [Aˣ-x*I; Aʸ-y*I]
                         Bˣ = X[Block(N+1,N)]'; Bʸ = Y[Block(N+1,N)]'; B = [Bˣ; Bʸ]
                         Cˣ = X[Block(N-1,N)]'; Cʸ = Y[Block(N-1,N)]'; C = [Cˣ; Cʸ]
-                        @test norm(C * P̃.(N-2,0:N-2,x,y) + A * P̃.(N-1,0:N-1,x,y) + B * P̃.(N,0:N,x,y)) ≤ 10eps()
+                        @test norm(C * p.(N-2,0:N-2,0,0,0,x,y) + A * p.(N-1,0:N-1,0,0,0,x,y) + B * p.(N,0:N,0,0,0,x,y)) ≤ 10eps()
 
                         P_2 = B⁺(N)*([x*I-Aˣ; y*I-Aʸ]*P_1 - [Cˣ; Cʸ]*P_0 )
-                        @test P̃.(N,0:N,x,y) ≈ P_2
+                        @test p.(N,0:N,0,0,0,x,y) ≈ P_2
 
                         N = 3
                         Aˣ = X[Block(N,N)]'; Aʸ = Y[Block(N,N)]'; A = [Aˣ-x*I; Aʸ-y*I]
                         Cˣ = X[Block(N-1,N)]'; Cʸ = Y[Block(N-1,N)]'; C = [Cˣ; Cʸ]
                         P_3 = B⁺(N)*([x*I-Aˣ; y*I-Aʸ]*P_2 - [Cˣ; Cʸ]*P_1 )
-                        @test P̃.(N,0:N,x,y) ≈ P_3
+                        @test p.(N,0:N,0,0,0,x,y) ≈ P_3
 
                         @testset "simplify" begin
                             Bˣ = X[Block(N+1,N)]'; Bʸ = Y[Block(N+1,N)]'; B = [Bˣ; Bʸ]
@@ -297,8 +344,8 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
 
                 @testset "forward Recurrence" begin
                     @test tri_forwardrecurrence(1, X, Y, 0.1, 0.2) ≈ [1.0]
-                    @test tri_forwardrecurrence(2, X, Y, 0.1, 0.2) ≈ [1.0; P̃.(1,0:1,0.1,0.2)]
-                    @test tri_forwardrecurrence(4, X, Y, 0.1, 0.2)[Block(4)] ≈ P̃.(3,0:3,0.1,0.2)
+                    @test tri_forwardrecurrence(2, X, Y, 0.1, 0.2) ≈ [1.0; p.(1,0:1,0,0,0,0.1,0.2)]
+                    @test tri_forwardrecurrence(4, X, Y, 0.1, 0.2)[Block(4)] ≈ p.(3,0:3,0,0,0,0.1,0.2)
                 end
             end
 
@@ -315,6 +362,77 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
                 @test X[KR,JR] isa BandedBlockBandedMatrix
                 @test Y[KR,JR] isa BandedBlockBandedMatrix
             end
+
+            @testset "other parameters" begin
+                P = JacobiTriangle(1,0,0)
+                xy = axes(P,1)
+                x,y = first.(xy),last.(xy)
+                X = P \ (x .* P)
+                Y = P \ (y .* P)
+
+                P_ex = PseudoBlockVector{Float64}(undef, 1:5)
+                for n = 0:4, k=0:n
+                    P_ex[Block(n+1)[k+1]] = p(n,k,1,0,0,0.1,0.2)
+                end
+                @test P_ex'*X[Block.(1:5),Block.(1:4)] ≈ 0.1 * P_ex[Block.(1:4)]'
+                @test P_ex'*Y[Block.(1:5),Block.(1:4)] ≈ 0.2 * P_ex[Block.(1:4)]'
+                @test P[SVector(0.1,0.2),Block.(1:5)]'*X[Block.(1:5),Block.(1:4)] ≈ 0.1 * P[SVector(0.1,0.2),Block.(1:4)]'
+            end
+        end
+
+        @testset "higher order conversion" begin
+            P = JacobiTriangle()
+            Q = JacobiTriangle(1,1,1)
+            R = Q \ P
+            L = P \ Weighted(Q)
+
+            xy = SVector(0.1,0.2)
+            @test P[xy,1:10]' ≈ Q[xy,1:10]' * R[1:10,1:10]
+            @test Weighted(Q)[xy,1:10]' ≈ P[xy,1:50]'*L[1:50,1:10]
+
+            Q = JacobiTriangle(0,0,2)
+            R = Q \ P
+            L = P \ Weighted(Q)
+            xy = SVector(0.1,0.2)
+            @test P[xy,1:10]' ≈ Q[xy,1:10]' * R[1:10,1:10]
+            @test Weighted(Q)[xy,1:10]' ≈ P[xy,1:50]'*L[1:50,1:10]
+        end
+
+        @testset "WeightedBasis" begin
+            P = JacobiTriangle()
+            Q = JacobiTriangle(1,1,1)
+            w_0 = TriangleWeight(0,0,0)
+            @test all(isone,w_0)
+            @test !all(isone,TriangleWeight(0,0,1))
+            @test w_0 == w_0
+            @test w_0 .* P == w_0 .* P
+            @test w_0 .* P == P
+            @test P == w_0 .* P
+            @test w_0 .* P == Weighted(P)
+            @test Weighted(P)== w_0 .* P
+            @test P == Weighted(P)
+            @test Weighted(P)== P
+
+            @test Weighted(P) \ Weighted(P) == P \ Weighted(P) == Weighted(P) \ P ==
+                        P \ P == (w_0 .* P) \ P == P \ (w_0 .* P) == (w_0 .* P) \ (w_0 .* P) ==
+                        (w_0 .* P) \ Weighted(P) == Weighted(P) \ (w_0 .* P)
+
+            @test ((w_0 .* Q) \ P)[1:10,1:10] == ((w_0 .* Q) \ (w_0 .* P))[1:10,1:10] == (Q \ (w_0 .* P))[1:10,1:10] == (Q \ P)[1:10,1:10]
+        end
+
+        @testset "general (broken)" begin
+            P = JacobiTriangle()
+            Q = JacobiTriangle(0.1,0.2,0.3)
+            w = TriangleWeight(0.2,0.3,0.4)
+            @test_throws ErrorException Q\P
+            @test_throws ErrorException Weighted(Q)\Weighted(P)
+            @test_throws ErrorException (w.*Q)\(w.*P)
+            @test_throws ErrorException Weighted(Q)\P
+            @test_throws ErrorException Q\Weighted(P)
+            @test_throws ErrorException (w .* Q)\P
+            @test_throws ErrorException Q\( w.* P)
+            @test_throws ErrorException Weighted(Q)\(w .* P)
+            @test_throws ErrorException (w .* Q)\Weighted(P)
         end
     end
 

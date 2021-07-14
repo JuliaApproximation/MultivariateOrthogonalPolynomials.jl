@@ -39,13 +39,41 @@ end
 
 TriangleWeight(a::T, b::T, c::T) where T = TriangleWeight{float(T),T}(a, b, c)
 
-const WeightedTriangle{T} = WeightedBasis{T,<:TriangleWeight,<:JacobiTriangle}
+const WeightedTriangle{T,V} = Weighted{T,JacobiTriangle{T,V}}
 
-WeightedTriangle(a, b, c) = TriangleWeight(a,b,c) .* JacobiTriangle(a,b,c)
+WeightedTriangle(a, b, c) = Weighted(JacobiTriangle(a,b,c))
 
 axes(P::TriangleWeight{T}) where T = (Inclusion(UnitTriangle{T}()),)
+function getindex(P::TriangleWeight, xy::StaticVector{2})
+    x,y = xy
+    x^P.a * y^P.b * (1-x-y)^P.c
+end
+
+all(::typeof(isone), w::TriangleWeight) = iszero(w.a) && iszero(w.b) && iszero(w.c)
+==(w::TriangleWeight, v::TriangleWeight) = w.a == v.a && w.b == v.b && w.c == v.c
+
+==(wA::WeightedTriangle, B::JacobiTriangle) = wA.P == B == JacobiTriangle(0,0,0)
+==(B::JacobiTriangle, wA::WeightedTriangle) = wA == B
+
+==(w_A::WeightedBasis{<:Any,<:TriangleWeight,<:JacobiTriangle}, w_B::WeightedBasis{<:Any,<:TriangleWeight,<:JacobiTriangle}) = arguments(w_A) == arguments(w_B)
+
+function ==(w_A::WeightedBasis{<:Any,<:TriangleWeight,<:JacobiTriangle}, B::JacobiTriangle)
+    w,A = arguments(w_A)
+    all(isone,w) && A == B
+end
+
+==(B::JacobiTriangle, w_A::WeightedBasis{<:Any,<:TriangleWeight,<:JacobiTriangle}) = w_A == B
+
+function ==(w_A::WeightedBasis{<:Any,<:TriangleWeight,<:JacobiTriangle}, wB::WeightedTriangle)
+    w,A = arguments(w_A)
+    w.a == A.a && w.b == A.b && w.c == A.c && A == wB.P
+end
+
+==(wB::WeightedTriangle, w_A::WeightedBasis{<:Any,<:TriangleWeight,<:JacobiTriangle}) = w_A == wB
 
 Base.summary(io::IO, P::TriangleWeight) = print(io, "x^$(P.a)*y^$(P.b)*(1-x-y)^$(P.c) on the unit triangle")
+
+orthogonalityweight(P::JacobiTriangle) = TriangleWeight(P.a, P.b, P.c)
 
 @simplify function *(Dx::PartialDerivative{1}, P::JacobiTriangle)
     a,b,c = P.a,P.b,P.c
@@ -117,6 +145,18 @@ function Ry(a,b,c)
     _BandedBlockBandedMatrix(dat, axes(k,1), (0,1), (0,1))
 end
 
+function Rz(a,b,c)
+    n = mortar(Fill.(oneto(∞),oneto(∞)))
+    k = mortar(Base.OneTo.(oneto(∞)))
+    dat = PseudoBlockArray(Vcat(
+        (-(k .+ (b-1) ) .* (n .+ k .+ (b+c-1)) ./ ((2n .+ (a+b+c)) .* (2k .+ (b+c-1) )))',
+        ((k .- n .- a ) .* (k .+ (b+c)) ./ ((2n .+ (a+b+c)) .* (2k .+ (b+c-1) )))',
+        (-(k .+ (b-1) ) .* (k .- n .- 1) ./ ((2n .+ (a+b+c)) .* (2k .+ (b+c-1) )))',
+        ((n .+ k .+ (a+b+c) ) .* (k .+ (b+c)) ./ ((2n .+ (a+b+c)) .* (2k .+ (b+c-1) )))'
+        ), (blockedrange(Fill(2,2)), axes(n,1)))
+    _BandedBlockBandedMatrix(dat, axes(k,1), (0,1), (0,1))
+end
+
 function Lx(a,b,c)
     n = mortar(Fill.(oneto(∞),oneto(∞)))
     k = mortar(Base.OneTo.(oneto(∞)))
@@ -151,35 +191,94 @@ end
 
 
 function \(w_A::WeightedTriangle, w_B::WeightedTriangle)
-    wA,A = w_A.args
-    wB,B = w_B.args
+    A,B = w_A.P,w_B.P
 
-    @assert wA.a == A.a && wA.b == A.b && wA.c == A.c
-    @assert wB.a == B.a && wB.b == B.b && wB.c == B.c
-
-    if A.a + 1 == B.a && A.b == B.b && A.c == B.c
+    if A.a == B.a && A.b == B.b && A.c == B.c
+        Eye{promote_type(eltype(A),eltype(B))}((axes(B,2),))
+    elseif A.a + 1 == B.a && A.b == B.b && A.c == B.c
         Lx(B.a, B.b, B.c)
     elseif A.a == B.a && A.b + 1 == B.b && A.c == B.c
         Ly(B.a, B.b, B.c)
     elseif A.a == B.a && A.b == B.b && A.c + 1 == B.c
         Lz(B.a, B.b, B.c)
+    elseif A.a < B.a
+        w_C = WeightedTriangle(A.a+1,A.b,A.c)
+        (w_A \ w_C) * (w_C \ w_B)
+    elseif A.b < B.b
+        w_C = WeightedTriangle(A.a,A.b+1,A.c)
+        (w_A \ w_C) * (w_C \ w_B)
+    elseif A.c < B.c
+        w_C = WeightedTriangle(A.a,A.b,A.c+1)
+        (w_A \ w_C) * (w_C \ w_B)
     else
-        error("not implemented for $A and $wB")
+        error("not implemented for $w_A and $w_B")
     end
 end
 
-\(w_A::JacobiTriangle, w_B::WeightedTriangle) =
-    (TriangleWeight(0,0,0) .* w_A) \ w_B
+function \(w_A::WeightedBasis{<:Any,<:TriangleWeight,<:JacobiTriangle}, w_B::WeightedTriangle)
+    wA,A = w_A.args
+    w_A == Weighted(A) && Weighted(A) \ w_B
+    all(isone,wA) && return A \ w_B
+    error("Not implemented")
+end
+
+function \(w_A::WeightedTriangle, w_B::WeightedBasis{<:Any,<:TriangleWeight,<:JacobiTriangle})
+    wB,B = w_B.args
+    w_B == Weighted(B) && w_A \ Weighted(B)
+    all(isone,wB) && return w_A \ B
+    error("Not implemented")
+end
+
+
+function \(w_A::WeightedBasis{<:Any,<:TriangleWeight,<:JacobiTriangle}, w_B::WeightedBasis{<:Any,<:TriangleWeight,<:JacobiTriangle})
+    wA,A = w_A.args
+    w_A == Weighted(A) && Weighted(A) \ w_B
+    all(isone,wA) && return A \ w_B
+    error("Not implemented")
+end
+
+function \(w_A::WeightedBasis{<:Any,<:TriangleWeight,<:JacobiTriangle}, B::JacobiTriangle)
+    wA,A = w_A.args
+    w_A == Weighted(A) && return Weighted(A) \ B
+    all(isone,wA) && return A \ B
+    error("Not implemented")
+end
+
+function \(A::JacobiTriangle, w_B::WeightedBasis{<:Any,<:TriangleWeight,<:JacobiTriangle})
+    wB,B = w_B.args
+    w_B == Weighted(B) && return A \ Weighted(B)
+    all(isone,wB) && return A \ B
+    error("Not implemented")
+end
+
+function \(A::JacobiTriangle, w_B::WeightedTriangle)
+    w_B.P == JacobiTriangle() && return A \ w_B.P
+    A == JacobiTriangle() && return Weighted(A) \ w_B
+    (TriangleWeight(0,0,0) .* A) \ w_B
+end
+function \(w_A::WeightedTriangle, B::JacobiTriangle)
+    w_A.P == JacobiTriangle() && return w_A.P \ B
+    w_A \ (TriangleWeight(0,0,0) .* B)
+end
 
 function \(A::JacobiTriangle, B::JacobiTriangle)
-    if A.a == B.a && A.b == B.b && A.c == B.c
-        Eye((axes(B,2),))
+    if A == B
+        Eye{promote_type(eltype(A),eltype(B))}((axes(B,2),))
     elseif A.a == B.a + 1 && A.b == B.b && A.c == B.c
         Rx(B.a, B.b, B.c)
     elseif A.a == B.a && A.b == B.b + 1 && A.c == B.c
         Ry(B.a, B.b, B.c)
-    # elseif A.a == B.a && A.b == B.b && A.c == B.c + 1
-    #     Rz(B.a, B.b, B.c)
+    elseif A.a == B.a && A.b == B.b && A.c == B.c + 1
+        Rz(B.a, B.b, B.c)
+    elseif A.a > B.a
+        C = JacobiTriangle(B.a+1,B.b,B.c)
+        (A \ C) * (C \ B)
+    elseif A.b > B.b
+        C = JacobiTriangle(B.a,B.b+1,B.c)
+        (A \ C) * (C \ B)
+    elseif A.c > B.c
+        C = JacobiTriangle(B.a,B.b,B.c+1)
+        (A \ C) * (C \ B)
     else
         error("not implemented for $A and $B")
     end
@@ -431,14 +530,18 @@ function tri_forwardrecurrence(N::Int, X, Y, x, y)
     N < 1 && return ret
     ret[1] = 1
     N < 2 && return ret
-    ret[2] = x/X[1,1]-1
-    ret[3] = -Y[2,1]/(Y[3,1]*X[1,1]) * (x-X[1,1]) + (y-Y[1,1])/Y[3,1]
 
     X_N = X[Block.(1:N), Block.(1:N-1)]
     Y_N = Y[Block.(1:N), Block.(1:N-1)]
 
+    let n = 1
+        A = TriangleRecurrenceA(n, X_N, Y_N)
+        B = TriangleRecurrenceB(n, X_N, Y_N)
+        ret[Block(2)] .= A*[x; y] + vec(B)
+    end
+
     for n = 2:N-1
-        # P[n+1,xy] == (A[n]*[x*Eye(n); y*Eye(n)] + B[n])*P[n,xy] - C[n]*P[n-1,xy]
+        # P[n+1,xy] == (A*[x*Eye(n); y*Eye(n)] + B)*P[n,xy] - C*P[n-1,xy]
         A = TriangleRecurrenceA(n, X_N, Y_N)
         B = TriangleRecurrenceB(n, X_N, Y_N)
         C = TriangleRecurrenceC(n, X_N, Y_N)

@@ -130,6 +130,8 @@ axes(P::Zernike{T}) where T = (Inclusion(UnitDisk{T}()),blockedrange(oneto(∞))
 
 copy(A::Zernike) = A
 
+Base.summary(io::IO, P::Zernike) = print(io, "Zernike($(P.a), $(P.b))")
+
 orthogonalityweight(Z::Zernike) = ZernikeWeight(Z.a, Z.b)
 
 zerniker(ℓ, m, a, b, r::T) where T = sqrt(convert(T,2)^(m+a+b+2-iszero(m))/π) * r^m * normalizedjacobip((ℓ-m) ÷ 2, b, m+a, 2r^2-1)
@@ -248,6 +250,16 @@ getindex(W::WeightedZernikeLaplacianDiag, k::Integer) = W[findblockindex(axes(W,
     WZ.P * Diagonal(WeightedZernikeLaplacianDiag{eltype(eltype(WZ))}())
 end
 
+@simplify function *(Δ::Laplacian, Z::Zernike)
+    a,b = Z.a,Z.b
+    @assert a == 0
+    T = promote_type(eltype(eltype(Δ)),eltype(Z)) # TODO: remove extra eltype
+    D = Derivative(Inclusion(ChebyshevInterval{T}())) 
+    Δs = BroadcastVector{AbstractMatrix{T}}((C,B,A) -> 4(HalfWeighted{:b}(C)\(D*HalfWeighted{:b}(B)))*(B\(D*A)), Normalized.(Jacobi.(b+2,a:∞)), Normalized.(Jacobi.(b+1,(a+1):∞)), Normalized.(Jacobi.(b,a:∞)))
+    Δ = ModalInterlace(Δs, (ℵ₀,ℵ₀), (-2,2))
+    Zernike(a,b+2) * Δ
+end
+
 ###
 # Fractional Laplacian
 ###
@@ -290,20 +302,16 @@ fractionalcfs2d(l::Integer, m::Integer, β) = fractionalcfs(l,m,β,2)
 
 function \(A::Zernike{T}, B::Zernike{V}) where {T,V}
     TV = promote_type(T,V)
-    A.a == B.a && A.b == B.b && return Eye{TV}(∞)
-    @assert A.a == 0 && A.b == 1
-    @assert B.a == 0 && B.b == 0
-    ModalInterlace{TV}((Normalized.(Jacobi{TV}.(1,0:∞)) .\ Normalized.(Jacobi{TV}.(0,0:∞))) ./ sqrt(convert(TV, 2)), (ℵ₀,ℵ₀), (0,2))
+    A.a == B.a && A.b == B.b && return Eye{TV}((axes(A,2),))
+    st = Int(A.a - B.a + A.b - B.b)
+    ModalInterlace{TV}((Normalized.(Jacobi{TV}.(A.b,A.a:∞)) .\ Normalized.(Jacobi{TV}.(B.b,B.a:∞))) .* convert(TV, 2)^(-st/2), (ℵ₀,ℵ₀), (0,2st))
 end
 
-function \(A::Zernike{T}, B::Weighted{V,Zernike{V}}) where {T,V}
+function \(A::Zernike{T}, wB::Weighted{V,Zernike{V}}) where {T,V}
     TV = promote_type(T,V)
-    A.a == B.P.a == A.b == B.P.b == 0 && return Eye{TV}(∞)
-    if A.a == A.b == 0
-        @assert B.P.a == 0 && B.P.b == 1
-        ModalInterlace{TV}((Normalized.(Jacobi{TV}.(0, 0:∞)) .\ HalfWeighted{:a}.(Normalized.(Jacobi{TV}.(1, 0:∞)))) ./ sqrt(convert(TV, 2)), (ℵ₀,ℵ₀), (2,0))
-    else
-        Z = Zernike{TV}() 
-        (A \ Z) * (Z \ B)
-    end
+    B = wB.P
+    A.a == B.a == A.b == B.b == 0 && return Eye{TV}((axes(A,2),))
+    c = Int(B.a - A.a + B.b - A.b)
+    @assert iszero(B.a)
+    ModalInterlace{TV}((Normalized.(Jacobi{TV}.(A.b, A.a:∞)) .\ HalfWeighted{:a}.(Normalized.(Jacobi{TV}.(B.b, B.a:∞)))) .* convert(TV, 2)^(-c/2), (ℵ₀,ℵ₀), (2Int(B.b), 2Int(A.a+A.b)))
 end

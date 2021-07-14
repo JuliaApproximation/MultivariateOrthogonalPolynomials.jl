@@ -1,10 +1,12 @@
 module MultivariateOrthogonalPolynomials
+using StaticArrays: iszero
+using QuasiArrays: AbstractVector
 using ClassicalOrthogonalPolynomials, FastTransforms, BlockBandedMatrices, BlockArrays, DomainSets,
       QuasiArrays, StaticArrays, ContinuumArrays, InfiniteArrays, InfiniteLinearAlgebra,
       LazyArrays, SpecialFunctions, LinearAlgebra, BandedMatrices, LazyBandedMatrices, ArrayLayouts,
       HarmonicOrthogonalPolynomials
 
-import Base: axes, in, ==, *, ^, \, copy, OneTo, getindex, size, oneto
+import Base: axes, in, ==, *, ^, \, copy, OneTo, getindex, size, oneto, all
 import DomainSets: boundary
 
 import QuasiArrays: LazyQuasiMatrix, LazyQuasiArrayStyle
