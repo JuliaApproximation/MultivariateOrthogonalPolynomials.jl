@@ -184,7 +184,7 @@ import ForwardDiff: hessian
             Δ = Zernike(2) \ (Laplacian(axes(Z,1)) * Z)
             @test tr(hessian(xy -> (Zernike{eltype(xy)}()*c)[xy], SVector(0.1,0.2))) ≈ (Zernike(2)*(Δ*c))[SVector(0.1,0.2)]
 
-            a,b = 0.2
+            b = 0.2
             Z = Zernike(b)
             Δ = Zernike(b+2) \ (Laplacian(axes(Z,1)) * Z)
             @test tr(hessian(xy -> (Zernike{eltype(xy)}(b)*c)[xy], SVector(0.1,0.2))) ≈ (Zernike(b+2)*(Δ*c))[SVector(0.1,0.2)]
