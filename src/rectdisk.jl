@@ -44,7 +44,7 @@ WeightedDunklXuDisk(β) = DunklXuDiskWeight(β) .* DunklXuDisk(β)
     k = mortar(Base.OneTo.(oneto(∞)))
     dat = BlockBroadcastArray(hcat,
         ((k .+ (β - 1)) ./ (2k .+ (2β - 1)) .* (n .- k .+ 1)),
-        0 .* n,
+        Zeros((axes(n,1),)),
         (((k .+ 2β) .* (k .+ (2β + 1))) ./ ((2k .+ (2β - 1)) .* (2k .+ 2β)) .* (n .+ k .+ 2β) ./ 2)
         )
     DunklXuDisk(β+1) * _BandedBlockBandedMatrix(dat', axes(k,1), (-1,1), (0,2))
@@ -65,7 +65,7 @@ end
     k = mortar(Base.OneTo.(oneto(∞)))
     dat = BlockBroadcastArray(hcat,
         (-4 .* (k .+ (β - 1)).*(n .- k .+ 1)./(2k .+ (2β - 1))),
-        0 .* n,
+        Zeros((axes(n,1),)),
         (-k .* (k .+ 1) ./ ((2k .+ (2β - 1)) .* (k .+ β)) .* (n .+ k .+ 2β))
         )
     WeightedDunklXuDisk(β-1) * _BandedBlockBandedMatrix(dat', axes(k,1), (1,-1), (2,0))
@@ -83,18 +83,18 @@ end
 function dunklxu_raising(β)
     n = mortar(Fill.(oneto(∞),oneto(∞)))
     k = mortar(Base.OneTo.(oneto(∞)))
-    dat = PseudoBlockArray(Vcat(
-        (-(k .+ (β - 1)) .* (2n .+ (2β - 1)) ./ ((2k .+ (2β - 1)) .* (4n .+ 4β)))', # n-2, k-2
-        (0 .* n)', # n-2, k-1
-        (-(k .+ 2β) .* (k .+ (2β + 1)) ./ ((2k .+ (2β - 1)) .* (2k .+ 2β)) .* (2n .+ (2β-1)) ./ (8n .+ 8β))', # n-2, k
-        (0 .* n)', # n-1, k-2
-        (0 .* n)', # n-1, k-1
-        (0 .* n)', # n-1, k
-        (2 .* (k .+ (β - 1)) .* (n .- k .+ 1) .* (n .- k .+ 2) ./ ((2k .+ (2β-1)) .* (2n .+ 2β) .* (2n .+ (2β + 1))))', # n, k-2
-        (0 .* n)', # n, k-1
-        ((k .+ 2β) .* (k .+ (2β + 1)) ./ ((2k .+ (2β - 1)) .* (2k .+ 2β)) .* (n .+ k .+ 2β) .* (n .+ k .+ (2β + 1)) ./ ((2n .+ 2β) .* (2n .+ (2β + 1))))' # n, k
-        ), (blockedrange(Fill(3,3)), axes(n,1)))
-    _BandedBlockBandedMatrix(dat, axes(k,1), (0,2), (0,2))
+    dat = BlockHcat(
+        BlockBroadcastArray(hcat,
+            (-(k .+ (β - 1)) .* (2n .+ (2β - 1)) ./ ((2k .+ (2β - 1)) .* (4n .+ 4β))), # n-2, k-2
+            Zeros((axes(n,1),)), # n-2, k-1
+            (-(k .+ 2β) .* (k .+ (2β + 1)) ./ ((2k .+ (2β - 1)) .* (2k .+ 2β)) .* (2n .+ (2β-1)) ./ (8n .+ 8β))), # n-2, k
+        Zeros((axes(n,1), Base.OneTo(3))),
+        BlockBroadcastArray(hcat,
+            (2 .* (k .+ (β - 1)) .* (n .- k .+ 1) .* (n .- k .+ 2) ./ ((2k .+ (2β-1)) .* (2n .+ 2β) .* (2n .+ (2β + 1)))), # n, k-2
+            Zeros((axes(n,1),)), # n, k-1
+            ((k .+ 2β) .* (k .+ (2β + 1)) ./ ((2k .+ (2β - 1)) .* (2k .+ 2β)) .* (n .+ k .+ 2β) .* (n .+ k .+ (2β + 1)) ./ ((2n .+ 2β) .* (2n .+ (2β + 1)))) # n, k
+        ))
+    _BandedBlockBandedMatrix(dat', axes(k,1), (0,2), (0,2))
 end
 
 function \(A::DunklXuDisk, B::DunklXuDisk)
@@ -111,18 +111,18 @@ end
 function dunklxu_lowering(β)
     n = mortar(Fill.(oneto(∞),oneto(∞)))
     k = mortar(Base.OneTo.(oneto(∞)))
-    dat = PseudoBlockArray(Vcat(
-        ((2n .+ (2β - 1)) ./ (n .+ β) .* (k .+ (β - 1)) ./ (2k .+ (2β - 1)))', # n, k
-        (0 .* n)', # n, k+1
-        ((n .+ (β - 1/2)) ./ (n .+ β) .* k .* (k .+ 1) ./ ((2k .+ (2β - 1)) .* (2k .+ 2β)))', # n, k+2
-        (0 .* n)', # n+1, k
-        (0 .* n)', # n+1, k+1
-        (0 .* n)', # n+1, k+2
-        (-8 .* (n .- k .+ 1) .* (n .- k .+ 2) ./ ((2n .+ 2β) .* (2n .+ (2β + 1))) .* (k .+ (β - 1)) ./(2k .+ (2β - 1)))', # n+2, k
-        (0 .* n)', # n+2, k+1
-        (-4 .* (n .+ k .+ 2β) .* (n .+ k .+ (2β + 1)) ./ ((2n .+ 2β) .* (2n .+ (2β + 1))) .* k .* (k .+ 1) ./ ((2k .+ (2β - 1)) .* (2k .+ 2β)))' # n+2, k+2
-        ), (blockedrange(Fill(3,3)), axes(n,1)))
-    _BandedBlockBandedMatrix(dat, axes(k,1), (2,0), (2,0))
+    dat = BlockHcat(
+        BlockBroadcastArray(hcat,
+            ((2n .+ (2β - 1)) ./ (n .+ β) .* (k .+ (β - 1)) ./ (2k .+ (2β - 1))), # n, k
+            Zeros((axes(n,1),)), # n, k+1
+            ((n .+ (β - 1/2)) ./ (n .+ β) .* k .* (k .+ 1) ./ ((2k .+ (2β - 1)) .* (2k .+ 2β)))), # n, k+2
+        Zeros((axes(n,1), Base.OneTo(3))),
+        BlockBroadcastArray(hcat,
+            (-8 .* (n .- k .+ 1) .* (n .- k .+ 2) ./ ((2n .+ 2β) .* (2n .+ (2β + 1))) .* (k .+ (β - 1)) ./(2k .+ (2β - 1))), # n+2, k
+            Zeros((axes(n,1),)), # n+2, k+1
+            (-4 .* (n .+ k .+ 2β) .* (n .+ k .+ (2β + 1)) ./ ((2n .+ 2β) .* (2n .+ (2β + 1))) .* k .* (k .+ 1) ./ ((2k .+ (2β - 1)) .* (2k .+ 2β))) # n+2, k+2
+        ))
+    _BandedBlockBandedMatrix(dat', axes(k,1), (2,0), (2,0))
 end
 
 function \(w_A::WeightedDunklXuDisk, w_B::WeightedDunklXuDisk)
@@ -149,12 +149,12 @@ function jacobimatrix(::Val{1}, P::DunklXuDisk)
     β = P.β
     n = mortar(Fill.(oneto(∞),oneto(∞)))
     k = mortar(Base.OneTo.(oneto(∞)))
-    dat = PseudoBlockArray(Vcat(
-        ((2n .+ (2β - 1)) ./ (4n .+ 4β))', # n-1, k
-        (0 .* n)', # n, k
-        ((n .- k .+ 1) .* (n .+ k .+ 2β) ./ ((n .+ β) .* (2n .+ (2β + 1))))', # n+1, k
-        ), (blockedrange(Fill(1, 3)), axes(n,1)))
-    _BandedBlockBandedMatrix(dat, axes(k,1), (1,1), (0,0))
+    dat = BlockHcat(
+        ((2n .+ (2β - 1)) ./ (4n .+ 4β)), # n-1, k
+        Zeros((axes(n,1),)), # n, k
+        ((n .- k .+ 1) .* (n .+ k .+ 2β) ./ ((n .+ β) .* (2n .+ (2β + 1)))), # n+1, k
+        )
+    _BandedBlockBandedMatrix(dat', axes(k,1), (1,1), (0,0))
 end
 
 # Actually Jyᵀ
@@ -162,28 +162,27 @@ function jacobimatrix(::Val{2}, P::DunklXuDisk)
     β = P.β
     n = mortar(Fill.(oneto(∞),oneto(∞)))
     k = mortar(Base.OneTo.(oneto(∞)))
-    dat = PseudoBlockArray(Vcat(
-        ((k .+ (β - 1)) .* (2n .+ (2β - 1)) ./ ((2k .+ (2β - 1)) .* (2n .+ 2β)))', # n-1, k-1
-        (0 .* n)', # n-1, k
-        (-k .* (k .+ 2β) .* (2n .+ (2β - 1)) ./ ((2k .+ (2β - 1)) .* (2k .+ 2β) .* (4n .+ 4β)))', # n-1, k+1
-        (0 .* n)', # n, k-1
-        (0 .* n)', # n, k
-        (0 .* n)', # n, k+1
-        (-(2k .+ (2β - 2)) .* (n .- k .+ 1) .* (n .- k .+ 2) ./ ((2k .+ (2β - 1)) .* (n .+ β) .* (2n .+ (2β + 1))))', # n+1, k-1
-        (0 .* n)', # n+1, k
-        (k .* (k .+ 2β) .* (n .+ k .+ 2β) .* (n .+ k .+ (2β + 1)) ./ ((2k .+ (2β - 1)) .* (2k .+ 2β) .* (n .+ β) .* (2n .+ (2β + 1))))', # n+1, k+1
-        ), (blockedrange(Fill(3, 3)), axes(n,1)))
-    _BandedBlockBandedMatrix(dat, axes(k,1), (1,1), (1,1))
+    dat = BlockHcat(
+        BlockBroadcastArray(hcat,
+            ((k .+ (β - 1)) .* (2n .+ (2β - 1)) ./ ((2k .+ (2β - 1)) .* (2n .+ 2β))), # n-1, k-1
+            Zeros((axes(n,1),)), # n-1, k
+            (-k .* (k .+ 2β) .* (2n .+ (2β - 1)) ./ ((2k .+ (2β - 1)) .* (2k .+ 2β) .* (4n .+ 4β)))), # n-1, k+1
+        Zeros((axes(n,1),Base.OneTo(3))),
+        BlockBroadcastArray(hcat,
+            (-(2k .+ (2β - 2)) .* (n .- k .+ 1) .* (n .- k .+ 2) ./ ((2k .+ (2β - 1)) .* (n .+ β) .* (2n .+ (2β + 1)))), # n+1, k-1
+            Zeros((axes(n,1),)), # n+1, k
+            (k .* (k .+ 2β) .* (n .+ k .+ 2β) .* (n .+ k .+ (2β + 1)) ./ ((2k .+ (2β - 1)) .* (2k .+ 2β) .* (n .+ β) .* (2n .+ (2β + 1)))))) # n+1, k+1
+    _BandedBlockBandedMatrix(dat', axes(k,1), (1,1), (1,1))
 end
 
 @simplify function *(A::AngularMomentum, P::DunklXuDisk)
     β = P.β
     n = mortar(Fill.(oneto(∞),oneto(∞)))
     k = mortar(Base.OneTo.(oneto(∞)))
-    dat = PseudoBlockArray(Vcat(
-        (2 .* (k .+ (β - 1)) .* (n .- k .+ 1) ./ (2k .+ (2β - 1)))', # n, k-1
-        (0 .* n)', # n, k
-        (-k .* (k .+ 2β) .* (n .+ k .+ 2β) ./ ((2k .+ (2β - 1)) .* (2k .+ 2β)))', # n, k+1
-        ), (blockedrange(Fill(3, 1)), axes(n,1)))
-    DunklXuDisk(β) * _BandedBlockBandedMatrix(dat, axes(k,1), (0,0), (1,1))
+    dat = BlockBroadcastArray(hcat,
+        (2 .* (k .+ (β - 1)) .* (n .- k .+ 1) ./ (2k .+ (2β - 1))), # n, k-1
+        Zeros((axes(n,1),)), # n, k
+        (-k .* (k .+ 2β) .* (n .+ k .+ 2β) ./ ((2k .+ (2β - 1)) .* (2k .+ 2β)))) # n, k+1
+        
+    DunklXuDisk(β) * _BandedBlockBandedMatrix(dat', axes(k,1), (0,0), (1,1))
 end

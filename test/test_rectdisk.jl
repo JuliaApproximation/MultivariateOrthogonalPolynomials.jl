@@ -17,7 +17,6 @@ import MultivariateOrthogonalPolynomials: dunklxu_raising, dunklxu_lowering, Ang
 
     @testset "operators" begin
         N = 5
-
         β = 0.123
 
         P = DunklXuDisk(β)
