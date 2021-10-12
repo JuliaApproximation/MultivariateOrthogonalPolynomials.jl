@@ -6,11 +6,11 @@ using ClassicalOrthogonalPolynomials, FastTransforms, BlockBandedMatrices, Block
       LazyArrays, SpecialFunctions, LinearAlgebra, BandedMatrices, LazyBandedMatrices, ArrayLayouts,
       HarmonicOrthogonalPolynomials
 
-import Base: axes, in, ==, *, ^, \, copy, OneTo, getindex, size, oneto, all
+import Base: axes, in, ==, *, ^, \, copy, OneTo, getindex, size, oneto, all, resize!
 import DomainSets: boundary
 
 import QuasiArrays: LazyQuasiMatrix, LazyQuasiArrayStyle
-import ContinuumArrays: @simplify, Weight, grid, plotgrid, TransformFactorization, Expansion
+import ContinuumArrays: @simplify, Weight, grid, plotgrid, TransformFactorization, ExpansionLayout
 
 import ArrayLayouts: MemoryLayout, sublayout, sub_materialize
 import BlockArrays: block, blockindex, BlockSlice, viewblock
@@ -20,7 +20,7 @@ import LazyArrays: arguments, paddeddata, LazyArrayStyle, LazyLayout
 import LazyBandedMatrices: LazyBandedBlockBandedLayout, AbstractBandedBlockBandedLayout, AbstractLazyBandedBlockBandedLayout
 import InfiniteArrays: InfiniteCardinal
 
-import ClassicalOrthogonalPolynomials: jacobimatrix, Weighted, orthogonalityweight, HalfWeighted
+import ClassicalOrthogonalPolynomials: jacobimatrix, Weighted, orthogonalityweight, HalfWeighted, WeightedBasis
 import HarmonicOrthogonalPolynomials: BivariateOrthogonalPolynomial, MultivariateOrthogonalPolynomial, Plan,
                                           PartialDerivative, AngularMomentum, BlockOneTo, BlockRange1, interlace
 
