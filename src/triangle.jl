@@ -569,7 +569,7 @@ getindex(P::JacobiTriangle, xy::SVector{2}, JR::BlockOneTo) =
 # Clenshaw
 ###
 
-function getindex(f::Expansion{T,<:JacobiTriangle}, xy::SVector{2}) where T
+function getindex(f::ApplyQuasiVector{T,typeof(*),<:Tuple{JacobiTriangle,AbstractVector}}, xy::SVector{2})::T where T
     P,c∞ = arguments(f)
     c = paddeddata(c∞)
     N = blocksize(c,1)
@@ -605,7 +605,7 @@ function getindex(f::Expansion{T,<:JacobiTriangle}, xy::SVector{2}) where T
     γ1[1]
 end
 
-getindex(f::Expansion{T,<:JacobiTriangle}, xys::AbstractArray{<:SVector{2}}) where T =
+getindex(f::ApplyQuasiVector{T,typeof(*),<:Tuple{JacobiTriangle,AbstractVector}}, xys::AbstractArray{<:SVector{2}}) where T =
     [f[xy] for xy in xys]
 
 # getindex(f::Expansion{T,<:JacobiTriangle}, x::AbstractVector{<:Number}) where T =

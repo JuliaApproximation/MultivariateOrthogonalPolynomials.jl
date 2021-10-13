@@ -52,7 +52,7 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
             xy = SVector(0.1,0.2)
             c = PseudoBlockVector([1; Zeros(∞)], (axes(P,2),))
             f = P*c
-            @test f[xy] == 1.0
+            @test @inferred(f[xy]) == 1.0
             c = PseudoBlockVector([1:3; Zeros(∞)], (axes(P,2),))
             f = P*c
             @test f[xy] ≈ P[xy,1:3]'*(1:3)
