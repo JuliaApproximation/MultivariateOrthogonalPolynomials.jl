@@ -160,8 +160,141 @@ getindex(Z::Zernike, xy::StaticVector{2}, B::BlockIndex{1}) = Z[RadialCoordinate
 getindex(Z::Zernike, xy::StaticVector{2}, B::Block{1}) = [Z[xy, B[j]] for j=1:Int(B)]
 getindex(Z::Zernike, xy::StaticVector{2}, JR::BlockOneTo) = mortar([Z[xy,Block(J)] for J = 1:Int(JR[end])])
 
+###
+# Jacobi matrices
+###
 
+# Due to excessively long lazy typing, we wrap the bands of the Zernike Jacobi matrix in its own type
+# The bands for X and Y are distinct
+struct ZernikeJacobimatrixBandsX{T} <: AbstractBlockMatrix{T}
+    Z::Zernike{T}
+    data::AbstractBlockMatrix{T}
+    ZernikeJacobimatrixBandsX{T}(Z::Zernike{T}) where T = new{T}(Z, zernikejacobibandsX(Z))
+end
+struct ZernikeJacobimatrixBandsY{T} <: AbstractBlockMatrix{T}
+    Z::Zernike{T}
+    data::AbstractBlockMatrix{T}
+    ZernikeJacobimatrixBandsY{T}(Z::Zernike{T}) where T = new{T}(Z, zernikejacobibandsY(Z))
+end
 
+size(b::ZernikeJacobimatrixBandsX) = size(b.data)
+axes(b::ZernikeJacobimatrixBandsX) = axes(b.data)
+size(b::ZernikeJacobimatrixBandsY) = size(b.data)
+axes(b::ZernikeJacobimatrixBandsY) = axes(b.data)
+
+function zernikejacobibandsX(Z::Zernike)
+    α = Z.b     # extract second basis parameter
+
+    k = mortar(Base.OneTo.(oneto(∞)))     # k counts the the angular mode (+1)
+    n = mortar(Fill.(oneto(∞),oneto(∞)))  # n counts the block number which corresponds to the order (+1)
+
+    # repeatedly used for sorting
+    keven = iseven.(k)
+    kodd = isodd.(k)
+    neven = iseven.(n)
+    nodd = isodd.(n)
+
+    # h1-h5 are helpers for our different sorting scheme
+
+    ## Compute super diagonal of super diagonal blocks.
+    dufirst = neven .* (k .== 2) .* n .* (n .+ 2*α) ./ 2
+
+    ## Compute even-block entries in super diagonal of super diagonal blocks
+    h1 = n .- (n .+ 2 .- k .- keven .* (n .> 2)) .÷ 2
+    dueven = ((nodd .* k) .>= 2) .* h1 .* (h1 .+ α)
+
+    ## Compute odd-block entries in super diagonal of super diagonal blocks
+    h2 = (n .- 2 .+ k .+ kodd .* (n .> 2)) .÷ 2
+    duodd = (((neven .* k) .>= 2)  .- (neven .* (k .== 2))) .* h2 .* (h2 .+ α)
+
+    ## Compute even-block sub diagonal elements of super diagonal blocks
+    h3 = n .- (k .+ 1 .+ kodd .+ n) .÷ 2
+    dleven = ((k .<= (n .- 2)) .- ((k .< 2) .* nodd)) .* neven .* h3 .* (h3 .+ α)
+
+    ## Compute odd-block sub diagonal elements of super diagonal blocks
+    h4 = n .- (k .+ 1 .+ keven .+ n) .÷ 2
+    dlodd = (k .> 1) .* (n .> 3) .* nodd .* h4 .* (h4 .+ α)
+
+    ## Compute and add in special case odd-block sub diagonal elements of super diagonal blocks
+    h5 = n .- 2 .+ k .+ keven
+    dlspecial = nodd .* (k .== 1) .* h5 .* (h5 .+ 2*α) ./ 2
+
+    # finalize bands with explicit formula
+    quotient = 4 .* (n .+ (α-1)) .* (n .+ α)
+    du = sqrt.( (dufirst .+ dueven .+ duodd ) ./ quotient)
+    dl = sqrt.( (dleven .+ dlodd .+ dlspecial)  ./ quotient)
+
+    return BlockHcat(
+        BlockBroadcastArray(hcat, du, Zeros((axes(n,1),)), dl),
+        Zeros((axes(n,1),Base.OneTo(3))),
+        Zeros((axes(n,1),Base.OneTo(3)))                  
+        )
+end
+
+function zernikejacobibandsY(Z::Zernike)
+    α = Z.b     # extract second basis parameter
+
+    k = mortar(Base.OneTo.(oneto(∞)))     # k counts the the angular mode (+1)
+    n = mortar(Fill.(oneto(∞),oneto(∞)))  # n counts the block number which corresponds to the order (+1)
+
+    # repeatedly used for sorting
+    keven = iseven.(k)
+    kodd = isodd.(k)
+    neven = iseven.(n)
+    nodd = isodd.(n)
+        
+    # h1-h4 are helpers for our different sorting scheme
+
+    # first entries for all blocks
+    h1 = (n .- nodd)
+    l1 = (k .== 1) .* (h1 .* (h1 .+ 2*α) ./ 2)
+
+    # Even blocks
+    h0 = (kodd .* ((k .÷ 2) .+ 1) .- (keven .* ((k .÷ 2) .- 1)))
+    h2 =  (k .>= 2) .* ((n .÷ 2 .- 1) .+ h0)
+    l2 = neven .* (h2 .* (h2 .+ α))
+
+    # Odd blocks
+    h3 = (n .> k .>= 2) .* (((n .+ 1) .÷ 2) .- h0)
+    l3 = nodd .* (h3 .* (h3 .+ α))
+    # Combine for diagonal of super diagonal block
+    d = sqrt.((l1 .+ l2 .+ l3) ./ (4 .* (n .+ (α-1)) .* (n .+ α)))
+
+    # The off-diagonals of the super diagonal block are negative, shifted versions of the diagonal with some entries skipped
+    dl = (-1) .* (nodd .* kodd .+ neven .* keven) .* Vcat(0 , d)
+    du = (-1) .* (nodd .* keven .+ neven .* kodd) .* d[2:end]
+
+    # zero blocks for banded blockarray structure
+    z = Zeros((axes(n,1),))
+    z5 = Zeros((axes(n,1),Base.OneTo(5)))
+
+    # generate and return bands
+    return dat = BlockHcat(BlockBroadcastArray(hcat, dl, z, d, z, du), z5, z5)  
+end
+
+function getindex(b::ZernikeJacobimatrixBandsX{T},i,j) where T
+    return BlockArrays.getindex(b.data,i,j)
+end
+function getindex(b::ZernikeJacobimatrixBandsY{T},i,j) where T
+    return BlockArrays.getindex(b.data,i,j)
+end
+
+function jacobimatrix(::Val{1}, Z::Zernike{T}) where T
+    if iszero(Z.a)
+        dat = ZernikeJacobimatrixBandsX{T}(Z)
+        return Symmetric(BlockBandedMatrices._BandedBlockBandedMatrix(dat', axes(dat,1), (1,1), (1,1)))
+    else
+        error("Implement for non-zero first basis parameter.")
+    end
+end
+function jacobimatrix(::Val{2}, Z::Zernike{T}) where T
+    if iszero(Z.a)
+        dat = ZernikeJacobimatrixBandsY{T}(Z)
+        return Symmetric(BlockBandedMatrices._BandedBlockBandedMatrix(dat', axes(dat,1), (1,1), (2,2)))
+    else
+        error("Implement for non-zero first basis parameter.")
+    end
+end
 
 ###
 # Transforms
