@@ -1,4 +1,4 @@
-using MultivariateOrthogonalPolynomials, ClassicalOrthogonalPolynomials, StaticArrays, BlockArrays, BandedMatrices, FastTransforms, LinearAlgebra, RecipesBase, Test, SpecialFunctions, LazyArrays
+using MultivariateOrthogonalPolynomials, ClassicalOrthogonalPolynomials, StaticArrays, BlockArrays, BandedMatrices, FastTransforms, LinearAlgebra, RecipesBase, Test, SpecialFunctions, LazyArrays, InfiniteArrays
 import MultivariateOrthogonalPolynomials: DiskTrav, grid, ZernikeTransform, ZernikeITransform, *, ModalInterlace
 import ClassicalOrthogonalPolynomials: HalfWeighted
 import ForwardDiff: hessian
