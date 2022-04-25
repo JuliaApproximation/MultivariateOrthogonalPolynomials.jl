@@ -30,7 +30,7 @@ export MultivariateOrthogonalPolynomial, BivariateOrthogonalPolynomial,
        DunklXuDisk, DunklXuDiskWeight, WeightedDunklXuDisk,
        Zernike, ZernikeWeight, zerniker, zernikez,
        PartialDerivative, Laplacian, AbsLaplacianPower, AngularMomentum,
-       RadialCoordinate, Weighted, Block
+       RadialCoordinate, Weighted, Block, jacobimatrix
 
 include("ModalInterlace.jl")
 include("disk.jl")

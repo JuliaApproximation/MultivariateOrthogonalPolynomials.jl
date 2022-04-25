@@ -1,4 +1,4 @@
-using MultivariateOrthogonalPolynomials, ClassicalOrthogonalPolynomials, StaticArrays, BlockArrays, BandedMatrices, FastTransforms, LinearAlgebra, RecipesBase, Test, SpecialFunctions, LazyArrays
+using MultivariateOrthogonalPolynomials, ClassicalOrthogonalPolynomials, StaticArrays, BlockArrays, BandedMatrices, FastTransforms, LinearAlgebra, RecipesBase, Test, SpecialFunctions, LazyArrays, InfiniteArrays
 import MultivariateOrthogonalPolynomials: DiskTrav, grid, ZernikeTransform, ZernikeITransform, *, ModalInterlace
 import ClassicalOrthogonalPolynomials: HalfWeighted
 import ForwardDiff: hessian
@@ -68,6 +68,45 @@ import ForwardDiff: hessian
         end
     end
 
+    @testset "Jacobi matrices" begin
+        α = 10 * rand()
+        Z = Zernike(α)
+        xy = axes(Z, 1)
+        x, y = first.(xy), last.(xy)
+        n = 150
+            # X tests
+        JX = zeros(n,n)
+        for j = 1:n
+            JX[1:n,j] = (Z \ (x .* Z[:,j]))[1:n]
+        end 
+        X = jacobimatrix(Val(1),Z)
+        # The Zernike Jacobi matrices are symmetric for this normalization
+        @test issymmetric(X)
+        # Consistency with expansion
+        @test X[1:150,1:150] ≈ JX
+        # Multiplication by x
+        f = Z \ (sin.(x.*y) .+ x.^2 .- y)
+        xf = Z \ (x.*sin.(x.*y) .+ x.^3 .- x.*y)
+        @test X[Block.(1:20),Block.(1:20)]*f[Block.(1:20)] ≈ xf[Block.(1:20)]
+            # Y tests
+        JY = zeros(n,n)
+        for j = 1:n
+        JY[1:n,j] = (Z \ (y .* Z[:,j]))[1:n]
+        end 
+        Y = jacobimatrix(Val(2),Z)
+        # The Zernike Jacobi matrices are symmetric for this normalization
+        @test issymmetric(Y)
+        # Consistency with expansion
+        @test Y[1:150,1:150] ≈ JY
+        # Multiplication by x
+        f = Z \ (sin.(x.*y) .+ x.^2 .- y)
+        yf = Z \ (y.*sin.(x.*y) .+ y .* x.^2 .- y.^2)
+        @test Y[Block.(1:20),Block.(1:20)]*f[Block.(1:20)] ≈ yf[Block.(1:20)]
+        # data size tests
+        @test size((X.data).data) == (9, ℵ₀)
+        @test size((Y.data).data) == (15, ℵ₀)
+    end
+        
     @testset "Transform" begin
         for (a,b) in ((0,0), (0.1, 0.2), (0,1))
             Zn = Zernike(a,b)[:,Block.(Base.OneTo(3))]
