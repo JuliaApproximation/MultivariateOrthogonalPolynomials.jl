@@ -103,8 +103,12 @@ import ForwardDiff: hessian
         yf = Z \ (y.*sin.(x.*y) .+ y .* x.^2 .- y.^2)
         @test Y[Block.(1:20),Block.(1:20)]*f[Block.(1:20)] ≈ yf[Block.(1:20)]
         # data size tests
-        @test size((X.data).data) == (9, ℵ₀)
-        @test size((Y.data).data) == (15, ℵ₀)
+        @test size((X.data).data) == (3, ℵ₀)
+        @test size((Y.data).data) == (5, ℵ₀)
+            
+        # for now, reject non-zero first parameter options
+        @test_throws ErrorException("Implement for non-zero first basis parameter.") jacobimatrix(Val(1),Zernike(1,1))  
+        @test_throws ErrorException("Implement for non-zero first basis parameter.") jacobimatrix(Val(2),Zernike(1,1))
     end
         
     @testset "Transform" begin
