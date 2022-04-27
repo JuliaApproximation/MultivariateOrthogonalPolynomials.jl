@@ -261,7 +261,7 @@ function zernikejacobibandsY(Z::Zernike)
     du = (-1) .* (nodd .* keven .+ neven .* kodd) .* d[2:end]
 
     # generate and return bands
-    return dat = BlockBroadcastArray(hcat, dl, Zeros((axes(n,1),)), d, Zeros((axes(n,1),)), du)
+    return BlockBroadcastArray(hcat, dl, Zeros((axes(n,1),)), d, Zeros((axes(n,1),)), du)
 end
 
 function getindex(b::ZernikeJacobimatrixBandsX{T},i,j) where T
@@ -273,7 +273,7 @@ end
 
 function jacobimatrix(::Val{1}, Z::Zernike{T}) where T
     if iszero(Z.a)
-        dat = ZernikeJacobimatrixBandsX{T}(Z)
+        dat = BlockHcat(ZernikeJacobimatrixBandsX{T}(Z))
         return Symmetric(BlockBandedMatrices._BandedBlockBandedMatrix(dat', axes(dat,1), (-1,1), (1,1)))
     else
         error("Implement for non-zero first basis parameter.")
@@ -281,7 +281,7 @@ function jacobimatrix(::Val{1}, Z::Zernike{T}) where T
 end
 function jacobimatrix(::Val{2}, Z::Zernike{T}) where T
     if iszero(Z.a)
-        dat = ZernikeJacobimatrixBandsY{T}(Z)
+        dat = BlockHcat(ZernikeJacobimatrixBandsY{T}(Z))
         return Symmetric(BlockBandedMatrices._BandedBlockBandedMatrix(dat', axes(dat,1), (-1,1), (2,2)))
     else
         error("Implement for non-zero first basis parameter.")
