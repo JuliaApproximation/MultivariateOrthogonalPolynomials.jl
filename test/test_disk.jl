@@ -106,6 +106,13 @@ import ForwardDiff: hessian
         @test size((X.data).data) == (3, ℵ₀)
         @test size((Y.data).data) == (5, ℵ₀)
             
+        # Multiplication of Jacobi matrices
+        @test (X*X)[Block.(1:6),Block.(1:6)] ≈ (X[Block.(1:10),Block.(1:10)]*X[Block.(1:10),Block.(1:10)])[Block.(1:6),Block.(1:6)]
+        @test (X*Y)[Block.(1:6),Block.(1:6)] ≈ (X[Block.(1:10),Block.(1:10)]*Y[Block.(1:10),Block.(1:10)])[Block.(1:6),Block.(1:6)]
+        # Addition of Jacobi matrices
+        @test (X+Y)[Block.(1:6),Block.(1:6)] ≈ (X[Block.(1:6),Block.(1:6)]+Y[Block.(1:6),Block.(1:6)])
+        @test (Y+Y)[Block.(1:6),Block.(1:6)] ≈ (Y[Block.(1:6),Block.(1:6)]+Y[Block.(1:6),Block.(1:6)])
+            
         # for now, reject non-zero first parameter options
         @test_throws ErrorException("Implement for non-zero first basis parameter.") jacobimatrix(Val(1),Zernike(1,1))  
         @test_throws ErrorException("Implement for non-zero first basis parameter.") jacobimatrix(Val(2),Zernike(1,1))
