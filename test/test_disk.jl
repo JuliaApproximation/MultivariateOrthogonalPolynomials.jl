@@ -103,8 +103,8 @@ import ForwardDiff: hessian
         yf = Z \ (y.*sin.(x.*y) .+ y .* x.^2 .- y.^2)
         @test Y[Block.(1:20),Block.(1:20)]*f[Block.(1:20)] ≈ yf[Block.(1:20)]
         # data size tests
-        @test size((X.data).data[1]) == (3, ℵ₀)
-        @test size((Y.data).data[1]) == (5, ℵ₀)
+        @test size(X.data.data.arrays[1]') == (ℵ₀, 3)
+        @test size(Y.data.data.arrays[1]') == (ℵ₀, 5)
             
         # Multiplication of Jacobi matrices
         @test (X*X)[Block.(1:6),Block.(1:6)] ≈ (X[Block.(1:10),Block.(1:10)]*X[Block.(1:10),Block.(1:10)])[Block.(1:6),Block.(1:6)]
