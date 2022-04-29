@@ -184,7 +184,7 @@ axes(b::ZernikeJacobimatrixBandsY) = axes(b.data)
 function copy(b::ZernikeJacobimatrixBandsX{T}) where T
     return ZernikeJacobimatrixBandsX{T}(copy(b.Z))
 end
-function copy(b::ZernikeJacobimatrixBandsX{T}) where T
+function copy(b::ZernikeJacobimatrixBandsY{T}) where T
     return ZernikeJacobimatrixBandsY{T}(copy(b.Z))
 end
 function copy(b::Adjoint{T, ZernikeJacobimatrixBandsX{T}}) where T
