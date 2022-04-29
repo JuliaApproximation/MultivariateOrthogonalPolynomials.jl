@@ -181,6 +181,18 @@ size(b::ZernikeJacobimatrixBandsX) = size(b.data)
 axes(b::ZernikeJacobimatrixBandsX) = axes(b.data)
 size(b::ZernikeJacobimatrixBandsY) = size(b.data)
 axes(b::ZernikeJacobimatrixBandsY) = axes(b.data)
+function copy(b::ZernikeJacobimatrixBandsX{T}) where T
+    return ZernikeJacobimatrixBandsX{T}(copy(b.Z))
+end
+function copy(b::ZernikeJacobimatrixBandsX{T}) where T
+    return ZernikeJacobimatrixBandsY{T}(copy(b.Z))
+end
+function copy(b::Adjoint{T, ZernikeJacobimatrixBandsX{T}}) where T
+    return ZernikeJacobimatrixBandsX{T}(b'.Z)'
+end
+function copy(b::Adjoint{T, ZernikeJacobimatrixBandsY{T}}) where T
+    return ZernikeJacobimatrixBandsY{T}(b'.Z)'
+end
 
 function zernikejacobibandsX(Z::Zernike)
     α = Z.b     # extract second basis parameter
