@@ -28,6 +28,6 @@ This code relies on Slevinsky's [FastTransforms](https://github.com/MikaelSlevin
 ## References
 
 
-S. Olver, A. Townsend & G.M. Vasil (2019), [A sparse spectral method on triangles](https://arxiv.org/pdf/1902.04863.pdf), arXiv:1902.04
-S. Olver & Y. Xuan (2019), [Orthogonal polynomials in and on a quadratic surface of revolution](https://arxiv.org/abs/1906.12305.pdf), arXiv:1906.12305
-G.M. Vasil, K.J. Burns, D. Lecoanet, S. Olver, B.P. Brown & J.S. Oishi (2016), [Tensor calculus in polar coordinates using Jacobi polynomials](http://arxiv.org/pdf/1509.07624.pdf), J. Comp. Phys., 325: 53–73
+- S. Olver, A. Townsend & G.M. Vasil (2019), [A sparse spectral method on triangles](https://arxiv.org/pdf/1902.04863.pdf), arXiv:1902.04
+- S. Olver & Y. Xuan (2019), [Orthogonal polynomials in and on a quadratic surface of revolution](https://arxiv.org/abs/1906.12305.pdf), arXiv:1906.12305
+- G.M. Vasil, K.J. Burns, D. Lecoanet, S. Olver, B.P. Brown & J.S. Oishi (2016), [Tensor calculus in polar coordinates using Jacobi polynomials](http://arxiv.org/pdf/1509.07624.pdf), J. Comp. Phys., 325: 53–73
