@@ -20,83 +20,32 @@ x, y = first.(xy), last.(xy);
 S = Z \ W # identity
 
 
-f = @.(cos(x * exp(y)))
-
-f[SVector(0.1, 0.2)]
-g = ((1 .- x .^ 2 .- y .^ 2) .* f)
-@time W \ g
-
-Z \ g
-N = 100
-S[Block.(1:N), Block.(1:N)] * (W\g)[Block.(1:N)]
-
-
-# F = factorize(Δ + k^2 * S)
-# c = Z \ f
-# F \ c
-
-# u = W * ((Δ + k^2 * S) \ (Z \ f))
-
-
-N = 20
 k = 20
+L = Δ + k^2 * S # discretisation of Helmholtz
 f = @.(cos(x * exp(y)))
-c = Z \ f
-𝐮 = (Δ+k^2*S)[Block.(1:N), Block.(1:N)] \ c[Block.(1:N)]
-u = W[:, Block.(1:N)] * 𝐮
-axes(u)
 
-
-ũ = Z / Z \ u
-
-ũ = Z / Z \ u
-
-ũ = (Z / Z) \ u
-ũ = inv(Z * inv(Z)) * u
-ũ = Z * (inv(Z) * u)
-ũ = Z * (Z \ u)
-# Z \ u means Find c s.t. Z*c == u
-
-sum(ũ .* f)
-
-W \ f
-
-
-sum(u .^ 2 * W \ f)
-norm(u)
-
+u = W * (L \ (Z \ f))
 surface(u)
 
-# Δ*u == λ*u
-# Z\Δ*W*𝐮 == λ*Z\W*𝐮
-# Δ*𝐮 == λ*S*𝐮
-Matrix(Δ[Block.(1:N), Block.(1:N)])
-eigvals(Matrix(Δ[Block.(1:N), Block.(1:N)]), Matrix(S[Block.(1:N), Block.(1:N)]))
 
-Z \ (x .* Z)
+# One can also fix the discretisation size
+
+N = 20
+Zₙ = Z[:,Block.(1:N)]
+Wₙ = W[:,Block.(1:N)]
+Lₙ = L[Block.(1:N),Block.(1:N)]
+
+u = Wₙ * (Lₙ \ (Zₙ \ f))
+surface(u)
 
 
+# We can also do eigenvalues of the Laplacian
 
-# u = (1-x^2) * P^(1,1) * 𝐮 = W * 𝐮
-# v = (1-x^2) * P^(1,1) * 𝐯 = W * 𝐯
-# -<D*v,D*u>
-# -(D*v)'(D*u) == -𝐯'*(D*W)'D*W*𝐮
-# <v,u> == 𝐯'*W'W*𝐮
+Δₙ = Δ[Block.(1:N),Block.(1:N)]
+Sₙ = S[Block.(1:N),Block.(1:N)]
 
-P¹ = Jacobi(1, 1)
-W = Weighted(P¹)
-x = axes(W, 1)
-D = Derivative(x)
--(D * W)' * (D * W)
-W'W
+BandedMatrix(Δₙ)
 
-# p-FEM 
+λ,Q = eigen(Symmetric(Matrix(Δₙ)), Symmetric(Matrix(Sₙ)))
 
-P = Legendre()
-u = P * [randn(5); zeros(∞)]
-u' * u
-
-T[0.1, 1:10]
-T'[1:10, 0.1]
-axes(T')
-
+surface(Wₙ * Q[:,end])
