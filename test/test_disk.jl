@@ -68,18 +68,20 @@ import ForwardDiff: hessian
         end
     end
 
-    @testset "Jacobi matrices" begin
+       @testset "Jacobi matrices" begin
+        # Setup
         α = 10 * rand()
         Z = Zernike(α)
         xy = axes(Z, 1)
         x, y = first.(xy), last.(xy)
         n = 150
-            # X tests
+
+        # X tests
         JX = zeros(n,n)
         for j = 1:n
             JX[1:n,j] = (Z \ (x .* Z[:,j]))[1:n]
         end 
-        X = jacobimatrix(Val(1),Z)
+        X = Z \ (x .* Z)
         # The Zernike Jacobi matrices are symmetric for this normalization
         @test issymmetric(X)
         # Consistency with expansion
@@ -88,23 +90,29 @@ import ForwardDiff: hessian
         f = Z \ (sin.(x.*y) .+ x.^2 .- y)
         xf = Z \ (x.*sin.(x.*y) .+ x.^3 .- x.*y)
         @test X[Block.(1:20),Block.(1:20)]*f[Block.(1:20)] ≈ xf[Block.(1:20)]
-            # Y tests
+
+        # Y tests
         JY = zeros(n,n)
         for j = 1:n
         JY[1:n,j] = (Z \ (y .* Z[:,j]))[1:n]
         end 
-        Y = jacobimatrix(Val(2),Z)
+        Y = Z \ (y .* Z)
         # The Zernike Jacobi matrices are symmetric for this normalization
         @test issymmetric(Y)
         # Consistency with expansion
         @test Y[1:150,1:150] ≈ JY
-        # Multiplication by x
+        # Multiplication by y
         f = Z \ (sin.(x.*y) .+ x.^2 .- y)
         yf = Z \ (y.*sin.(x.*y) .+ y .* x.^2 .- y.^2)
         @test Y[Block.(1:20),Block.(1:20)]*f[Block.(1:20)] ≈ yf[Block.(1:20)]
-        # data size tests
-        @test size((X.data).data) == (3, ℵ₀)
-        @test size((Y.data).data) == (5, ℵ₀)
+            
+        # Multiplication of Jacobi matrices
+        @test (X*X)[Block.(1:6),Block.(1:6)] ≈ (X[Block.(1:10),Block.(1:10)]*X[Block.(1:10),Block.(1:10)])[Block.(1:6),Block.(1:6)]
+        @test (X*Y)[Block.(1:6),Block.(1:6)] ≈ (X[Block.(1:10),Block.(1:10)]*Y[Block.(1:10),Block.(1:10)])[Block.(1:6),Block.(1:6)]
+
+        # Addition of Jacobi matrices
+        @test (X+Y)[Block.(1:6),Block.(1:6)] ≈ (X[Block.(1:6),Block.(1:6)]+Y[Block.(1:6),Block.(1:6)])
+        @test (Y+Y)[Block.(1:6),Block.(1:6)] ≈ (Y[Block.(1:6),Block.(1:6)]+Y[Block.(1:6),Block.(1:6)])
             
         # for now, reject non-zero first parameter options
         @test_throws ErrorException("Implement for non-zero first basis parameter.") jacobimatrix(Val(1),Zernike(1,1))  
