@@ -1,70 +1,3 @@
-"""
-    DiskTrav(A::AbstractMatrix)
-
-    takes coefficients as provided by the Zernike polynomial layout of FastTransforms.jl and
-    makes them accessible sorted such that in each block the m=0 entries are always in first place, 
-    followed by alternating sin and cos terms of increasing |m|.
-"""
-struct DiskTrav{T, AA<:AbstractMatrix{T}} <: AbstractBlockVector{T}
-    matrix::AA
-    function DiskTrav{T, AA}(matrix::AA) where {T,AA<:AbstractMatrix{T}}
-        m,n = size(matrix)
-        isodd(n) && m == n ÷ 4 + 1 || throw(ArgumentError("size must match"))
-        new{T,AA}(matrix)
-    end
-end
-
-DiskTrav{T}(matrix::AbstractMatrix{T}) where T = DiskTrav{T,typeof(matrix)}(matrix)
-DiskTrav(matrix::AbstractMatrix{T}) where T = DiskTrav{T}(matrix)
-
-function DiskTrav(v::AbstractVector{T}) where T
-    N = blocksize(v,1)
-    m = N ÷ 2 + 1
-    n = 4(m-1) + 1
-    mat = zeros(T, m, n)
-    for K in blockaxes(v,1)
-        K̃ = Int(K)
-        w = v[K]
-        if isodd(K̃)
-            mat[K̃÷2 + 1,1] = w[1]
-            for j = 2:2:K̃-1
-                mat[K̃÷2-j÷2+1,2(j-1)+2] = w[j]
-                mat[K̃÷2-j÷2+1,2(j-1)+3] = w[j+1]
-            end
-        else
-            for j = 1:2:K̃
-                mat[K̃÷2-j÷2,2(j-1)+2] = w[j]
-                mat[K̃÷2-j÷2,2(j-1)+3] = w[j+1]
-            end
-        end
-    end
-    DiskTrav(mat)
-end
-
-axes(A::DiskTrav) = (blockedrange(oneto(div(size(A.matrix,2),2,RoundUp))),)
-
-function getindex(A::DiskTrav, K::Block{1})
-    k = Int(K)
-    k == 1 && return A.matrix[1:1]
-    k == 2 && return A.matrix[1,2:3]
-    st = stride(A.matrix,2)
-    if isodd(k)
-        # nonnegative terms
-        p = A.matrix[range(k÷2+1, step=4*st-1, length=k÷2+1)]
-        # negative terms
-        n = A.matrix[range(k÷2+3*st, step=4*st-1, length=k÷2)]
-        interlace(p,n)
-    else
-        # negative terms
-        n = A.matrix[range(st+k÷2, step=4*st-1, length=k÷2)]
-        # positive terms
-        p = A.matrix[range(2st+k÷2, step=4*st-1, length=k÷2)]
-        interlace(n,p)
-    end
-end
-
-getindex(A::DiskTrav, k::Int) = A[findblockindex(axes(A,1), k)]
-
 ClassicalOrthogonalPolynomials.checkpoints(d::UnitDisk{T}) where T = [SVector{2,T}(0.1,0.2), SVector{2,T}(0.2,0.3)]
 
 """
@@ -308,37 +241,16 @@ function ZernikeITransform{T}(N::Int, a::Number, b::Number) where T<:Real
 end
 
 *(P::ZernikeTransform{T}, f::AbstractArray) where T = P * convert(Matrix{T}, f)
-*(P::ZernikeTransform{T}, f::Matrix{T}) where T = DiskTrav(P.disk2cxf \ (P.analysis * f))[Block.(1:P.N)]
-*(P::ZernikeITransform, f::AbstractVector) = P.synthesis * (P.disk2cxf * DiskTrav(f).matrix)
+*(P::ZernikeTransform{T}, f::Matrix{T}) where T = ModalTrav(P.disk2cxf \ (P.analysis * f))[Block.(1:P.N)]
+*(P::ZernikeITransform, f::AbstractVector) = P.synthesis * (P.disk2cxf * ModalTrav(f).matrix)
 
 factorize(S::FiniteZernike{T}) where T = TransformFactorization(grid(S), ZernikeTransform{T}(blocksize(S,2), parent(S).a, parent(S).b))
 
-# gives the entries for the Laplacian times (1-r^2) * Zernike(1)
-struct WeightedZernikeLaplacianDiag{T} <: AbstractBlockVector{T} end
-
-axes(::WeightedZernikeLaplacianDiag) = (blockedrange(oneto(∞)),)
-copy(R::WeightedZernikeLaplacianDiag) = R
-
-MemoryLayout(::Type{<:WeightedZernikeLaplacianDiag}) = LazyLayout()
-Base.BroadcastStyle(::Type{<:Diagonal{<:Any,<:WeightedZernikeLaplacianDiag}}) = LazyArrayStyle{2}()
-
-function Base.view(W::WeightedZernikeLaplacianDiag{T}, K::Block{1}) where T
-    K̃ = Int(K)
-    d = K̃÷2 + 1
-    if isodd(K̃)
-        v = (d:K̃) .* (d:(-1):1)
-        convert(AbstractVector{T}, -4*interlace(v, v[2:end]))
-    else
-        v = (d:K̃) .* (d-1:(-1):1)
-        convert(AbstractVector{T}, -4*interlace(v, v))
-    end
-end
-
-getindex(W::WeightedZernikeLaplacianDiag, k::Integer) = W[findblockindex(axes(W,1),k)]
 
 @simplify function *(Δ::Laplacian, WZ::Weighted{<:Any,<:Zernike})
     @assert WZ.P.a == 0 && WZ.P.b == 1
-    WZ.P * Diagonal(WeightedZernikeLaplacianDiag{eltype(eltype(WZ))}())
+    T = eltype(eltype(WZ))
+    WZ.P * ModalInterlace{T}(broadcast(k ->  Diagonal(-cumsum(k:8:∞)), 4:4:∞), (ℵ₀,ℵ₀), (0,0))
 end
 
 @simplify function *(Δ::Laplacian, Z::Zernike)

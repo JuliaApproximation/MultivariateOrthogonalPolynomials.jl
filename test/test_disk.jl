@@ -1,5 +1,5 @@
 using MultivariateOrthogonalPolynomials, ClassicalOrthogonalPolynomials, StaticArrays, BlockArrays, BandedMatrices, FastTransforms, LinearAlgebra, RecipesBase, Test, SpecialFunctions, LazyArrays, InfiniteArrays
-import MultivariateOrthogonalPolynomials: DiskTrav, grid, ZernikeTransform, ZernikeITransform, *, ModalInterlace
+import MultivariateOrthogonalPolynomials: ModalTrav, grid, ZernikeTransform, ZernikeITransform, *, ModalInterlace
 import ClassicalOrthogonalPolynomials: HalfWeighted
 import ForwardDiff: hessian
 
@@ -43,27 +43,27 @@ import ForwardDiff: hessian
         @test zerniker(5, 0, norm(xy)) ≈ zernikez(5, 0, xy)
     end
 
-    @testset "DiskTrav" begin
-        @test DiskTrav(reshape([1],1,1)) == [1]
-        @test DiskTrav([1 2 3]) == 1:3
-        @test DiskTrav([1 2 3 5 6;
+    @testset "ModalTrav" begin
+        @test ModalTrav(reshape([1],1,1)) == [1]
+        @test ModalTrav([1 2 3]) == 1:3
+        @test ModalTrav([1 2 3 5 6;
                         4 0 0 0 0]) == 1:6
-        @test DiskTrav([1 2 3 5 6 9 10;
+        @test ModalTrav([1 2 3 5 6 9 10;
                         4 7 8 0 0 0  0]) == 1:10
 
-        @test DiskTrav([1 2 3 5 6 9 10; 4 7 8 0 0 0  0])[Block(3)] == 4:6
+        @test ModalTrav([1 2 3 5 6 9 10; 4 7 8 0 0 0  0])[Block(3)] == 4:6
 
-        @test_throws ArgumentError DiskTrav([1 2])
-        @test_throws ArgumentError DiskTrav([1 2 3 4])
-        @test_throws ArgumentError DiskTrav([1 2 3; 4 5 6])
-        @test_throws ArgumentError DiskTrav([1 2 3 4; 5 6 7 8])
+        @test_throws ArgumentError ModalTrav([1 2])
+        @test_throws ArgumentError ModalTrav([1 2 3 4])
+        @test_throws ArgumentError ModalTrav([1 2 3; 4 5 6])
+        @test_throws ArgumentError ModalTrav([1 2 3 4; 5 6 7 8])
 
         for N = 1:10
             v = PseudoBlockArray(1:sum(1:N),1:N)
             if iseven(N)
-                @test DiskTrav(v) == [v; zeros(N+1)]
+                @test ModalTrav(v) == [v; zeros(N+1)]
             else
-                @test DiskTrav(v) == v
+                @test ModalTrav(v) == v
             end
         end
     end
