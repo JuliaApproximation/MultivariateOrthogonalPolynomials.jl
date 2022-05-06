@@ -286,16 +286,21 @@ function plotgrid(S::SubQuasiArray{<:Any,2,<:Zernike})
     plotgrid(Z[kr,Block.(OneTo(Int(findblock(axes(Z,2),maximum(jr)))))])
 end
 
-function plotvalues(u::ApplyQuasiVector{T,typeof(*),<:Tuple{Weighted{<:Any,<:Zernike}, AbstractVector}}, x) where T
-    W,c = u.args
-    w,Z = weight(W),unweighted(W)
+
+function plotvalues(u::ApplyQuasiVector{T,typeof(*),<:Tuple{Zernike, AbstractVector}}, x) where T
+    Z,c = u.args
     CS = blockcolsupport(c)
     N = Int(last(CS)) ÷ 2 + 1 # polynomial degree
     F = ZernikeITransform{T}(2N, Z.a, Z.b)
-    C = (F * c[Block.(OneTo(2N))])
-    U = [permutedims(u[x[1,:]]);
+    C = F * c[Block.(OneTo(2N))] # transform to grid
+    [permutedims(u[x[1,:]]); # evaluate on edge of disk
      C C[:,1];
-     permutedims(u[x[end,:]])]
+     fill(u[x[end,1]], 1, size(x,2))] # evaluate at origin and repeat
+end
+
+function plotvalues(u::ApplyQuasiVector{T,typeof(*),<:Tuple{Weighted{<:Any,<:Zernike}, AbstractVector}}, x) where T
+    U = plotvalues(unweighted(u))
+    w = weight(U.args[1])
     w[x] .* U
 end
 
