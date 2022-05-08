@@ -299,8 +299,8 @@ function plotvalues(u::ApplyQuasiVector{T,typeof(*),<:Tuple{Zernike, AbstractVec
 end
 
 function plotvalues(u::ApplyQuasiVector{T,typeof(*),<:Tuple{Weighted{<:Any,<:Zernike}, AbstractVector}}, x) where T
-    U = plotvalues(unweighted(u))
-    w = weight(U.args[1])
+    U = plotvalues(unweighted(u), x)
+    w = weight(u.args[1])
     w[x] .* U
 end
 
