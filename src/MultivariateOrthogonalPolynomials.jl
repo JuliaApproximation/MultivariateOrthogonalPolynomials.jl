@@ -10,10 +10,10 @@ import Base: axes, in, ==, *, ^, \, copy, OneTo, getindex, size, oneto, all, res
 import DomainSets: boundary
 
 import QuasiArrays: LazyQuasiMatrix, LazyQuasiArrayStyle
-import ContinuumArrays: @simplify, Weight, grid, plotgrid, TransformFactorization, ExpansionLayout
+import ContinuumArrays: @simplify, Weight, weight, grid, plotgrid, TransformFactorization, ExpansionLayout, plotvalues, unweighted
 
 import ArrayLayouts: MemoryLayout, sublayout, sub_materialize
-import BlockArrays: block, blockindex, BlockSlice, viewblock
+import BlockArrays: block, blockindex, BlockSlice, viewblock, blockcolsupport
 import BlockBandedMatrices: _BandedBlockBandedMatrix, AbstractBandedBlockBandedMatrix, _BandedMatrix, blockbandwidths, subblockbandwidths
 import LinearAlgebra: factorize
 import LazyArrays: arguments, paddeddata, LazyArrayStyle, LazyLayout

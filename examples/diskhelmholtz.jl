@@ -1,5 +1,5 @@
 using MultivariateOrthogonalPolynomials, FastTransforms, BlockBandedMatrices, Plots, LinearAlgebra, StaticArrays
-plotly()
+pyplot()
 
 
 ####
@@ -25,7 +25,7 @@ L = Δ + k^2 * S # discretisation of Helmholtz
 f = @.(cos(x * exp(y)))
 
 u = W * (L \ (Z \ f))
-surface(u)
+contourf(u)
 
 
 # One can also fix the discretisation size
@@ -36,16 +36,14 @@ Wₙ = W[:,Block.(1:N)]
 Lₙ = L[Block.(1:N),Block.(1:N)]
 
 u = Wₙ * (Lₙ \ (Zₙ \ f))
-surface(u)
+contourf(u)
 
 
 # We can also do eigenvalues of the Laplacian
-
+N = 20
 Δₙ = Δ[Block.(1:N),Block.(1:N)]
 Sₙ = S[Block.(1:N),Block.(1:N)]
 
-BandedMatrix(Δₙ)
-
 λ,Q = eigen(Symmetric(Matrix(Δₙ)), Symmetric(Matrix(Sₙ)))
 
-surface(Wₙ * Q[:,end])
+contourf(Wₙ * Q[:,end-10])
