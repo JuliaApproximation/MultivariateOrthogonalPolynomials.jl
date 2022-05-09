@@ -2,14 +2,16 @@
     ModalTrav(A::AbstractMatrix)
 
     takes coefficients as provided by the Zernike polynomial layout of FastTransforms.jl and
-    makes them accessible sorted such that in each block the m=0 entries are always in first place, 
+    makes them accessible sorted such that in each block the m=0 entries are always in first place,
     followed by alternating sin and cos terms of increasing |m|.
 """
 struct ModalTrav{T, AA<:AbstractMatrix{T}} <: AbstractBlockVector{T}
     matrix::AA
     function ModalTrav{T, AA}(matrix::AA) where {T,AA<:AbstractMatrix{T}}
         m,n = size(matrix)
-        isodd(n) && m == n ÷ 4 + 1 || throw(ArgumentError("size must match"))
+        if isfinite(m)
+            isfinite(n) && isodd(n) && m == n ÷ 4 + 1 || throw(ArgumentError("size must match"))
+        end
         new{T,AA}(matrix)
     end
 end
@@ -41,24 +43,36 @@ function ModalTrav(v::AbstractVector{T}) where T
     ModalTrav(mat)
 end
 
-axes(A::ModalTrav) = (blockedrange(oneto(div(size(A.matrix,2),2,RoundUp))),)
+_diviffinite(n) = div(n,2,RoundUp)
+_diviffinite(n::InfiniteCardinal) = n
 
-function getindex(A::ModalTrav, K::Block{1})
+axes(A::ModalTrav) = (blockedrange(oneto(_diviffinite(size(A.matrix,2)))),)
+
+getindex(A::ModalTrav, K::Block{1}) = _modaltravgetindex(A.matrix, K)
+
+_modaltravgetindex(mat, K) = _modaltravgetindex(MemoryLayout(mat), mat, K)
+function _modaltravgetindex(_, mat, K::Block{1})
     k = Int(K)
-    k == 1 && return A.matrix[1:1]
-    k == 2 && return A.matrix[1,2:3]
-    st = stride(A.matrix,2)
+    m = (k+1)÷2
+    _modaltravgetindex(Matrix(mat[1:m, 1:4m+1]), K)
+end
+
+function _modaltravgetindex(::AbstractStridedLayout, mat, K::Block{1})
+    k = Int(K)
+    k == 1 && return mat[1:1]
+    k == 2 && return mat[1,2:3]
+    st = stride(mat,2)
     if isodd(k)
         # nonnegative terms
-        p = A.matrix[range(k÷2+1, step=4*st-1, length=k÷2+1)]
+        p = mat[range(k÷2+1, step=4*st-1, length=k÷2+1)]
         # negative terms
-        n = A.matrix[range(k÷2+3*st, step=4*st-1, length=k÷2)]
+        n = mat[range(k÷2+3*st, step=4*st-1, length=k÷2)]
         interlace(p,n)
     else
         # negative terms
-        n = A.matrix[range(st+k÷2, step=4*st-1, length=k÷2)]
+        n = mat[range(st+k÷2, step=4*st-1, length=k÷2)]
         # positive terms
-        p = A.matrix[range(2st+k÷2, step=4*st-1, length=k÷2)]
+        p = mat[range(2st+k÷2, step=4*st-1, length=k÷2)]
         interlace(n,p)
     end
 end
