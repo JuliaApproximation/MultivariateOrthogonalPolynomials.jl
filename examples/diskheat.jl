@@ -16,14 +16,14 @@ K = Block.(Base.OneTo(11))
 Sₙ = S[K,K]
 Zₙ = Z[:,K]
 Wₙ = W[:,K]
+c₀ = Zₙ \ @.(exp(-(x-0.1)^2 - (y-0.2)^2))
 
 diskheat(c, (Δₙ, Sₙ), t) = Sₙ \ (Δₙ * c)
-
-c₀ = Zₙ \ @.(exp(-(x-0.1)^2 - (y-0.2)^2))
 u = solve(ODEProblem(diskheat, c₀, (0.,1.), (Δₙ, Sₙ)), Tsit5(), reltol=1e-8, abstol=1e-8)
 
-# diskheat(c, (Δₙ, Sₙ), t) = Δₙ * c
-# u = solve(ODEProblem(ODEFunction(diskheat; jac=(u, (Δₙ, Sₙ), t) -> Δₙ, mass_matrix=Sₙ), c₀, (0.,1.), (Δₙ, Sₙ)), reltol=1e-8, abstol=1e-8, )
-
-
 surface(Wₙ * u(1.0))
+
+diskheat(c, (Δₙ, Sₙ), t) = Δₙ * c
+u = solve(ODEProblem(ODEFunction(diskheat; jac=(u, (Δₙ, Sₙ), t) -> Δₙ, mass_matrix=Sₙ), c₀, (0.,1.), (Δₙ, Sₙ)), reltol=1e-8, abstol=1e-8)
+
+

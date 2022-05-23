@@ -19,8 +19,11 @@ end
 ModalTrav{T}(matrix::AbstractMatrix{T}) where T = ModalTrav{T,typeof(matrix)}(matrix)
 ModalTrav(matrix::AbstractMatrix{T}) where T = ModalTrav{T}(matrix)
 
-function ModalTrav(v::AbstractVector{T}) where T
-    N = blocksize(v,1)
+convert(::Type{ModalTrav{T,M}}, v::ModalTrav) where {T,M} = ModalTrav{T,M}(convert(M, v.matrix))
+
+function convert(::Type{ModalTrav{T,M}}, v_in::AbstractVector) where {T,M}
+    N =  (isqrt(8length(v_in)+1)-1) ÷ 2
+    v = PseudoBlockVector(v_in, OneTo(N))
     m = N ÷ 2 + 1
     n = 4(m-1) + 1
     mat = zeros(T, m, n)
@@ -40,8 +43,12 @@ function ModalTrav(v::AbstractVector{T}) where T
             end
         end
     end
-    ModalTrav(mat)
+    ModalTrav{T,M}(mat)
 end
+
+ModalTrav{T,M}(v::AbstractVector) where {T,M} = convert(ModalTrav{T,M}, v)
+ModalTrav{T}(v::AbstractVector) where T = ModalTrav{T,Matrix{T}}(v)
+ModalTrav(v::AbstractVector{T}) where T = ModalTrav{T}(v)
 
 copy(A::ModalTrav) = ModalTrav(copy(A.matrix))
 
@@ -80,7 +87,28 @@ function _modaltravgetindex(::AbstractStridedLayout, mat, K::Block{1})
 end
 
 getindex(A::ModalTrav, k::Int) = A[findblockindex(axes(A,1), k)]
-
+function setindex!(A::ModalTrav, v, k::Int)
+    Kk = findblockindex(axes(A,1), k)
+    K,j = block(Kk),blockindex(Kk)
+    K̃ = Int(K)
+    mat = A.matrix
+    if isodd(K̃)
+        if j == 1
+            mat[K̃÷2 + 1,1] = v
+        elseif iseven(j)
+            mat[K̃÷2-j÷2+1,2(j-1)+2] = v
+        else
+            mat[K̃÷2-(j-1)÷2+1,2(j-2)+3] = v
+        end
+    else
+        if iseven(j)
+            mat[K̃÷2-(j-1)÷2,2(j-2)+3] = v
+        else
+            mat[K̃÷2-j÷2,2(j-1)+2] = v
+        end
+    end
+    A
+end
 
 similar(A::ModalTrav, ::Type{T}) where T = ModalTrav(similar(A.matrix, T))
 function fill!(A::ModalTrav, x)

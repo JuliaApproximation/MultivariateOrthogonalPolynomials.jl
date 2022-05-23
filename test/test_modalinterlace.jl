@@ -17,6 +17,11 @@ import MultivariateOrthogonalPolynomials: ModalInterlace, ModalInterlaceLayout, 
 
     @test exp.(a) == exp.(b)
     @test a + a == 2a == a+b
+
+    for k = 1:6
+        a[k] = k
+    end
+    @test a == 1:6
 end
 
 @testset "ModalInterlace" begin
