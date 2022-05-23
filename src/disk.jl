@@ -259,7 +259,7 @@ function ZernikeITransform{T}(N::Int, a::Number, b::Number) where T<:Real
 end
 
 *(P::ZernikeTransform{T}, f::AbstractArray) where T = P * convert(Matrix{T}, f)
-*(P::ZernikeTransform{T}, f::Matrix{T}) where T = ModalTrav(P.disk2cxf \ (P.analysis * f))[Block.(1:P.N)]
+*(P::ZernikeTransform{T}, f::Matrix{T}) where T = ModalTrav(P.disk2cxf \ (P.analysis * f))
 *(P::ZernikeITransform, f::AbstractVector) = P.synthesis * (P.disk2cxf * ModalTrav(f).matrix)
 
 factorize(S::FiniteZernike{T}) where T = TransformFactorization(grid(S), ZernikeTransform{T}(blocksize(S,2), parent(S).a, parent(S).b))

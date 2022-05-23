@@ -43,6 +43,8 @@ function ModalTrav(v::AbstractVector{T}) where T
     ModalTrav(mat)
 end
 
+copy(A::ModalTrav) = ModalTrav(copy(A.matrix))
+
 _diviffinite(n) = div(n,2,RoundUp)
 _diviffinite(n::InfiniteCardinal) = n
 
@@ -78,6 +80,35 @@ function _modaltravgetindex(::AbstractStridedLayout, mat, K::Block{1})
 end
 
 getindex(A::ModalTrav, k::Int) = A[findblockindex(axes(A,1), k)]
+
+
+similar(A::ModalTrav, ::Type{T}) where T = ModalTrav(similar(A.matrix, T))
+function fill!(A::ModalTrav, x)
+    fill!(A.matrix, x)
+    A
+end
+
+struct ModalTravStyle <: AbstractBlockStyle{1} end
+
+ModalTravStyle(::Val{1}) = ModalTravStyle()
+
+BroadcastStyle(::Type{<:ModalTrav}) = ModalTravStyle()
+
+function similar(bc::Broadcasted{ModalTravStyle}, ::Type{T}) where T
+    N = blocklength(axes(bc,1))
+    n = 2N-1
+    m = n ÷ 4 + 1
+    ModalTrav(Matrix{T}(undef,m,n))
+end
+
+_modal2matrix(a::ModalTrav) = a.matrix
+_modal2matrix(a::Broadcasted) = broadcasted(a.f, map(_modal2matrix, a.args)...)
+_modal2matrix(a) = a
+
+function copyto!(dest::ModalTrav, bc::Broadcasted{ModalTravStyle})
+    broadcast!(bc.f, dest.matrix, map(_modal2matrix, bc.args)...)
+    dest
+end
 
 
 

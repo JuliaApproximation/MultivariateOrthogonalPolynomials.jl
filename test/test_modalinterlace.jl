@@ -1,5 +1,21 @@
-using MultivariateOrthogonalPolynomials, ArrayLayouts, BandedMatrices, Test
-import MultivariateOrthogonalPolynomials: ModalInterlace, ModalInterlaceLayout
+using MultivariateOrthogonalPolynomials, ArrayLayouts, BandedMatrices, BlockArrays, Test
+import MultivariateOrthogonalPolynomials: ModalInterlace, ModalInterlaceLayout, ModalTrav
+
+@testset "modalTrav" begin
+    a = ModalTrav(randn(2,5))
+    b = PseudoBlockArray(a)
+
+    @test zero(a) isa ModalTrav
+    @test zero(a) == zero(b)
+
+    @test exp.(a) isa ModalTrav
+    @test 2a isa ModalTrav
+    @test a+a isa ModalTrav
+    @test a+b isa PseudoBlockArray
+
+    @test exp.(a) == exp.(b)
+    @test a + a == 2a == a+b
+end
 
 @testset "ModalInterlace" begin
     ops = [brand(2,3,1,2), brand(1,2,1,1), brand(1,2,1,2)]
