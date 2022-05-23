@@ -4,6 +4,7 @@ import MultivariateOrthogonalPolynomials: ModalInterlace, ModalInterlaceLayout, 
 @testset "modalTrav" begin
     a = ModalTrav(randn(2,5))
     b = PseudoBlockArray(a)
+    v = Vector(a)
 
     @test zero(a) isa ModalTrav
     @test zero(a) == zero(b)
@@ -12,6 +13,7 @@ import MultivariateOrthogonalPolynomials: ModalInterlace, ModalInterlaceLayout, 
     @test 2a isa ModalTrav
     @test a+a isa ModalTrav
     @test a+b isa PseudoBlockArray
+    @test a+v isa BlockArray
 
     @test exp.(a) == exp.(b)
     @test a + a == 2a == a+b

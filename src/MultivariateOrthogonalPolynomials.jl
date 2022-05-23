@@ -7,14 +7,14 @@ using ClassicalOrthogonalPolynomials, FastTransforms, BlockBandedMatrices, Block
       HarmonicOrthogonalPolynomials
 
 import Base: axes, in, ==, *, ^, \, copy, copyto!, OneTo, getindex, size, oneto, all, resize!, BroadcastStyle, similar, fill!
-import Base.Broadcast: Broadcasted, broadcasted
+import Base.Broadcast: Broadcasted, broadcasted, DefaultArrayStyle
 import DomainSets: boundary
 
 import QuasiArrays: LazyQuasiMatrix, LazyQuasiArrayStyle
 import ContinuumArrays: @simplify, Weight, weight, grid, plotgrid, TransformFactorization, ExpansionLayout, plotvalues, unweighted
 
 import ArrayLayouts: MemoryLayout, sublayout, sub_materialize
-import BlockArrays: block, blockindex, BlockSlice, viewblock, blockcolsupport, AbstractBlockStyle
+import BlockArrays: block, blockindex, BlockSlice, viewblock, blockcolsupport, AbstractBlockStyle, BlockStyle
 import BlockBandedMatrices: _BandedBlockBandedMatrix, AbstractBandedBlockBandedMatrix, _BandedMatrix, blockbandwidths, subblockbandwidths
 import LinearAlgebra: factorize
 import LazyArrays: arguments, paddeddata, LazyArrayStyle, LazyLayout

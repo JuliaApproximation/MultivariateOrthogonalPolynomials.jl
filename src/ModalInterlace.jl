@@ -93,6 +93,10 @@ struct ModalTravStyle <: AbstractBlockStyle{1} end
 ModalTravStyle(::Val{1}) = ModalTravStyle()
 
 BroadcastStyle(::Type{<:ModalTrav}) = ModalTravStyle()
+BroadcastStyle(a::ModalTravStyle, b::DefaultArrayStyle{0}) = ModalTravStyle()
+BroadcastStyle(a::DefaultArrayStyle{0}, b::ModalTravStyle) = ModalTravStyle()
+BroadcastStyle(a::ModalTravStyle, b::DefaultArrayStyle{M}) where {M} = BroadcastStyle(BlockStyle{1}(), b)
+BroadcastStyle(a::DefaultArrayStyle{M}, b::ModalTravStyle) where {M} = BroadcastStyle(a, BlockStyle{1}())
 
 function similar(bc::Broadcasted{ModalTravStyle}, ::Type{T}) where T
     N = blocklength(axes(bc,1))
@@ -110,6 +114,11 @@ function copyto!(dest::ModalTrav, bc::Broadcasted{ModalTravStyle})
     dest
 end
 
+function resize!(a::ModalTrav, N::Block{1})
+    n = 2Int(N)-1
+    m = n ÷ 4 + 1
+    ModalTrav(a.matrix[1:m,1:n])
+end
 
 
 """
@@ -175,8 +184,7 @@ function sub_materialize(::ModalInterlaceLayout, V::AbstractMatrix{T}) where T
 end
 
 # act like lazy array
-Base.BroadcastStyle(::Type{<:ModalInterlace{<:Any,NTuple{2,InfiniteCardinal{0}}}}) = LazyArrayStyle{2}()
-
+BroadcastStyle(::Type{<:ModalInterlace{<:Any,NTuple{2,InfiniteCardinal{0}}}}) = LazyArrayStyle{2}()
 
 # TODO: overload muladd!
 function *(A::ModalInterlace, b::ModalTrav)
