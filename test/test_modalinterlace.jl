@@ -31,4 +31,11 @@ end
     @test A[[1,4],[1,4,11]] == ops[1]
     @test A[[2],[2,7]] == ops[2]
     @test A[[5],[5,12]] == A[[6],[6,13]] == ops[3]
+
+    b = ModalTrav(1:15)
+    @test A*b ≈ Matrix(A) * Vector(b)
+
+    ops = [brand(3,3,1,2), brand(2,2,1,1), brand(2,2,1,2), brand(1,1,1,1), brand(1,1,1,2)]
+    B = ModalInterlace(ops, (5,5), (2,4))
+    @test B\b ≈ Matrix(B) \ Vector(b)
 end

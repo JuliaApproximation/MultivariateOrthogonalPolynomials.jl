@@ -19,6 +19,14 @@ end
 ModalTrav{T}(matrix::AbstractMatrix{T}) where T = ModalTrav{T,typeof(matrix)}(matrix)
 ModalTrav(matrix::AbstractMatrix{T}) where T = ModalTrav{T}(matrix)
 
+function ModalTrav{T}(::UndefInitializer, n::Int) where T
+    N =  (isqrt(8n+1)-1) ÷ 2
+    @assert sum(1:N) == n
+    m = N ÷ 2 + 1
+    n = 4(m-1) + 1
+    ModalTrav(Matrix{T}(undef, m, n))
+end
+
 convert(::Type{ModalTrav{T,M}}, v::ModalTrav) where {T,M} = ModalTrav{T,M}(convert(M, v.matrix))
 
 function convert(::Type{ModalTrav{T,M}}, v_in::AbstractVector) where {T,M}
@@ -217,9 +225,9 @@ BroadcastStyle(::Type{<:ModalInterlace{<:Any,NTuple{2,InfiniteCardinal{0}}}}) = 
 # TODO: overload muladd!
 function *(A::ModalInterlace, b::ModalTrav)
     M = b.matrix
-    ret = similar(M)
+    ret = ModalTrav{promote_type(eltype(A), eltype(b))}(undef, size(A,1)).matrix
     mul!(view(ret,:,1), A.ops[1], M[:,1])
-    for j = 1:size(M,2)÷4
+    for j = 1:size(ret,2)÷4
         mul!(@view(ret[1:end-j,4j-2]), A.ops[2j], @view(M[1:end-j,4j-2]))
         mul!(@view(ret[1:end-j,4j-1]), A.ops[2j], @view(M[1:end-j,4j-1]))
         mul!(@view(ret[1:end-j,4j]), A.ops[2j+1], @view(M[1:end-j,4j]))
@@ -231,7 +239,7 @@ end
 
 function \(A::ModalInterlace, b::ModalTrav)
     M = b.matrix
-    ret = similar(M)
+    ret = similar(M, promote_type(eltype(A),eltype(b)))
     ldiv!(view(ret,:,1), A.ops[1], M[:,1])
     for j = 1:size(M,2)÷4
         ldiv!(@view(ret[1:end-j,4j-2]), A.ops[2j], @view(M[1:end-j,4j-2]))
