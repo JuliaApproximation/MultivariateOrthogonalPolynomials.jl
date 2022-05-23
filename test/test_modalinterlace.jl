@@ -14,14 +14,24 @@ import MultivariateOrthogonalPolynomials: ModalInterlace, ModalInterlaceLayout, 
     @test a+a isa ModalTrav
     @test a+b isa PseudoBlockArray
     @test a+v isa BlockArray
+    @test a .+ exp.(a .+ 1) isa ModalTrav
 
     @test exp.(a) == exp.(b)
     @test a + a == 2a == a+b
+
+    @test a .+ exp.(a .+ 1) == b .+ exp.(b .+ 1)
 
     for k = 1:6
         a[k] = k
     end
     @test a == 1:6
+
+    m = ModalTrav(reshape(1:10, 2, 5))
+    @test m[Block(3)] == [2,7,9]
+    @test m == [1,3,5,2,7,9]
+
+    @test copy(m) isa ModalTrav{Int,Matrix{Int}}
+    @test copy(m) == m
 end
 
 @testset "ModalInterlace" begin

@@ -70,8 +70,9 @@ getindex(A::ModalTrav, K::Block{1}) = _modaltravgetindex(A.matrix, K)
 _modaltravgetindex(mat, K) = _modaltravgetindex(MemoryLayout(mat), mat, K)
 function _modaltravgetindex(_, mat, K::Block{1})
     k = Int(K)
-    m = (k+1)÷2
-    _modaltravgetindex(Matrix(mat[1:m, 1:4m+1]), K)
+    m = k ÷ 2 + 1
+    n = 4(m-1) + 1
+    _modaltravgetindex(Matrix(mat[1:m, 1:n]), K)
 end
 
 function _modaltravgetindex(::AbstractStridedLayout, mat, K::Block{1})
