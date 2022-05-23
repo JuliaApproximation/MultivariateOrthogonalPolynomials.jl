@@ -1,5 +1,170 @@
 """
-ModalInterlace
+    ModalTrav(A::AbstractMatrix)
+
+    takes coefficients as provided by the Zernike polynomial layout of FastTransforms.jl and
+    makes them accessible sorted such that in each block the m=0 entries are always in first place,
+    followed by alternating sin and cos terms of increasing |m|.
+"""
+struct ModalTrav{T, AA<:AbstractMatrix{T}} <: AbstractBlockVector{T}
+    matrix::AA
+    function ModalTrav{T, AA}(matrix::AA) where {T,AA<:AbstractMatrix{T}}
+        m,n = size(matrix)
+        if isfinite(m)
+            isfinite(n) && isodd(n) && m == n ÷ 4 + 1 || throw(ArgumentError("size must match"))
+        end
+        new{T,AA}(matrix)
+    end
+end
+
+ModalTrav{T}(matrix::AbstractMatrix{T}) where T = ModalTrav{T,typeof(matrix)}(matrix)
+ModalTrav(matrix::AbstractMatrix{T}) where T = ModalTrav{T}(matrix)
+
+function ModalTrav{T}(::UndefInitializer, n::Int) where T
+    N =  (isqrt(8n+1)-1) ÷ 2
+    @assert sum(1:N) == n
+    m = N ÷ 2 + 1
+    n = 4(m-1) + 1
+    ModalTrav(Matrix{T}(undef, m, n))
+end
+
+convert(::Type{ModalTrav{T,M}}, v::ModalTrav) where {T,M} = ModalTrav{T,M}(convert(M, v.matrix))
+
+function convert(::Type{ModalTrav{T,M}}, v_in::AbstractVector) where {T,M}
+    N =  (isqrt(8length(v_in)+1)-1) ÷ 2
+    v = PseudoBlockVector(v_in, OneTo(N))
+    m = N ÷ 2 + 1
+    n = 4(m-1) + 1
+    mat = zeros(T, m, n)
+    for K in blockaxes(v,1)
+        K̃ = Int(K)
+        w = v[K]
+        if isodd(K̃)
+            mat[K̃÷2 + 1,1] = w[1]
+            for j = 2:2:K̃-1
+                mat[K̃÷2-j÷2+1,2(j-1)+2] = w[j]
+                mat[K̃÷2-j÷2+1,2(j-1)+3] = w[j+1]
+            end
+        else
+            for j = 1:2:K̃
+                mat[K̃÷2-j÷2,2(j-1)+2] = w[j]
+                mat[K̃÷2-j÷2,2(j-1)+3] = w[j+1]
+            end
+        end
+    end
+    ModalTrav{T,M}(mat)
+end
+
+ModalTrav{T,M}(v::AbstractVector) where {T,M} = convert(ModalTrav{T,M}, v)
+ModalTrav{T}(v::AbstractVector) where T = ModalTrav{T,Matrix{T}}(v)
+ModalTrav(v::AbstractVector{T}) where T = ModalTrav{T}(v)
+
+copy(A::ModalTrav) = ModalTrav(copy(A.matrix))
+
+_diviffinite(n) = div(n,2,RoundUp)
+_diviffinite(n::InfiniteCardinal) = n
+
+axes(A::ModalTrav) = (blockedrange(oneto(_diviffinite(size(A.matrix,2)))),)
+
+getindex(A::ModalTrav, K::Block{1}) = _modaltravgetindex(A.matrix, K)
+
+_modaltravgetindex(mat, K) = _modaltravgetindex(MemoryLayout(mat), mat, K)
+function _modaltravgetindex(_, mat, K::Block{1})
+    k = Int(K)
+    m = k ÷ 2 + 1
+    n = 4(m-1) + 1
+    _modaltravgetindex(Matrix(mat[1:m, 1:n]), K)
+end
+
+function _modaltravgetindex(::AbstractStridedLayout, mat, K::Block{1})
+    k = Int(K)
+    k == 1 && return mat[1:1]
+    k == 2 && return mat[1,2:3]
+    st = stride(mat,2)
+    if isodd(k)
+        # nonnegative terms
+        p = mat[range(k÷2+1, step=4*st-1, length=k÷2+1)]
+        # negative terms
+        n = mat[range(k÷2+3*st, step=4*st-1, length=k÷2)]
+        interlace(p,n)
+    else
+        # negative terms
+        n = mat[range(st+k÷2, step=4*st-1, length=k÷2)]
+        # positive terms
+        p = mat[range(2st+k÷2, step=4*st-1, length=k÷2)]
+        interlace(n,p)
+    end
+end
+
+getindex(A::ModalTrav, k::Int) = A[findblockindex(axes(A,1), k)]
+function setindex!(A::ModalTrav, v, k::Int)
+    Kk = findblockindex(axes(A,1), k)
+    K,j = block(Kk),blockindex(Kk)
+    K̃ = Int(K)
+    mat = A.matrix
+    if isodd(K̃)
+        if j == 1
+            mat[K̃÷2 + 1,1] = v
+        elseif iseven(j)
+            mat[K̃÷2-j÷2+1,2(j-1)+2] = v
+        else
+            mat[K̃÷2-(j-1)÷2+1,2(j-2)+3] = v
+        end
+    else
+        if iseven(j)
+            mat[K̃÷2-(j-1)÷2,2(j-2)+3] = v
+        else
+            mat[K̃÷2-j÷2,2(j-1)+2] = v
+        end
+    end
+    A
+end
+
+similar(A::ModalTrav, ::Type{T}) where T = ModalTrav(similar(A.matrix, T))
+function fill!(A::ModalTrav, x)
+    fill!(A.matrix, x)
+    A
+end
+
+struct ModalTravStyle <: AbstractBlockStyle{1} end
+
+ModalTravStyle(::Val{1}) = ModalTravStyle()
+
+BroadcastStyle(::Type{<:ModalTrav}) = ModalTravStyle()
+BroadcastStyle(a::ModalTravStyle, b::DefaultArrayStyle{0}) = ModalTravStyle()
+BroadcastStyle(a::DefaultArrayStyle{0}, b::ModalTravStyle) = ModalTravStyle()
+BroadcastStyle(a::ModalTravStyle, b::DefaultArrayStyle{M}) where {M} = BroadcastStyle(BlockStyle{1}(), b)
+BroadcastStyle(a::DefaultArrayStyle{M}, b::ModalTravStyle) where {M} = BroadcastStyle(a, BlockStyle{1}())
+
+function similar(bc::Broadcasted{ModalTravStyle}, ::Type{T}) where T
+    N = blocklength(axes(bc,1))
+    n = 2N-1
+    m = n ÷ 4 + 1
+    ModalTrav(Matrix{T}(undef,m,n))
+end
+
+_modal2matrix(a::ModalTrav) = a.matrix
+_modal2matrix(a::Broadcasted) = broadcasted(a.f, map(_modal2matrix, a.args)...)
+_modal2matrix(a) = a
+
+function copyto!(dest::ModalTrav, bc::Broadcasted{ModalTravStyle})
+    broadcast!(bc.f, dest.matrix, map(_modal2matrix, bc.args)...)
+    dest
+end
+
+function resize!(a::ModalTrav, N::Block{1})
+    n = 2Int(N)-1
+    m = n ÷ 4 + 1
+    ModalTrav(a.matrix[1:m,1:n])
+end
+
+
+"""
+    ModalInterlace(ops, (M,N), (l,u))
+
+interlaces the entries of a vector of banded matrices
+acting on the different Fourier modes. That is, a ModalInterlace
+multiplying a DiagTrav is the same as the operators multiplying the matrix
+that the DiagTrav wraps. We assume the same operator acts on the Sin and Cos.
 """
 struct ModalInterlace{T, MMNN<:Tuple} <: AbstractBandedBlockBandedMatrix{T}
     ops
@@ -8,7 +173,7 @@ struct ModalInterlace{T, MMNN<:Tuple} <: AbstractBandedBlockBandedMatrix{T}
 end
 
 ModalInterlace{T}(ops, MN::NTuple{2,Integer}, bandwidths::NTuple{2,Int}) where T = ModalInterlace{T,typeof(MN)}(ops, MN, bandwidths)
-ModalInterlace(ops::AbstractVector{<:AbstractMatrix{T}}, MN::NTuple{2,Integer}, bandwidths::NTuple{2,Int}) where T = ModalInterlace{T}(ops, MN, bandwidths)
+ModalInterlace(ops::AbstractVector{<:AbstractMatrix}, MN::NTuple{2,Integer}, bandwidths::NTuple{2,Int}) = ModalInterlace{eltype(eltype(ops))}(ops, MN, bandwidths)
 
 axes(Z::ModalInterlace) = blockedrange.(oneto.(Z.MN))
 
@@ -52,8 +217,36 @@ function sub_materialize(::ModalInterlaceLayout, V::AbstractMatrix{T}) where T
     KR,JR = kr.block,jr.block
     M,N = Int(last(KR)), Int(last(JR))
     R = parent(V)
-    ModalInterlace{T}([R.ops[m][1:(M-m+2)÷2,1:(N-m+2)÷2] for m=1:min(N,M)], (M,N), R.bandwidths)
+    ModalInterlace{T}([layout_getindex(R.ops[m],1:(M-m+2)÷2,1:(N-m+2)÷2) for m=1:min(N,M)], (M,N), R.bandwidths)
 end
 
 # act like lazy array
-Base.BroadcastStyle(::Type{<:ModalInterlace{<:Any,NTuple{2,InfiniteCardinal{0}}}}) = LazyArrayStyle{2}()
+BroadcastStyle(::Type{<:ModalInterlace{<:Any,NTuple{2,InfiniteCardinal{0}}}}) = LazyArrayStyle{2}()
+
+# TODO: overload muladd!
+function *(A::ModalInterlace, b::ModalTrav)
+    M = b.matrix
+    ret = ModalTrav{promote_type(eltype(A), eltype(b))}(undef, size(A,1)).matrix
+    mul!(view(ret,:,1), A.ops[1], M[:,1])
+    for j = 1:size(ret,2)÷4
+        mul!(@view(ret[1:end-j,4j-2]), A.ops[2j], @view(M[1:end-j,4j-2]))
+        mul!(@view(ret[1:end-j,4j-1]), A.ops[2j], @view(M[1:end-j,4j-1]))
+        mul!(@view(ret[1:end-j,4j]), A.ops[2j+1], @view(M[1:end-j,4j]))
+        mul!(@view(ret[1:end-j,4j+1]), A.ops[2j+1], @view(M[1:end-j,4j+1]))
+    end
+    ModalTrav(ret)
+end
+
+
+function \(A::ModalInterlace, b::ModalTrav)
+    M = b.matrix
+    ret = similar(M, promote_type(eltype(A),eltype(b)))
+    ldiv!(view(ret,:,1), A.ops[1], M[:,1])
+    for j = 1:size(M,2)÷4
+        ldiv!(@view(ret[1:end-j,4j-2]), A.ops[2j], @view(M[1:end-j,4j-2]))
+        ldiv!(@view(ret[1:end-j,4j-1]), A.ops[2j], @view(M[1:end-j,4j-1]))
+        ldiv!(@view(ret[1:end-j,4j]), A.ops[2j+1], @view(M[1:end-j,4j]))
+        ldiv!(@view(ret[1:end-j,4j+1]), A.ops[2j+1], @view(M[1:end-j,4j+1]))
+    end
+    ModalTrav(ret)
+end
