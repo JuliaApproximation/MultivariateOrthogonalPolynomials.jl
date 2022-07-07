@@ -30,3 +30,9 @@ end
     U,M = (Derivative(axes(B,1))*B).args
     RectPolynomial(A,U) * KronTrav(Eye{eltype(M)}(∞), M)
 end
+
+function \(P::RectPolynomial, Q::RectPolynomial)
+    PA,PB = P.args
+    QA,QB = Q.args
+    KronTrav(PA\QA, PB\QB)
+end
