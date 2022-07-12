@@ -9,7 +9,7 @@ KronPolynomial(a::Vararg{Any,d}) where d = KronPolynomial{d}(a...)
 const RectPolynomial{T, PP} = KronPolynomial{2, T, PP}
 
 
-axes(P::KronPolynomial) = (Inclusion(×(map(domain, axes.(P.args, 1))...)), _krontrav_axes(tuple.(axes.(P.args, 2))...)...)
+axes(P::KronPolynomial) = (Inclusion(×(map(domain, axes.(P.args, 1))...)), _krontrav_axes(axes.(P.args, 2)...))
 function getindex(P::RectPolynomial{T}, xy::StaticVector{2}, Jj::BlockIndex{1})::T where T
     a,b = P.args
     J,j = Int(block(Jj)),blockindex(Jj)
@@ -22,13 +22,14 @@ getindex(P::RectPolynomial, xy::StaticVector{2}, JR::BlockOneTo) = mortar([P[xy,
 @simplify function *(Dx::PartialDerivative{1}, P::RectPolynomial)
     A,B = P.args
     U,M = (Derivative(axes(A,1))*A).args
-    RectPolynomial(U,B) * KronTrav(M, Eye{eltype(M)}(∞))
+    # We want I ⊗ D² as A ⊗ B means B * X * A'
+    RectPolynomial(U,B) * KronTrav(Eye{eltype(M)}(∞), M)
 end
 
 @simplify function *(Dx::PartialDerivative{2}, P::RectPolynomial)
     A,B = P.args
     U,M = (Derivative(axes(B,1))*B).args
-    RectPolynomial(A,U) * KronTrav(Eye{eltype(M)}(∞), M)
+    RectPolynomial(A,U) * KronTrav(M, Eye{eltype(M)}(∞))
 end
 
 function \(P::RectPolynomial, Q::RectPolynomial)
