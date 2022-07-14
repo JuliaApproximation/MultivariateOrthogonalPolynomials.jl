@@ -11,7 +11,7 @@ using MultivariateOrthogonalPolynomials, ClassicalOrthogonalPolynomials, StaticA
         @test T²[xy, Block(3)] ≈ [cos(2*acos(0.1)), 0.1*0.2, cos(2*acos(0.2))]
 
         U = ChebyshevU()
-        V = RectPolynomial(T, U)
+        V = KronPolynomial(T, U)
         @test V[xy, Block(1)[1]] == V[xy, 1]
         @test V[xy, Block(1)] == V[xy, Block.(1:1)]
         @test V[xy, Block(2)] == [0.1,2*0.2]
