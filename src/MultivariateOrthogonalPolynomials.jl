@@ -10,7 +10,7 @@ import Base: axes, in, ==, *, ^, \, copy, copyto!, OneTo, getindex, size, oneto,
 import Base.Broadcast: Broadcasted, broadcasted, DefaultArrayStyle
 import DomainSets: boundary
 
-import QuasiArrays: LazyQuasiMatrix, LazyQuasiArrayStyle
+import QuasiArrays: LazyQuasiMatrix, LazyQuasiArrayStyle, domain
 import ContinuumArrays: @simplify, Weight, weight, grid, plotgrid, TransformFactorization, ExpansionLayout, plotvalues, unweighted
 
 import ArrayLayouts: MemoryLayout, sublayout, sub_materialize
@@ -18,7 +18,7 @@ import BlockArrays: block, blockindex, BlockSlice, viewblock, blockcolsupport, A
 import BlockBandedMatrices: _BandedBlockBandedMatrix, AbstractBandedBlockBandedMatrix, _BandedMatrix, blockbandwidths, subblockbandwidths
 import LinearAlgebra: factorize
 import LazyArrays: arguments, paddeddata, LazyArrayStyle, LazyLayout
-import LazyBandedMatrices: LazyBandedBlockBandedLayout, AbstractBandedBlockBandedLayout, AbstractLazyBandedBlockBandedLayout
+import LazyBandedMatrices: LazyBandedBlockBandedLayout, AbstractBandedBlockBandedLayout, AbstractLazyBandedBlockBandedLayout, _krontrav_axes
 import InfiniteArrays: InfiniteCardinal
 
 import ClassicalOrthogonalPolynomials: jacobimatrix, Weighted, orthogonalityweight, HalfWeighted, WeightedBasis
@@ -31,9 +31,10 @@ export MultivariateOrthogonalPolynomial, BivariateOrthogonalPolynomial,
        DunklXuDisk, DunklXuDiskWeight, WeightedDunklXuDisk,
        Zernike, ZernikeWeight, zerniker, zernikez,
        PartialDerivative, Laplacian, AbsLaplacianPower, AngularMomentum,
-       RadialCoordinate, Weighted, Block, jacobimatrix
+       RadialCoordinate, Weighted, Block, jacobimatrix, KronPolynomial, RectPolynomial
 
 include("ModalInterlace.jl")
+include("rect.jl")
 include("disk.jl")
 include("rectdisk.jl")
 include("triangle.jl")

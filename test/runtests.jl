@@ -1,5 +1,7 @@
 using MultivariateOrthogonalPolynomials, Test
 
+
+include("test_rect.jl")
 include("test_modalinterlace.jl")
 include("test_disk.jl")
 include("test_rectdisk.jl")
