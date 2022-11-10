@@ -1,4 +1,4 @@
-using MultivariateOrthogonalPolynomials, ClassicalOrthogonalPolynomials, StaticArrays, LinearAlgebra, Test
+using MultivariateOrthogonalPolynomials, ClassicalOrthogonalPolynomials, StaticArrays, LinearAlgebra, BlockArrays, FillArrays, Test
 
 @testset "RectPolynomial" begin
     @testset "Evaluation" begin
@@ -16,6 +16,16 @@ using MultivariateOrthogonalPolynomials, ClassicalOrthogonalPolynomials, StaticA
         @test V[xy, Block(1)] == V[xy, Block.(1:1)]
         @test V[xy, Block(2)] == [0.1,2*0.2]
         @test V[xy, Block(3)] ≈ [cos(2*acos(0.1)), 2*0.1*0.2, sin(3*acos(0.2))/sin(acos(0.2))]
+    end
+
+    @testset "Transform" begin
+        T = ChebyshevT()
+        T² = RectPolynomial(Fill(T, 2))
+        T²ₙ = T²[:,Block.(Base.OneTo(5))]
+        xy = axes(T²ₙ,1)
+        x,y = first.(xy),last.(xy)
+        T²ₙ \ one.(x)
+        T² \ x
     end
 
     @testset "Conversion" begin
