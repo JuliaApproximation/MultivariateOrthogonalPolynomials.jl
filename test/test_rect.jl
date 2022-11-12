@@ -24,7 +24,7 @@ using MultivariateOrthogonalPolynomials, ClassicalOrthogonalPolynomials, StaticA
         T²ₙ = T²[:,Block.(Base.OneTo(5))]
         xy = axes(T²ₙ,1)
         x,y = first.(xy),last.(xy)
-        T²ₙ \ one.(x)
+        @test T²ₙ \ one.(x) == [1; zeros(14)]
         T² \ x
     end
 

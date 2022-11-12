@@ -67,3 +67,5 @@ function plan_grid_transform(P::KronPolynomial{d,<:Any,<:Fill}, B, dims=1:ndims(
     @assert d == 2
     SVector.(x, x'), ApplyPlan(DiagTrav, F)
 end
+
+pad(C::DiagTrav, ::BlockedUnitRange{RangeCumsum{Int,OneToInf{Int}}}) = DiagTrav(pad(C.array, ∞, ∞))
