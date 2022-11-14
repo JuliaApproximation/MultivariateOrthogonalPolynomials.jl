@@ -1,4 +1,5 @@
 using MultivariateOrthogonalPolynomials, ClassicalOrthogonalPolynomials, StaticArrays, LinearAlgebra, BlockArrays, FillArrays, Test
+import ClassicalOrthogonalPolynomials: expand
 
 @testset "RectPolynomial" begin
     @testset "Evaluation" begin
@@ -22,10 +23,20 @@ using MultivariateOrthogonalPolynomials, ClassicalOrthogonalPolynomials, StaticA
         T = ChebyshevT()
         T² = RectPolynomial(Fill(T, 2))
         T²ₙ = T²[:,Block.(Base.OneTo(5))]
-        xy = axes(T²ₙ,1)
-        x,y = first.(xy),last.(xy)
+        𝐱 = axes(T²ₙ,1)
+        x,y = first.(𝐱),last.(𝐱)
         @test T²ₙ \ one.(x) == [1; zeros(14)]
         T² \ x
+        f = expand(T², 𝐱 -> ((x,y) = 𝐱; exp(x*cos(y-0.1))))
+        @test f[SVector(0.1,0.2)] ≈ exp(0.1*cos(0.1))
+        
+        U = ChebyshevU()
+        U² = RectPolynomial(Fill(U, 2))
+
+        a,b = f.args
+        f[SVector(0.1,0.2)]
+
+        a,b = T² , (T² \ broadcast(xy -> ((x,y) = xy; exp(x*cos(y))), xy))
     end
 
     @testset "Conversion" begin
