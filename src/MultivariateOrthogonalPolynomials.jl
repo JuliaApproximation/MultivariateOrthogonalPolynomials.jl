@@ -17,13 +17,14 @@ import ArrayLayouts: MemoryLayout, sublayout, sub_materialize
 import BlockArrays: block, blockindex, BlockSlice, viewblock, blockcolsupport, AbstractBlockStyle, BlockStyle
 import BlockBandedMatrices: _BandedBlockBandedMatrix, AbstractBandedBlockBandedMatrix, _BandedMatrix, blockbandwidths, subblockbandwidths
 import LinearAlgebra: factorize
-import LazyArrays: arguments, paddeddata, LazyArrayStyle, LazyLayout
-import LazyBandedMatrices: LazyBandedBlockBandedLayout, AbstractBandedBlockBandedLayout, AbstractLazyBandedBlockBandedLayout, _krontrav_axes
+import LazyArrays: arguments, paddeddata, LazyArrayStyle, LazyLayout, PaddedLayout
+import LazyBandedMatrices: LazyBandedBlockBandedLayout, AbstractBandedBlockBandedLayout, AbstractLazyBandedBlockBandedLayout, _krontrav_axes, DiagTravLayout
 import InfiniteArrays: InfiniteCardinal, OneToInf
 
-import ClassicalOrthogonalPolynomials: jacobimatrix, Weighted, orthogonalityweight, HalfWeighted, WeightedBasis, pad
+import ClassicalOrthogonalPolynomials: jacobimatrix, Weighted, orthogonalityweight, HalfWeighted, WeightedBasis, pad, recurrencecoefficients, clenshaw
 import HarmonicOrthogonalPolynomials: BivariateOrthogonalPolynomial, MultivariateOrthogonalPolynomial, Plan,
-                                          PartialDerivative, AngularMomentum, BlockOneTo, BlockRange1, interlace
+                                          PartialDerivative, AngularMomentum, BlockOneTo, BlockRange1, interlace,
+                                          MultivariateOPLayout
 
 export MultivariateOrthogonalPolynomial, BivariateOrthogonalPolynomial,
        UnitTriangle, UnitDisk,

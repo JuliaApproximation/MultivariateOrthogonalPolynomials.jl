@@ -65,7 +65,22 @@ function plan_grid_transform(P::KronPolynomial{d,<:Any,<:Fill}, B, dims=1:ndims(
     T = first(P.args)
     x, F = plan_grid_transform(T, Array{eltype(B)}(undef, Fill(blocksize(B,1),d)...))
     @assert d == 2
-    SVector.(x, x'), ApplyPlan(DiagTrav, F)
+    x̃ = Vector(x)
+    SVector.(x̃, x̃'), ApplyPlan(DiagTrav, F)
 end
 
 pad(C::DiagTrav, ::BlockedUnitRange{RangeCumsum{Int,OneToInf{Int}}}) = DiagTrav(pad(C.array, ∞, ∞))
+
+QuasiArrays.mul(A::BivariateOrthogonalPolynomial, b::DiagTrav) = ApplyQuasiArray(*, A, b)
+
+function Base.unsafe_getindex(f::Mul{MultivariateOPLayout{2},<:DiagTravLayout{<:PaddedLayout}}, 𝐱::SVector)
+    P,c = f.A, f.B
+    A,B = P.args
+    x,y = 𝐱
+    clenshaw(clenshaw(paddeddata(c.array), recurrencecoefficients(A)..., x), recurrencecoefficients(B)..., y)
+end
+
+Base.@propagate_inbounds function getindex(f::Mul{MultivariateOPLayout{2},<:DiagTravLayout{<:PaddedLayout}}, x::SVector, j...)
+    @inbounds checkbounds(ApplyQuasiArray(*,f.A,f.B), x, j...)
+    Base.unsafe_getindex(f, x, j...)
+end
