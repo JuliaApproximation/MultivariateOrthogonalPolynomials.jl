@@ -570,9 +570,8 @@ getindex(P::JacobiTriangle, xy::SVector{2}, JR::BlockOneTo) =
 ###
 
 function getindex(f::ApplyQuasiVector{T,typeof(*),<:Tuple{JacobiTriangle,AbstractVector}}, xy::SVector{2})::T where T
-    P,c∞ = arguments(f)
-    c = paddeddata(c∞)
-    N = blocksize(c,1)
+    P,c = arguments(f)
+    N = Int(last(blockcolsupport(c,1)))
 
     N == 1 && return c[1]
     X = jacobimatrix(Val(1), P)
@@ -596,7 +595,7 @@ function getindex(f::ApplyQuasiVector{T,typeof(*),<:Tuple{JacobiTriangle,Abstrac
         # this also resizes γ2
         lmul!(C', γ2)
         # Need to swap sign since it should have been -C
-        γ2 .= (-).(γ2) .+ view(c,Block(n))
+        γ2 .= (-).(γ2) .+ c[Block(n)]
         γ2,γ1 = γ1,γ2
         muladd!(one(T), B', γ2, one(T), γ1)
         xy_muladd!(xy, A', γ2, one(T), γ1)
@@ -652,7 +651,7 @@ function grid(Pn::SubQuasiArray{T,2,<:JacobiTriangle,<:Tuple{Inclusion,BlockSlic
     trigrid(maximum(jr.block))
 end
 
-struct TriTransform{T}
+struct TriPlan{T}
     tri2cheb::FastTransforms.FTPlan{T,2,FastTransforms.TRIANGLE}
     grid2cheb::FastTransforms.FTPlan{T,2,FastTransforms.TRIANGLEANALYSIS}
     a::T
@@ -660,16 +659,15 @@ struct TriTransform{T}
     c::T
 end
 
-TriTransform{T}(F::AbstractMatrix{T}, a, b, c) where T =
-    TriTransform{T}(plan_tri2cheb(F, a, b, c), plan_tri_analysis(F), a, b, c)
+TriPlan{T}(F::AbstractMatrix{T}, a, b, c) where T =
+    TriPlan{T}(plan_tri2cheb(F, a, b, c), plan_tri_analysis(F), a, b, c)
 
-TriTransform{T}(N::Block{1}, a, b, c) where T = TriTransform{T}(Matrix{T}(undef, Int(N), Int(N)), a, b, c)
+TriPlan{T}(N::Block{1}, a, b, c) where T = TriPlan{T}(Matrix{T}(undef, Int(N), Int(N)), a, b, c)
 
-*(T::TriTransform, F::AbstractMatrix) = DiagTrav(tridenormalize!(T.tri2cheb\(T.grid2cheb*F),T.a,T.b,T.c))
+*(T::TriPlan, F::AbstractMatrix) = DiagTrav(tridenormalize!(T.tri2cheb\(T.grid2cheb*F),T.a,T.b,T.c))
 
-function factorize(V::SubQuasiArray{T,2,<:JacobiTriangle,<:Tuple{Inclusion,BlockSlice{BlockOneTo}}}) where T
-    P = parent(V)
-    _,jr = parentindices(V)
-    N = maximum(jr.block)
-    TransformFactorization(grid(V), TriTransform{T}(N, P.a, P.b, P.c))
+function plan_grid_transform(P::JacobiTriangle, arr::AbstractVector, dims=1:ndims(arr))
+    T = promote_type(eltype(P), eltype(arr))
+    N = findblock(axes(P,2), length(arr))
+    grid(P[:,Block.(OneTo(Int(N)))]), TriPlan{T}(N, P.a, P.b, P.c)
 end

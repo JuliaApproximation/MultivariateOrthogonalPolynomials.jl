@@ -7,9 +7,9 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
         P = JacobiTriangle()
         @test copy(P) ≡ P
 
-        xy = axes(P,1)
-        x,y = first.(xy),last.(xy)
-        @test xy[SVector(0.1,0.2)] == SVector(0.1,0.2)
+        𝐱 = axes(P,1)
+        x,y = first.(𝐱),last.(𝐱)
+        @test 𝐱[SVector(0.1,0.2)] == SVector(0.1,0.2)
         @test x[SVector(0.1,0.2)] == 0.1
         @test y[SVector(0.1,0.2)] == 0.2
     end
@@ -17,31 +17,31 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
 
     @testset "evaluation" begin
         @testset "versus explicit" begin
-            x,y = xy = SVector(0.1,0.2)
+            x,y = 𝐱 = SVector(0.1,0.2)
             for (a,b,c) in ((0,0,0), (1,0,0), (0,1,0), (0,0,1), (0.1,0.2,0.3))
                 P = JacobiTriangle(a,b,c)
 
                 for n = 0:5, k=0:n
-                    @test P[xy,Block(n+1)[k+1]] ≈ p(n,k,a,b,c,x,y) atol=1E-13
+                    @test P[𝐱,Block(n+1)[k+1]] ≈ p(n,k,a,b,c,x,y) atol=1E-13
                 end
             end
         end
 
         @testset "forwardrecurrnce" begin
             P = JacobiTriangle()
-            xy = SVector(0.1,0.2)
-            P_N = P[xy, Block.(Base.OneTo(10))]
-            @test P_N == P[xy,Block.(1:10)]
+            𝐱 = SVector(0.1,0.2)
+            P_N = P[𝐱, Block.(Base.OneTo(10))]
+            @test P_N == P[𝐱,Block.(1:10)]
             for N = 1:10
-                @test P[xy, Block(N)] ≈ P_N[Block(N)] ≈ p.(N-1, 0:N-1, 0,0,0, xy...)
+                @test P[𝐱, Block(N)] ≈ P_N[Block(N)] ≈ p.(N-1, 0:N-1, 0,0,0, 𝐱...)
                 for j=1:N
-                    P[xy,Block(N)[j]] ≈ p(N-1,j-1,0,0,0,xy...)
+                    P[𝐱,Block(N)[j]] ≈ p(N-1,j-1,0,0,0,𝐱...)
                 end
             end
-            @test P[xy,1] == 1
-            @test P[xy,2] ≈ p(1,0,0,0,0,xy...)
-            @test P[xy,3] ≈ p(1,1,0,0,0,xy...)
-            @test P[xy,4] ≈ p(2,0,0,0,0,xy...)
+            @test P[𝐱,1] == 1
+            @test P[𝐱,2] ≈ p(1,0,0,0,0,𝐱...)
+            @test P[𝐱,3] ≈ p(1,1,0,0,0,𝐱...)
+            @test P[𝐱,4] ≈ p(2,0,0,0,0,𝐱...)
 
             @test P[[SVector(0.1,0.2),SVector(0.2,0.3)],1] ≈ [1,1]
             @test P[[SVector(0.1,0.2),SVector(0.2,0.3)],Block(2)] ≈ [P[SVector(0.1,0.2),2] P[SVector(0.1,0.2),3];
@@ -49,36 +49,36 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
         end
         @testset "function" begin
             P = JacobiTriangle()
-            xy = SVector(0.1,0.2)
+            𝐱 = SVector(0.1,0.2)
             c = PseudoBlockVector([1; Zeros(∞)], (axes(P,2),))
             f = P*c
-            @test @inferred(f[xy]) == 1.0
+            @test @inferred(f[𝐱]) == 1.0
             c = PseudoBlockVector([1:3; Zeros(∞)], (axes(P,2),))
             f = P*c
-            @test f[xy] ≈ P[xy,1:3]'*(1:3)
+            @test f[𝐱] ≈ P[𝐱,1:3]'*(1:3)
             c = PseudoBlockVector([1:6; Zeros(∞)], (axes(P,2),))
             f = P*c
-            @test f[xy] ≈ P[xy,1:6]'*(1:6)
+            @test f[𝐱] ≈ P[𝐱,1:6]'*(1:6)
 
             c = PseudoBlockVector([randn(5050); Zeros(∞)], (axes(P,2),))
             f = P*c
-            @test f[xy] ≈ P[xy,1:5050]'*c[1:5050]
+            @test f[𝐱] ≈ P[𝐱,1:5050]'*c[1:5050]
 
             c = PseudoBlockVector([1:10; zeros(∞)], (axes(P,2),))
             f = P*c
-            xy = SVector(0.1,0.2)
-            @test f[xy] ≈ dot(P[xy,1:10],1:10)
-            @test f[[xy, xy.+0.1]] ≈ [f[xy], f[xy.+0.1]]
-            @test f[permutedims([xy, xy.+0.1])] ≈ [f[xy] f[xy.+0.1]]
+            𝐱 = SVector(0.1,0.2)
+            @test f[𝐱] ≈ dot(P[𝐱,1:10],1:10)
+            @test f[[𝐱, 𝐱.+0.1]] ≈ [f[𝐱], f[𝐱.+0.1]]
+            @test f[permutedims([𝐱, 𝐱.+0.1])] ≈ [f[𝐱] f[𝐱.+0.1]]
 
             @testset "block structure missing" begin
                 f = P * [1:5; zeros(∞)]
                 @test f.args[2][Block(2)] == 2:3
-                @test f[xy] ≈ P[xy,1:5]'*(1:5)
+                @test f[𝐱] ≈ P[𝐱,1:5]'*(1:5)
 
                 f = P * [1:5; Zeros(∞)]
                 @test f.args[2][Block(2)] == 2:3
-                @test f[xy] ≈ P[xy,1:5]'*(1:5)
+                @test f[𝐱] ≈ P[𝐱,1:5]'*(1:5)
             end
         end
     end
@@ -110,8 +110,8 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
 
         @testset "expansions" begin
             P = JacobiTriangle()
-            xy = axes(P,1)
-            x,y = first.(xy),last.(xy)
+            𝐱 = axes(P,1)
+            x,y = first.(𝐱),last.(𝐱)
             N = 20
             P_N = P[:,Block.(Base.OneTo(N))]
             u = P_N * (P_N \ (exp.(x) .* cos.(y)))
@@ -128,10 +128,10 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
 
     @testset "operators" begin
         P = JacobiTriangle()
-        xy = axes(P,1)
+        𝐱 = axes(P,1)
 
-        ∂ˣ = PartialDerivative{1}(xy)
-        ∂ʸ = PartialDerivative{2}(xy)
+        ∂ˣ = PartialDerivative{1}(𝐱)
+        ∂ʸ = PartialDerivative{2}(𝐱)
 
         @test eltype(∂ˣ) == eltype(∂ʸ) == Float64
 
@@ -198,8 +198,8 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
 
         @testset "jacobi" begin
             P = JacobiTriangle()
-            xy = axes(P,1)
-            x,y = first.(xy),last.(xy)
+            𝐱 = axes(P,1)
+            x,y = first.(𝐱),last.(𝐱)
             X = P \ (x .* P)
             Y = P \ (y .* P)
 
@@ -365,8 +365,8 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
 
             @testset "other parameters" begin
                 P = JacobiTriangle(1,0,0)
-                xy = axes(P,1)
-                x,y = first.(xy),last.(xy)
+                𝐱 = axes(P,1)
+                x,y = first.(𝐱),last.(𝐱)
                 X = P \ (x .* P)
                 Y = P \ (y .* P)
 
@@ -386,16 +386,16 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
             R = Q \ P
             L = P \ Weighted(Q)
 
-            xy = SVector(0.1,0.2)
-            @test P[xy,1:10]' ≈ Q[xy,1:10]' * R[1:10,1:10]
-            @test Weighted(Q)[xy,1:10]' ≈ P[xy,1:50]'*L[1:50,1:10]
+            𝐱 = SVector(0.1,0.2)
+            @test P[𝐱,1:10]' ≈ Q[𝐱,1:10]' * R[1:10,1:10]
+            @test Weighted(Q)[𝐱,1:10]' ≈ P[𝐱,1:50]'*L[1:50,1:10]
 
             Q = JacobiTriangle(0,0,2)
             R = Q \ P
             L = P \ Weighted(Q)
-            xy = SVector(0.1,0.2)
-            @test P[xy,1:10]' ≈ Q[xy,1:10]' * R[1:10,1:10]
-            @test Weighted(Q)[xy,1:10]' ≈ P[xy,1:50]'*L[1:50,1:10]
+            𝐱 = SVector(0.1,0.2)
+            @test P[𝐱,1:10]' ≈ Q[𝐱,1:10]' * R[1:10,1:10]
+            @test Weighted(Q)[𝐱,1:10]' ≈ P[𝐱,1:50]'*L[1:50,1:10]
         end
 
         @testset "WeightedBasis" begin
@@ -439,10 +439,10 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
     @testset "AngularMomentum" begin
         P = JacobiTriangle()
         P¹ = JacobiTriangle(1,1,1)
-        xy = axes(P,1)
-        x,y = first.(xy),last.(xy)
-        ∂ˣ = PartialDerivative{1}(xy)
-        ∂ʸ = PartialDerivative{2}(xy)
+        𝐱 = axes(P,1)
+        x,y = first.(𝐱),last.(𝐱)
+        ∂ˣ = PartialDerivative{1}(𝐱)
+        ∂ʸ = PartialDerivative{2}(𝐱)
         L1 = x .* ∂ʸ
         L2 = y .* ∂ˣ
         L = x .* ∂ʸ - y .* ∂ˣ
