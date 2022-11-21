@@ -336,3 +336,14 @@ function \(A::Zernike{T}, wB::Weighted{V,Zernike{V}}) where {T,V}
     @assert iszero(B.a)
     ModalInterlace{TV}((Normalized.(Jacobi{TV}.(A.b, A.a:∞)) .\ HalfWeighted{:a}.(Normalized.(Jacobi{TV}.(B.b, B.a:∞)))) .* convert(TV, 2)^(-c/2), (ℵ₀,ℵ₀), (2Int(B.b), 2Int(A.a+A.b)))
 end
+
+
+###
+# sum
+###
+
+function Base._sum(P::Zernike{T}, dims) where T
+    @assert dims == 1
+    @assert P.a == P.b == 0
+    Hcat(sqrt(convert(T, π)), Zeros{T}(1,∞))
+end
