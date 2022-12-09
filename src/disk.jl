@@ -191,11 +191,9 @@ end
 # Transforms
 ###
 
-const FiniteZernike{T} = SubQuasiArray{T,2,Zernike{T},<:Tuple{<:Inclusion,<:BlockSlice{BlockRange1{OneTo{Int}}}}}
-
-function grid(S::FiniteZernike{T}) where T
-    N = blocksize(S,2) ÷ 2 + 1 # polynomial degree
-    M = 4N-3
+function grid(S::Zernike{T}, B::Block{1}) where T
+    N = Int(B) ÷ 2 + 1 # matrix rows
+    M = 4N-3 # matrix columns
 
     r = sinpi.((N .-(0:N-1) .- one(T)/2) ./ (2N))
 
@@ -206,26 +204,19 @@ end
 
 _angle(rθ::RadialCoordinate) = rθ.θ
 
-function plotgrid(S::FiniteZernike{T}) where T
-    N = blocksize(S,2) ÷ 2 + 1 # polynomial degree
-    g = grid(parent(S)[:,Block.(OneTo(2N))]) # double sampling
+function plotgrid(S::Zernike{T}, B::Block{1}) where T
+    N = Int(B) ÷ 2 + 1 # polynomial degree
+    g = grid(S, min(2N, MAX_PLOT_BLOCKS_2D)) # double sampling
     θ = [map(_angle,g[1,:]); 0]
     [permutedims(RadialCoordinate.(1,θ)); g g[:,1]; permutedims(RadialCoordinate.(0,θ))]
 end
-
-function plotgrid(S::SubQuasiArray{<:Any,2,<:Zernike})
-    kr,jr = parentindices(S)
-    Z = parent(S)
-    plotgrid(Z[kr,Block.(OneTo(Int(findblock(axes(Z,2),maximum(jr)))))])
-end
-
 
 function plotvalues(u::ApplyQuasiVector{T,typeof(*),<:Tuple{Zernike, AbstractVector}}, x) where T
     Z,c = u.args
     CS = blockcolsupport(c)
     N = Int(last(CS)) ÷ 2 + 1 # polynomial degree
-    F = ZernikeITransform{T}(2N, Z.a, Z.b)
-    C = F * c[Block.(OneTo(2N))] # transform to grid
+    F = ZernikeITransform{T}(min(2N, MAX_PLOT_BLOCKS_2D), Z.a, Z.b)
+    C = F * c[Block.(OneTo(min(2N, MAX_PLOT_BLOCKS_2D)))] # transform to grid
     [permutedims(u[x[1,:]]); # evaluate on edge of disk
      C C[:,1];
      fill(u[x[end,1]], 1, size(x,2))] # evaluate at origin and repeat
