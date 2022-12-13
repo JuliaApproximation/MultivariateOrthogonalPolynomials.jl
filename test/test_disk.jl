@@ -309,7 +309,7 @@ import ForwardDiff: hessian
     @testset "plotting" begin
         Z = Zernike()
         u = Z * [1; 2; zeros(∞)];
-        rep = RecipesBase.apply_recipe(Dict{Symbol, Any}(), u)
+        rep = RecipesBase.apply_recipe(Dict{Symbol, Any}(), u);
         g = MultivariateOrthogonalPolynomials.plotgrid(Z[:,1:3])
         @test all(rep[1].args .≈ (first.(g),last.(g),u[g]))
 

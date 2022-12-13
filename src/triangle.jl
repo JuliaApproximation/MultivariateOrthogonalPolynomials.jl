@@ -637,19 +637,13 @@ function tridenormalize!(F̌,a,b,c)
     F̌
 end
 
-function _trigrid(N::Integer)
+function trigrid(N::Integer)
     M = N
     x = [sinpi((2N-2n-1)/(4N))^2 for n in 0:N-1]
     w = [sinpi((2M-2m-1)/(4M))^2 for m in 0:M-1]
     [SVector(x[n+1], x[N-n]*w[m+1]) for n in 0:N-1, m in 0:M-1]
-end
-trigrid(N::Block{1}) = _trigrid(Int(N))
-
-
-function grid(Pn::SubQuasiArray{T,2,<:JacobiTriangle,<:Tuple{Inclusion,BlockSlice{<:BlockRange{1}}}}) where T
-    kr,jr = parentindices(Pn)
-    trigrid(maximum(jr.block))
-end
+end 
+grid(P::JacobiTriangle, B::Block{1}) = trigrid(Int(B))
 
 struct TriPlan{T}
     tri2cheb::FastTransforms.FTPlan{T,2,FastTransforms.TRIANGLE}
@@ -666,8 +660,8 @@ TriPlan{T}(N::Block{1}, a, b, c) where T = TriPlan{T}(Matrix{T}(undef, Int(N), I
 
 *(T::TriPlan, F::AbstractMatrix) = DiagTrav(tridenormalize!(T.tri2cheb\(T.grid2cheb*F),T.a,T.b,T.c))
 
-function plan_grid_transform(P::JacobiTriangle, arr::AbstractVector, dims=1:ndims(arr))
-    T = promote_type(eltype(P), eltype(arr))
-    N = findblock(axes(P,2), length(arr))
-    grid(P[:,Block.(OneTo(Int(N)))]), TriPlan{T}(N, P.a, P.b, P.c)
+function plan_grid_transform(P::JacobiTriangle, Bs::Tuple{Block{1}}, dims=1:1)
+    T = eltype(P)
+    N = Bs[1]
+    grid(P, N), TriPlan{T}(N, P.a, P.b, P.c)
 end
