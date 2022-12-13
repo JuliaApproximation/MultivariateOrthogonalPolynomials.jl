@@ -59,11 +59,11 @@ function checkpoints(P::RectPolynomial)
     SVector.(x, y')
 end
 
-function plan_grid_transform(P::KronPolynomial{d,<:Any,<:Fill}, B, dims=1:ndims(B)) where d
+function plan_grid_transform(P::KronPolynomial{d,<:Any,<:Fill}, B::Tuple{Block{1}}, dims=1:1) where d
     @assert dims == 1
 
     T = first(P.args)
-    x, F = plan_grid_transform(T, Array{eltype(B)}(undef, Fill(blocksize(B,1),d)...))
+    x, F = plan_grid_transform(T, Array{eltype(P)}(undef, Fill(Int(B[1]),d)...))
     @assert d == 2
     x̃ = Vector(x)
     SVector.(x̃, x̃'), ApplyPlan(DiagTrav, F)

@@ -206,17 +206,19 @@ _angle(rθ::RadialCoordinate) = rθ.θ
 
 function plotgrid(S::Zernike{T}, B::Block{1}) where T
     N = Int(B) ÷ 2 + 1 # polynomial degree
-    g = grid(S, min(2N, MAX_PLOT_BLOCKS_2D)) # double sampling
+    g = grid(S, Block(min(2N, MAX_PLOT_BLOCKS))) # double sampling
     θ = [map(_angle,g[1,:]); 0]
-    [permutedims(RadialCoordinate.(1,θ)); g g[:,1]; permutedims(RadialCoordinate.(0,θ))]
+    [permutedims(RadialCoordinate.(1,θ));
+     g g[:,1];
+     permutedims(RadialCoordinate.(0,θ))]
 end
 
 function plotvalues(u::ApplyQuasiVector{T,typeof(*),<:Tuple{Zernike, AbstractVector}}, x) where T
     Z,c = u.args
-    CS = blockcolsupport(c)
-    N = Int(last(CS)) ÷ 2 + 1 # polynomial degree
-    F = ZernikeITransform{T}(min(2N, MAX_PLOT_BLOCKS_2D), Z.a, Z.b)
-    C = F * c[Block.(OneTo(min(2N, MAX_PLOT_BLOCKS_2D)))] # transform to grid
+    B = findblock(axes(Z,2), last(colsupport(c)))
+    N = Int(B) ÷ 2 + 1 # polynomial degree
+    F = ZernikeITransform{T}(min(2N, MAX_PLOT_BLOCKS), Z.a, Z.b)
+    C = F * c[Block.(OneTo(min(2N, MAX_PLOT_BLOCKS)))] # transform to grid
     [permutedims(u[x[1,:]]); # evaluate on edge of disk
      C C[:,1];
      fill(u[x[end,1]], 1, size(x,2))] # evaluate at origin and repeat
@@ -253,8 +255,11 @@ end
 *(P::ZernikeTransform{T}, f::Matrix{T}) where T = ModalTrav(P.disk2cxf \ (P.analysis * f))
 *(P::ZernikeITransform, f::AbstractVector) = P.synthesis * (P.disk2cxf * ModalTrav(f).matrix)
 
-factorize(S::FiniteZernike{T}) where T = TransformFactorization(grid(S), ZernikeTransform{T}(blocksize(S,2), parent(S).a, parent(S).b))
+plan_grid_transform(Z::Zernike{T}, B::Tuple{Block{1}}, dims=1:1) where T = grid(Z,B[1]), ZernikeTransform{T}(Int(B[1]), Z.a, Z.b)
 
+##
+# Laplacian
+###
 
 @simplify function *(Δ::Laplacian, WZ::Weighted{<:Any,<:Zernike})
     @assert WZ.P.a == 0 && WZ.P.b == 1
