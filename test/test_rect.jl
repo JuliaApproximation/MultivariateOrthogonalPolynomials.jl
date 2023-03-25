@@ -29,7 +29,7 @@ import ClassicalOrthogonalPolynomials: expand
         T² \ x
         f = expand(T², 𝐱 -> ((x,y) = 𝐱; exp(x*cos(y-0.1))))
         @test f[SVector(0.1,0.2)] ≈ exp(0.1*cos(0.1))
-        
+
         U = ChebyshevU()
         U² = RectPolynomial(Fill(U, 2))
 
@@ -80,5 +80,15 @@ import ClassicalOrthogonalPolynomials: expand
 
         K = Block.(1:200); @time L = Δ[K,K]; @time qr(L);
         \(qr(Δ), [1; zeros(∞)]; tolerance=1E-1)
+    end
+
+    @testset "Legendre" begin
+        P = Legendre()
+        P² = RectPolynomial(Fill(P, 2))
+        𝐱 = axes(P²,1)
+        f = P² / P² \ broadcast(𝐱 -> ((x,y) = 𝐱; exp(x*cos(y))), 𝐱)
+        @test f[SVector(0.1,0.2)] ≈ exp(0.1cos(0.2))
+
+        @test (P²[:,Block.(1:100)] \ f) ≈ f.args[2][Block.(1:100)]
     end
 end
