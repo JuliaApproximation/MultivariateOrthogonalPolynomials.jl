@@ -90,5 +90,5 @@ end
 function transform_ldiv(K::KronPolynomial{d,V,<:Fill{<:Legendre}}, f::Union{AbstractQuasiVector,AbstractQuasiMatrix}) where {d,V}
     T = KronPolynomial{d}(Fill(ChebyshevT{V}(), size(K.args)...))
     dat = (T \ f).array
-    DiagTrav(pad(cheb2leg(paddeddata(dat)), axes(dat)...))
+    DiagTrav(pad(FastTransforms.th_cheb2leg(paddeddata(dat)), axes(dat)...))
 end
