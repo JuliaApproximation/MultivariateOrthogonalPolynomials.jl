@@ -39,6 +39,12 @@ end
     RectPolynomial(A,U) * KronTrav(M, Eye{eltype(M)}(∞))
 end
 
+@simplify function *(Pc::QuasiAdjoint{<:Any,<:RectPolynomial}, Q::RectPolynomial)
+    PA,PB = parent(Pc).args
+    QA,QB = Q.args
+    KronTrav(PA'QA, PB'QB)
+end
+
 function \(P::RectPolynomial, Q::RectPolynomial)
     PA,PB = P.args
     QA,QB = Q.args

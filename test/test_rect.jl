@@ -91,4 +91,15 @@ import ClassicalOrthogonalPolynomials: expand
 
         @test (P²[:,Block.(1:100)] \ f) ≈ f.args[2][Block.(1:100)]
     end
+
+    @testset "Weak Laplacian" begin
+        W = Weighted(Jacobi(1,1))
+        P = Legendre()
+        W² = RectPolynomial(Fill(W, 2))
+        P² = RectPolynomial(Fill(P, 2))
+        D_x,D_y = PartialDerivative{1}(𝐱),PartialDerivative{2}(𝐱)
+        Δ = -((D_x * W²)'*(D_x * W²) + (D_y * W²)'*(D_y * W²))
+
+        Δ \ (W²'*expand(P² , 𝐱 -> ((x,y) = 𝐱; 2 - x^2 - y^2)))
+    end
 end
