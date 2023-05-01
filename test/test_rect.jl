@@ -101,6 +101,13 @@ import ClassicalOrthogonalPolynomials: expand
         D_x,D_y = PartialDerivative{1}(𝐱),PartialDerivative{2}(𝐱)
         Δ = -((D_x * W²)'*(D_x * W²) + (D_y * W²)'*(D_y * W²));
 
-        Δ \ (W²'*expand(P² , 𝐱 -> ((x,y) = 𝐱; 2 - x^2 - y^2)))
+        f = expand(P² , 𝐱 -> ((x,y) = 𝐱; x^2 + y^2 - 2))
+
+        KR = Block.(Base.OneTo(100))
+        @time 𝐜 = Δ[KR,KR] \ (W²'*f)[KR];
+        W²[SVector(0.1,0.2),KR]'*𝐜
+        (1-0.1^2)*(1-0.2^2)
+
+        
     end
 end
