@@ -106,5 +106,7 @@ import ClassicalOrthogonalPolynomials: expand
         KR = Block.(Base.OneTo(100))
         @time 𝐜 = Δ[KR,KR] \ (W²'*f)[KR];
         @test W²[SVector(0.1,0.2),KR]'*𝐜 ≈ (1-0.1^2)*(1-0.2^2)/2 
+
+        @test \(Δ, (W²'*f); tolerance=1E-15) ≈ [0.5; zeros(∞)]
     end
 end
