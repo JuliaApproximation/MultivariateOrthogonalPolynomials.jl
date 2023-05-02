@@ -99,15 +99,12 @@ import ClassicalOrthogonalPolynomials: expand
         P² = RectPolynomial(Fill(P, 2))
         𝐱 = axes(P²,1)
         D_x,D_y = PartialDerivative{1}(𝐱),PartialDerivative{2}(𝐱)
-        Δ = -((D_x * W²)'*(D_x * W²) + (D_y * W²)'*(D_y * W²));
+        Δ = -((D_x * W²)'*(D_x * W²) + (D_y * W²)'*(D_y * W²))
 
         f = expand(P² , 𝐱 -> ((x,y) = 𝐱; x^2 + y^2 - 2))
 
         KR = Block.(Base.OneTo(100))
         @time 𝐜 = Δ[KR,KR] \ (W²'*f)[KR];
-        W²[SVector(0.1,0.2),KR]'*𝐜
-        (1-0.1^2)*(1-0.2^2)
-
-        
+        @test W²[SVector(0.1,0.2),KR]'*𝐜 ≈ (1-0.1^2)*(1-0.2^2)/2 
     end
 end

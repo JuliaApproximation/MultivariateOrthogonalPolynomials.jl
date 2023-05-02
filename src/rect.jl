@@ -42,13 +42,13 @@ end
 @simplify function *(Pc::QuasiAdjoint{<:Any,<:RectPolynomial}, Q::RectPolynomial)
     PA,PB = parent(Pc).args
     QA,QB = Q.args
-    KronTrav(PA'QA, PB'QB)
+    KronTrav(PB'QB, PA'QA)
 end
 
 function \(P::RectPolynomial, Q::RectPolynomial)
     PA,PB = P.args
     QA,QB = Q.args
-    KronTrav(PA\QA, PB\QB)
+    KronTrav(PB\QB, PA\QA)
 end
 
 struct ApplyPlan{T, F, Pl}
