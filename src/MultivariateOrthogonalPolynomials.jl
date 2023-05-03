@@ -40,5 +40,7 @@ include("disk.jl")
 include("rectdisk.jl")
 include("triangle.jl")
 
+include("kernels.jl")
+
 
 end # module

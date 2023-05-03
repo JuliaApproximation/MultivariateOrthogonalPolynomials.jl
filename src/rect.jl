@@ -51,6 +51,12 @@ function \(P::RectPolynomial, Q::RectPolynomial)
     KronTrav(PB\QB, PA\QA)
 end
 
+"""
+   ApplyPlan(f, plan)
+
+applies a plan and then the function f. If plan is a tuple
+it applies each plan (the assumption is that order doesn't matter).
+"""
 struct ApplyPlan{T, F, Pl}
     f::F
     plan::Pl
@@ -59,6 +65,10 @@ end
 ApplyPlan(f, P) = ApplyPlan{eltype(P), typeof(f), typeof(P)}(f, P)
 
 *(A::ApplyPlan, B::AbstractArray) = A.f(A.plan*B)
+
+_apply_plan(B) = B
+_apply_plan(B, A, C...) = _apply_plan(A*B, C...)
+*(A::ApplyPlan{<:Any,<:Any,<:Tuple}, B::AbstractArray) = A.f(_apply_plan(B, A.plan...))
 
 function checkpoints(P::RectPolynomial)
     x,y = checkpoints.(P.args)
@@ -73,6 +83,18 @@ function plan_grid_transform(P::KronPolynomial{d,<:Any,<:Fill}, B::Tuple{Block{1
     @assert d == 2
     x̃ = Vector(x)
     SVector.(x̃, x̃'), ApplyPlan(DiagTrav, F)
+end
+
+
+function plan_grid_transform(P::KronPolynomial{d}, B::Tuple{Block{1}}, dims=1:1) where d
+    @assert dims == 1
+    @assert d == 2
+
+    P,Q = P.args
+    N = Int(B[1])
+    x, F = plan_grid_transform(P, (N,N), 1)
+    y, G = plan_grid_transform(Q, (N,N), 2)
+    SVector.(x, y'), ApplyPlan(DiagTrav, (F, G))
 end
 
 pad(C::DiagTrav, ::BlockedUnitRange{RangeCumsum{Int,OneToInf{Int}}}) = DiagTrav(pad(C.array, ∞, ∞))
@@ -97,4 +119,12 @@ function transform_ldiv(K::KronPolynomial{d,V,<:Fill{<:Legendre}}, f::Union{Abst
     T = KronPolynomial{d}(Fill(ChebyshevT{V}(), size(K.args)...))
     dat = (T \ f).array
     DiagTrav(pad(FastTransforms.th_cheb2leg(paddeddata(dat)), axes(dat)...))
+end
+
+
+function Base.summary(io::IO, P::RectPolynomial)
+    A,B = P.args
+    summary(io, A)
+    print(io, " ⊗ ")
+    summary(io, B)
 end
