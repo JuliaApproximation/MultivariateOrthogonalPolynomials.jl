@@ -10,11 +10,11 @@ using Base: oneto
         T² = RectPolynomial(Fill(T, 2))
 
         k = (x,y) -> exp(x*cos(y))
-        K = P * transform(P², splat(k)).array * P'
+        K = kernel(expand(P², splat(k)))
         @test K[0.1,0.2] ≈ k(0.1,0.2)
         @test (K * expand(P, exp))[0.1] ≈ (K*expand(T, exp))[0.1] ≈ 2.5521805183347417
 
-        K = T * transform(T², splat(k)).array * T'
+        K = kernel(expand(T², splat(k)))
         @test (K * expand(P, exp))[0.1] ≈ (K*expand(T, exp))[0.1] ≈ 2.5521805183347417
 
 
