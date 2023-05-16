@@ -129,16 +129,3 @@ function Base.summary(io::IO, P::RectPolynomial)
     summary(io, B)
 end
 
-
-
-"""
-    kernel(f)
-
-returns `K::AbstractQuasiMatrix` such that `K[x,y] == f[SVector(x,y)]`.
-"""
-function kernel(f::AbstractQuasiVector{<:Real})
-    P², c = f.args
-    P,Q = P².args
-    P * c.array * Q'
-end
-
