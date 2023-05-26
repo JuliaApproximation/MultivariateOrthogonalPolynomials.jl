@@ -319,6 +319,24 @@ import ForwardDiff: hessian
         g = MultivariateOrthogonalPolynomials.plotgrid(W[:,1:3])
         @test all(rep[1].args .≈ (first.(g),last.(g),u[g]))
     end
+
+    @testset "weighted partial derivatives" begin
+        W = Weighted(Zernike(1))
+        Z = Zernike(0)
+        𝐱 = axes(W,1)
+        # ∂ˣ = PartialDerivative{1}(𝐱)
+        ∂ʸ = PartialDerivative{2}(𝐱)
+
+        ∂Y = Z \ (∂ʸ * W)
+        B = Block.(1:10); xy = SVector(0.2,0.3)
+
+        for (i,n,m) in zip((1,2,3,4,5,6,14,17), (0,1,1,2,2,2,4,5), (0,-1,1,0,-2,2,-4,1))
+            g =  𝐱 -> ForwardDiff.gradient(𝐱 -> (1-norm(𝐱)^2)*zernikez(n, m, 1, 𝐱), 𝐱)[2]
+            c = ModalTrav(transform(Z, g)[B])[B]
+            @test Z[xy,B]'*∂Y[B,i] ≈ Z[xy, B]' * c
+        end
+
+    end
 end
 
 @testset "Fractional Laplacian on Unit Disk" begin
