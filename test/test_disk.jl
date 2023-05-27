@@ -320,20 +320,34 @@ import ForwardDiff: hessian
         @test all(rep[1].args .≈ (first.(g),last.(g),u[g]))
     end
 
-    @testset "weighted partial derivatives" begin
+    @testset "partial derivatives" begin
         W = Weighted(Zernike(1))
-        Z = Zernike(0)
+        Z⁰ = Zernike(0)
+        Z¹ = Zernike(1)
+        Z² = Zernike(2)
+
         𝐱 = axes(W,1)
         # ∂ˣ = PartialDerivative{1}(𝐱)
         ∂ʸ = PartialDerivative{2}(𝐱)
 
-        ∂Y = Z \ (∂ʸ * W)
+        ∂Y⁰ = Z⁰ \ (∂ʸ * W)
+        ∂Y¹ = Z¹ \ (∂ʸ * Z⁰)
+        ∂Y² = Z² \ (∂ʸ * Z¹)
+
         B = Block.(1:10); xy = SVector(0.2,0.3)
 
         for (i,n,m) in zip((1,2,3,4,5,6,14,17), (0,1,1,2,2,2,4,5), (0,-1,1,0,-2,2,-4,1))
-            g =  𝐱 -> ForwardDiff.gradient(𝐱 -> (1-norm(𝐱)^2)*zernikez(n, m, 1, 𝐱), 𝐱)[2]
-            c = ModalTrav(transform(Z, g)[B])[B]
-            @test Z[xy,B]'*∂Y[B,i] ≈ Z[xy, B]' * c
+            g⁰ =  𝐱 -> ForwardDiff.gradient(𝐱 -> (1-norm(𝐱)^2)*zernikez(n, m, 1, 𝐱), 𝐱)[2]
+            c⁰ = ModalTrav(transform(Z⁰, g⁰)[B])[B]
+            @test Z⁰[xy,B]'*∂Y⁰[B,i] ≈ Z⁰[xy, B]' * c⁰
+
+            g¹ =  𝐱 -> ForwardDiff.gradient(𝐱 -> zernikez(n, m, 0, 𝐱), 𝐱)[2]
+            c¹ = ModalTrav(transform(Z¹, g¹)[B])[B]
+            @test Z¹[xy,B]'*∂Y¹[B,i] ≈ Z¹[xy, B]' * c¹
+
+            g² =  𝐱 -> ForwardDiff.gradient(𝐱 -> zernikez(n, m, 1, 𝐱), 𝐱)[2]
+            c² = ModalTrav(transform(Z², g²)[B])[B]
+            @test Z²[xy,B]'*∂Y²[B,i] ≈ Z²[xy, B]' * c²
         end
 
     end

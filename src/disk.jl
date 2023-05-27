@@ -368,8 +368,45 @@ normal_jacobi(a::T,b::T,n::Int) where T = sqrt(2^(a+b+1) / (2n + a + b + 1) * ga
     d2 = d1 .* iseven.(n .- k)
     d3 = d1 - d2
 
-
     A = BlockBandedMatrices._BandedBlockBandedMatrix(BlockBroadcastArray(hcat, c3, Zeros((axes(n,1),)), c2)', axes(n,1), (1,-1), (2,0))
     B = BlockBandedMatrices._BandedBlockBandedMatrix(BlockBroadcastArray(hcat, d3, Zeros((axes(n,1),)), d2)', axes(n,1), (1,-1), (0,2))
     Zernike{T}(0) * (A + B)
+end
+
+@simplify function *(∂ʸ::PartialDerivative{2}, Z::Zernike)
+    @assert Z.a == 0
+    T = eltype(eltype(Z))
+    b = convert(T, Z.b)
+
+    k = mortar(Base.OneTo.(oneto(∞)))     # k counts the the angular mode (+1)
+    n = mortar(Fill.(oneto(∞),oneto(∞))) .- 1  # n counts the block number which corresponds to the order
+    m = k .- isodd.(k).*iseven.(n) .- iseven.(k).*isodd.(n)
+
+    x=axes(Jacobi(0,0),1)
+    D = BroadcastVector(P->Derivative(x) * P, HalfWeighted{:b}.(Normalized.(Jacobi.(b,1:∞))))
+    Ds = BroadcastVector{AbstractMatrix{Float64}}((P,D) -> P \ D, HalfWeighted{:b}.(Normalized.(Jacobi.(b+1,0:∞))) , D)
+    M = ModalInterlace(Ds, (ℵ₀,ℵ₀), (0,0))
+    db = ones(axes(n)) .* (view(view(M, 1:∞, 1:∞),band(0)))
+
+    D = BroadcastVector(P->Derivative(x) * P, Normalized.(Jacobi.(b,-1:∞)))
+    Ds = BroadcastVector{AbstractMatrix{Float64}}((P,D) -> P \ D, Normalized.(Jacobi.(b+1,0:∞)), D)
+    Dss = BroadcastVector{AbstractMatrix{Float64}}(P -> Diagonal(view(P, band(1))), Ds)
+    M = ModalInterlace(Dss, (ℵ₀,ℵ₀), (0,0))
+    # d = ones(axes(n)) .*  view(Vcat(0,view(view(M, 1:∞, 1:∞),band(0))),1:∞)
+    d = ones(axes(n)) .*  view(view(M, 1:∞, 1:∞),band(0))
+
+    c1 = d .* (-1).^(isodd.(k.-n)) .* (isone.(m) .* sqrt(T(2)) + (1 .- isone.(m)))
+    c2 = c1 .* iseven.(n .- k)
+    c3 = c1 - c2
+
+
+    d1 = db .* (-1).^(iseven.(k.-n)) .* (iszero.(m) * sqrt(T(2)) + (1 .- iszero.(m)))
+    d2 = d1 .* iseven.(n .- k)
+    d3 = d1 - d2
+
+
+    A = BlockBandedMatrices._BandedBlockBandedMatrix(BlockBroadcastArray(hcat, c3, Zeros((axes(n,1),)), c2)', axes(n,1), (1,-1), (0,2))
+    B = BlockBandedMatrices._BandedBlockBandedMatrix(BlockBroadcastArray(hcat, d3, Zeros((axes(n,1),)), d2)', axes(n,1), (1,-1), (2,0))
+
+    Zernike{T}(Z.b+1) * (A+B)'
 end
