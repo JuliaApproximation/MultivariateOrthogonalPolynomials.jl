@@ -385,8 +385,7 @@ end
     m = k .- isodd.(k).*iseven.(n) .- iseven.(k).*isodd.(n) # Fourier mode number
 
     # Computes the entries for the component that lowers the Fourier mode
-    x = Inclusion(ChebyshevInterval())
-    D = BroadcastVector(P->Derivative(x) * P, HalfWeighted{:b}.(Normalized.(Jacobi.(b,1:∞))))
+    D = BroadcastVector(P->diff(P; dims=1), HalfWeighted{:b}.(Normalized.(Jacobi.(b,1:∞))))
     Ds = BroadcastVector{AbstractMatrix{T}}((P,D) -> P \ D, HalfWeighted{:b}.(Normalized.(Jacobi.(b+1,0:∞))) , D)
     M = ModalInterlace(Ds, (ℵ₀,ℵ₀), (0,0))
     db = ones(axes(n)) .* (view(view(M, 1:∞, 1:∞),band(0)))
@@ -394,7 +393,7 @@ end
     # Computes the entries for the component that lowers the Fourier mode
     # the -1 in the parameters is a trick to make ModalInterlace think that the
     # 0-parameter is the second Fourier mode (we use the -1 as a dummy matrix in the ModalInterlace)
-    D = BroadcastVector(P->Derivative(x) * P, Normalized.(Jacobi.(b,-1:∞)))
+    D = BroadcastVector(P->diff(P; dims=1), Normalized.(Jacobi.(b,-1:∞)))
     Ds = BroadcastVector{AbstractMatrix{T}}((P,D) -> P \ D, Normalized.(Jacobi.(b+1,0:∞)), D)
     Dss = BroadcastVector{AbstractMatrix{T}}(P -> Diagonal(view(P, band(1))), Ds)
     M = ModalInterlace(Dss, (ℵ₀,ℵ₀), (0,0))
@@ -411,8 +410,8 @@ end
     d3 = d1 .* isodd.(n .- k)
 
     # Put coefficients together
-    A = BlockBandedMatrices._BandedBlockBandedMatrix(BlockBroadcastArray(hcat, c3, Zeros((axes(n,1),)), c2)', axes(n,1), (1,-1), (0,2))
-    B = BlockBandedMatrices._BandedBlockBandedMatrix(BlockBroadcastArray(hcat, d3, Zeros((axes(n,1),)), d2)', axes(n,1), (1,-1), (2,0))
+    A = BlockBandedMatrices._BandedBlockBandedMatrix(BlockBroadcastArray(hcat, c3, Zeros{T}((axes(n,1),)), c2)', axes(n,1), (1,-1), (0,2))
+    B = BlockBandedMatrices._BandedBlockBandedMatrix(BlockBroadcastArray(hcat, d3, Zeros{T}((axes(n,1),)), d2)', axes(n,1), (1,-1), (2,0))
 
     Zernike{T}(Z.b+1) * (A+B)'
 end
