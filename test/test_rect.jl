@@ -1,4 +1,4 @@
-using MultivariateOrthogonalPolynomials, ClassicalOrthogonalPolynomials, StaticArrays, LinearAlgebra, BlockArrays, FillArrays, Test
+using MultivariateOrthogonalPolynomials, ClassicalOrthogonalPolynomials, StaticArrays, LinearAlgebra, BlockArrays, FillArrays, Base64, Test
 import ClassicalOrthogonalPolynomials: expand
 
 @testset "RectPolynomial" begin
@@ -90,5 +90,10 @@ import ClassicalOrthogonalPolynomials: expand
         @test f[SVector(0.1,0.2)] ≈ exp(0.1cos(0.2))
 
         @test (P²[:,Block.(1:100)] \ f) ≈ f.args[2][Block.(1:100)]
+    end
+
+    @testset "Show" begin
+        @test stringmime("text/plain", KronPolynomial(Legendre(), Chebyshev())) == "Legendre() ⊗ ChebyshevT()"
+        @test stringmime("text/plain", KronPolynomial(Legendre(), Chebyshev(), Jacobi(1,1))) == "Legendre() ⊗ ChebyshevT() ⊗ Jacobi(1.0, 1.0)"
     end
 end

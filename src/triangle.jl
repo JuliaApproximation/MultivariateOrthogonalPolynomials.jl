@@ -23,7 +23,8 @@ axes(P::JacobiTriangle{T}) where T = (Inclusion(UnitTriangle{T}()),blockedrange(
 
 copy(A::JacobiTriangle) = A
 
-Base.summary(io::IO, P::JacobiTriangle) = print(io, "JacobiTriangle($(P.a), $(P.b), $(P.c))")
+show(io::IO, P::JacobiTriangle) = summary(io, P)
+summary(io::IO, P::JacobiTriangle) = print(io, "JacobiTriangle($(P.a), $(P.b), $(P.c))")
 
 
 """
@@ -71,7 +72,8 @@ end
 
 ==(wB::WeightedTriangle, w_A::WeightedBasis{<:Any,<:TriangleWeight,<:JacobiTriangle}) = w_A == wB
 
-Base.summary(io::IO, P::TriangleWeight) = print(io, "x^$(P.a)*y^$(P.b)*(1-x-y)^$(P.c) on the unit triangle")
+show(io::IO, P::TriangleWeight) = summary(io, P)
+summary(io::IO, P::TriangleWeight) = print(io, "x^$(P.a)*y^$(P.b)*(1-x-y)^$(P.c) on the unit triangle")
 
 orthogonalityweight(P::JacobiTriangle) = TriangleWeight(P.a, P.b, P.c)
 

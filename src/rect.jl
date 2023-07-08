@@ -9,7 +9,15 @@ KronPolynomial{d,T}(a::AbstractVector) where {d,T} = KronPolynomial{d,T,typeof(a
 KronPolynomial{d}(a::AbstractVector) where d = KronPolynomial{d,eltype(eltype(a))}(a)
 KronPolynomial(a::AbstractVector) = KronPolynomial{length(a)}(a)
 
+function show(io::IO, P::KronPolynomial)
+    for k = 1:length(P.args)
+        print(io, "$(P.args[k])")
+        k ≠ length(P.args) && print(io, " ⊗ ")
+    end
+end
+
 const RectPolynomial{T, PP} = KronPolynomial{2, T, PP}
+
 
 
 axes(P::KronPolynomial) = (Inclusion(×(map(domain, axes.(P.args, 1))...)), _krontrav_axes(axes.(P.args, 2)...))

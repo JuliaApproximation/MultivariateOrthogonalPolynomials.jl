@@ -451,4 +451,9 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
         C = P¹ \ (L * P)
         @test C[1:10,1:10] ≈ A[1:10,1:10] - B[1:10,1:10]
     end
+
+    @testset "show" begin
+        @test stringmime("text/plain", JacobiTriangle()) == "JacobiTriangle(0, 0, 0)"
+        @test stringmime("text/plain", TriangleWeight(1,2,3)) == "x^1*y^2*(1-x-y)^3 on the unit triangle"
+    end
 end

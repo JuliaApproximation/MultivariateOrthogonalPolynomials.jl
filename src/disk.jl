@@ -63,7 +63,8 @@ axes(P::Zernike{T}) where T = (Inclusion(UnitDisk{T}()),blockedrange(oneto(∞))
 
 copy(A::Zernike) = A
 
-Base.summary(io::IO, P::Zernike) = print(io, "Zernike($(P.a), $(P.b))")
+show(io::IO, P::Zernike) = summary(io, P)
+summary(io::IO, P::Zernike) = print(io, "Zernike($(P.a), $(P.b))")
 
 orthogonalityweight(Z::Zernike) = ZernikeWeight(Z.a, Z.b)
 
