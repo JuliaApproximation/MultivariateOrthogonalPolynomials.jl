@@ -1,4 +1,5 @@
-using MultivariateOrthogonalPolynomials, ClassicalOrthogonalPolynomials, StaticArrays, BlockArrays, BandedMatrices, FastTransforms, LinearAlgebra, RecipesBase, Test, SpecialFunctions, LazyArrays, InfiniteArrays
+using MultivariateOrthogonalPolynomials, ClassicalOrthogonalPolynomials, StaticArrays, BlockArrays, BandedMatrices, FastTransforms, LinearAlgebra, Test, SpecialFunctions, LazyArrays, InfiniteArrays, Base64
+using RecipesBase
 import MultivariateOrthogonalPolynomials: ModalTrav, grid, ZernikeTransform, ZernikeITransform, *, ModalInterlace
 import ClassicalOrthogonalPolynomials: HalfWeighted, expand
 import ForwardDiff: hessian
@@ -565,5 +566,9 @@ end
         P = Zernike()
         @test sum(expand(P, 𝐱 -> 1)) ≈ π
         @test sum(expand(P, 𝐱 -> ((x,y) = 𝐱; exp(x*cos(y))))) ≈ 3.4898933353782744
+    end
+
+    @testset "Show" begin
+        @test stringmime("text/plain", Zernike()) == "Zernike(0.0, 0.0)"
     end
 end
