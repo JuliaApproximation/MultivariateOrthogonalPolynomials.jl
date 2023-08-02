@@ -1,6 +1,6 @@
 using MultivariateOrthogonalPolynomials, StaticArrays, BlockArrays, BlockBandedMatrices, ArrayLayouts,
         QuasiArrays, Test, ClassicalOrthogonalPolynomials, BandedMatrices, FastTransforms, LinearAlgebra
-import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleRecurrenceA, TriangleRecurrenceB, TriangleRecurrenceC, xy_muladd!
+import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleRecurrenceA, TriangleRecurrenceB, TriangleRecurrenceC, xy_muladd!, ExpansionLayout
 
 @testset "Triangle" begin
     @testset "basics" begin
@@ -52,6 +52,7 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
             𝐱 = SVector(0.1,0.2)
             c = PseudoBlockVector([1; Zeros(∞)], (axes(P,2),))
             f = P*c
+            @test MemoryLayout(f) isa ExpansionLayout
             @test @inferred(f[𝐱]) == 1.0
             c = PseudoBlockVector([1:3; Zeros(∞)], (axes(P,2),))
             f = P*c
@@ -115,13 +116,16 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
             N = 20
             P_N = P[:,Block.(Base.OneTo(N))]
             u = P_N * (P_N \ (exp.(x) .* cos.(y)))
+            @test MemoryLayout(u) isa ExpansionLayout
             @test u[SVector(0.1,0.2)] ≈ exp(0.1)*cos(0.2)
 
             P_n = P[:,1:200]
             u = P_n * (P_n \ (exp.(x) .* cos.(y)))
+            @test MemoryLayout(u) isa ExpansionLayout
             @test u[SVector(0.1,0.2)] ≈ exp(0.1)*cos(0.2)
 
             @time u = P * (P \ (exp.(x) .* cos.(y)))
+            @test MemoryLayout(u) isa ExpansionLayout
             @test u[SVector(0.1,0.2)] ≈ exp(0.1)*cos(0.2)
         end
     end
