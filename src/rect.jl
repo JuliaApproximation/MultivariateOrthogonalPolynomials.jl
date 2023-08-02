@@ -77,6 +77,9 @@ function plan_grid_transform(P::KronPolynomial{d,<:Any,<:Fill}, B::Tuple{Block{1
     SVector.(x̃, x̃'), ApplyPlan(DiagTrav, F)
 end
 
+applylayout(::Type{typeof(*)}, ::Lay, ::DiagTravLayout) where Lay <: AbstractBasisLayout = ExpansionLayout{Lay}()
+ContinuumArrays._mul_plotgrid(::Tuple{Any,DiagTravLayout{<:PaddedLayout}}, (P,c)) = plotgrid(P, maximum(blockcolsupport(c)))
+
 pad(C::DiagTrav, ::BlockedUnitRange{RangeCumsum{Int,OneToInf{Int}}}) = DiagTrav(pad(C.array, ∞, ∞))
 
 QuasiArrays.mul(A::BivariateOrthogonalPolynomial, b::DiagTrav) = ApplyQuasiArray(*, A, b)

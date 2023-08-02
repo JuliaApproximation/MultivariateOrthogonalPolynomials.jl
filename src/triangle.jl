@@ -27,6 +27,8 @@ show(io::IO, P::JacobiTriangle) = summary(io, P)
 summary(io::IO, P::JacobiTriangle) = print(io, "JacobiTriangle($(P.a), $(P.b), $(P.c))")
 
 
+basis_axes(::Inclusion{<:Any,<:UnitTriangle}, v) = JacobiTriangle()
+
 """
     TriangleWeight(a, b, c)
 
@@ -639,6 +641,13 @@ function tridenormalize!(F̌,a,b,c)
     F̌
 end
 
+function trinormalize!(F̌,a,b,c)
+    for n = 0:size(F̌,1)-1, k = 0:n
+        F̌[n-k+1,k+1] /= _ft_trinorm(n,k,a,b,c)
+    end
+    F̌
+end
+
 function trigrid(N::Integer)
     M = N
     x = [sinpi((2N-2n-1)/(4N))^2 for n in 0:N-1]
@@ -666,4 +675,35 @@ function plan_grid_transform(P::JacobiTriangle, Bs::Tuple{Block{1}}, dims=1:1)
     T = eltype(P)
     N = Bs[1]
     grid(P, N), TriPlan{T}(N, P.a, P.b, P.c)
+end
+
+struct TriIPlan{T}
+    tri2cheb::FastTransforms.FTPlan{T,2,FastTransforms.TRIANGLE}
+    cheb2grid::FastTransforms.FTPlan{T,2,FastTransforms.TRIANGLESYNTHESIS}
+    a::T
+    b::T
+    c::T
+end
+
+TriIPlan{T}(F::AbstractMatrix{T}, a, b, c) where T =
+    TriIPlan{T}(plan_tri2cheb(F, a, b, c), plan_tri_synthesis(F), a, b, c)
+
+TriIPlan{T}(N::Block{1}, a, b, c) where T = TriIPlan{T}(Matrix{T}(undef, Int(N), Int(N)), a, b, c)
+
+*(T::TriIPlan, F::DiagTrav) = T.cheb2grid*(T.tri2cheb*trinormalize!(Matrix(F.array),T.a,T.b,T.c))
+
+
+function plotgrid(S::JacobiTriangle{T}, B::Block{1}) where T
+    N = min(2Int(B), MAX_PLOT_BLOCKS)
+    grid(S, Block(N)) # double sampling
+end
+
+function plotvalues(u::ApplyQuasiVector{T,typeof(*),<:Tuple{JacobiTriangle, AbstractVector}}, x) where T
+    P,c = u.args
+    B = findblock(axes(P,2), last(colsupport(c)))
+
+    N = min(2Int(B), MAX_PLOT_BLOCKS)
+    F = TriIPlan{T}(Block(N), P.a, P.b, P.c)
+    C = F * DiagTrav(c.array[1:N,1:N]) # transform to grid
+    C
 end
