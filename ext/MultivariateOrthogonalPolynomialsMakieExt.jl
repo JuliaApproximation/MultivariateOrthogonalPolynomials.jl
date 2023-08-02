@@ -222,7 +222,15 @@ end
 P = JacobiTriangle()
 f = expand(P, splat((x,y) -> cos(x*exp(y))))
 (a,b,c) = (SVector(0.,0.), SVector(0.,1.), SVector(1.,0.))
+xy,F = plotgridvalues(f)
+x,y = first.(xy),last.(xy)
+
+
+
 triangle_meshdata(plotgridvalues(f)..., (a,b,c), getindex.(Ref(f), (a,b,c)))
+
+
+
 
 
 
