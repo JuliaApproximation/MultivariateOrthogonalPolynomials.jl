@@ -230,8 +230,23 @@ x,y = first.(xy),last.(xy)
 triangle_meshdata(plotgridvalues(f)..., (a,b,c), getindex.(Ref(f), (a,b,c)))
 
 
+tricontourf(vec(x), vec(y), vec(F); levels=100)
+
+using ContinuumArrays: ApplyQuasiVector
+Makie.plottype(a::ApplyQuasiVector{<:Any, typeof(*), <:Tuple{JacobiTriangle,AbstractVector}}) = Tricontourf
+
+function Makie.tricontourf(f::ApplyQuasiVector{<:Any, typeof(*), <:Tuple{JacobiTriangle,AbstractVector}}; kwds...)
+    xy,F = plotgridvalues(f)
+    x,y = first.(xy),last.(xy)
+    tricontourf(vec(x), vec(y), vec(F); kwds...)
+end
+
+f = expand(Weighted(JacobiTriangle(1,1,1))[:,1])
+tricontourf(f)
 
 
+
+plot(f)
 
 
 # end # module
