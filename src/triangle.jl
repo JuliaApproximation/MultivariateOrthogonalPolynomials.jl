@@ -2,6 +2,71 @@ const UnitTriangle{T} = EuclideanUnitSimplex{2,T,:closed}
 
 ClassicalOrthogonalPolynomials.checkpoints(d::UnitTriangle{T}) where T = [SVector{2,T}(0.1,0.2), SVector{2,T}(0.2,0.3)]
 
+struct Triangle{T} <: Domain{SVector{2,T}}
+    a::SVector{2,T}
+    b::SVector{2,T}
+    c::SVector{2,T}
+    Triangle{T}(a::SVector{2,T}, b::SVector{2,T}, c::SVector{2,T}) where T = new{T}(a, b, c)
+end
+
+Triangle() = Triangle(SVector(0,0), SVector(1,0), SVector(0,1))
+Triangle(a, b, c) = Triangle{promote_type(eltype(eltype(a)), eltype(eltype(b)), eltype(eltype(c)))}(a,b, c)
+Triangle{T}(d::Triangle) where T = Triangle{T}(d.a, d.b, d.c)
+Triangle{T}(a, b, c) where T = Triangle{T}(convert(SVector{2,T}, a), convert(SVector{2,T}, b), convert(SVector{2,T}, c))
+
+Inclusion(d::Triangle{T}) where T = Inclusion{SVector{2,float(T)}}(d)
+
+function tocanonical(d::Triangle, xy::SVector)
+    if d.a == SVector(0,0)
+        [d.b d.c] \ xy
+    else
+        tocanonical(d-d.a, xy-d.a)
+    end
+end
+
+
+function fromcanonical(d::Triangle, xy::SVector)
+    if d.a == SVector(0,0)
+        [d.b d.c]*xy
+    else
+        fromcanonical(d-d.a, xy) + d.a
+    end
+end
+
+function getindex(a::ContinuumArrays.AffineMap{<:Any, <:Inclusion{<:Any,<:Triangle}, <:Inclusion{<:Any,<:UnitSimplex}}, x::SVector{2})
+    checkbounds(a, x)
+    tocanonical(a.domain.domain, x)
+end
+
+function getindex(a::ContinuumArrays.AffineMap{<:Any, <:Inclusion{<:Any,<:UnitSimplex}, <:Inclusion{<:Any,<:Triangle}}, x::SVector{2})
+    checkbounds(a, x)
+    fromcanonical(a.range.domain, x)
+end
+
+
+
+# canonicaldomain(::Triangle) = Triangle()
+function in(p::SVector{2}, d::Triangle)
+    x,y = tocanonical(d, p)
+    0 ≤ x ≤ x + y ≤ 1
+end
+
+
+for op in (:-, :+)
+    @eval begin
+        $op(d::Triangle, x::SVector{2}) = Triangle($op(d.a,x), $op(d.b,x), $op(d.c,x))
+        $op(x::SVector{2}, d::Triangle) = Triangle($op(x,d.a), $op(x,d.b), $op(x,d.c))
+    end
+end
+
+for op in (:*, :/)
+    @eval $op(d::Triangle, x::Number) = Triangle($op(d.a,x), $op(d.b,x), $op(d.c,x))
+end
+
+
+
+
+
 # expansion in OPs orthogonal to
 # x^a*y^b*(1-x-y)^c
 # defined as
@@ -704,6 +769,6 @@ function plotvalues(u::ApplyQuasiVector{T,typeof(*),<:Tuple{JacobiTriangle, Abst
 
     N = min(2Int(B), MAX_PLOT_BLOCKS)
     F = TriIPlan{T}(Block(N), P.a, P.b, P.c)
-    C = F * DiagTrav(c.array[1:N,1:N]) # transform to grid
+    C = F * DiagTrav(invdiagtrav(c)[1:N,1:N]) # transform to grid
     C
 end

@@ -6,19 +6,19 @@ using ClassicalOrthogonalPolynomials, FastTransforms, BlockBandedMatrices, Block
       LazyArrays, SpecialFunctions, LinearAlgebra, BandedMatrices, LazyBandedMatrices, ArrayLayouts,
       HarmonicOrthogonalPolynomials
 
-import Base: axes, in, ==, *, ^, \, copy, copyto!, OneTo, getindex, size, oneto, all, resize!, BroadcastStyle, similar, fill!, setindex!, convert, show, summary
+import Base: axes, in, ==, +, -, /, *, ^, \, copy, copyto!, OneTo, getindex, size, oneto, all, resize!, BroadcastStyle, similar, fill!, setindex!, convert, show, summary
 import Base.Broadcast: Broadcasted, broadcasted, DefaultArrayStyle
-import DomainSets: boundary
+import DomainSets: boundary, EuclideanDomain
 
 import QuasiArrays: LazyQuasiMatrix, LazyQuasiArrayStyle, domain
-import ContinuumArrays: @simplify, Weight, weight, grid, plotgrid, TransformFactorization, ExpansionLayout, plotvalues, unweighted, plan_grid_transform, checkpoints, transform_ldiv, AbstractBasisLayout, basis_axes
+import ContinuumArrays: @simplify, Weight, weight, grid, plotgrid, TransformFactorization, ExpansionLayout, plotvalues, unweighted, plan_grid_transform, checkpoints, transform_ldiv, AbstractBasisLayout, basis_axes, Inclusion
 
 import ArrayLayouts: MemoryLayout, sublayout, sub_materialize
 import BlockArrays: block, blockindex, BlockSlice, viewblock, blockcolsupport, AbstractBlockStyle, BlockStyle
 import BlockBandedMatrices: _BandedBlockBandedMatrix, AbstractBandedBlockBandedMatrix, _BandedMatrix, blockbandwidths, subblockbandwidths
 import LinearAlgebra: factorize
 import LazyArrays: arguments, paddeddata, LazyArrayStyle, LazyLayout, PaddedLayout, applylayout
-import LazyBandedMatrices: LazyBandedBlockBandedLayout, AbstractBandedBlockBandedLayout, AbstractLazyBandedBlockBandedLayout, _krontrav_axes, DiagTravLayout
+import LazyBandedMatrices: LazyBandedBlockBandedLayout, AbstractBandedBlockBandedLayout, AbstractLazyBandedBlockBandedLayout, _krontrav_axes, DiagTravLayout, invdiagtrav
 import InfiniteArrays: InfiniteCardinal, OneToInf
 
 import ClassicalOrthogonalPolynomials: jacobimatrix, Weighted, orthogonalityweight, HalfWeighted, WeightedBasis, pad, recurrencecoefficients, clenshaw

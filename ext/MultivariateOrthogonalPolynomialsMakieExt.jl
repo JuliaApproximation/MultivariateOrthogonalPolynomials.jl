@@ -232,8 +232,10 @@ triangle_meshdata(plotgridvalues(f)..., (a,b,c), getindex.(Ref(f), (a,b,c)))
 
 tricontourf(vec(x), vec(y), vec(F); levels=100)
 
-using ContinuumArrays: ApplyQuasiVector
+using Makie
+using ContinuumArrays: ApplyQuasiVector, plotgridvalues
 Makie.plottype(a::ApplyQuasiVector{<:Any, typeof(*), <:Tuple{JacobiTriangle,AbstractVector}}) = Tricontourf
+
 
 function Makie.tricontourf(f::ApplyQuasiVector{<:Any, typeof(*), <:Tuple{JacobiTriangle,AbstractVector}}; kwds...)
     xy,F = plotgridvalues(f)
@@ -241,10 +243,36 @@ function Makie.tricontourf(f::ApplyQuasiVector{<:Any, typeof(*), <:Tuple{JacobiT
     tricontourf(vec(x), vec(y), vec(F); kwds...)
 end
 
-f = expand(Weighted(JacobiTriangle(1,1,1))[:,1])
-tricontourf(f)
+function Makie.tricontourf!(f::ApplyQuasiVector{<:Any, typeof(*), <:Tuple{JacobiTriangle,AbstractVector}}; kwds...)
+    xy,F = plotgridvalues(f)
+    x,y = first.(xy),last.(xy)
+    tricontourf!(vec(x), vec(y), vec(F); kwds...)
+end
 
 
+# f = expand(Weighted(JacobiTriangle(1,1,1))[:,20])
+# tricontourf(f; levels=100)
+import Base: oneto
+KR = Block.(oneto(40))
+P = JacobiTriangle()
+f = P[:,KR] * (P \ Weighted(JacobiTriangle(1,1,1)))[KR,10]
+
+p = Figure(resolution = (3200, 2400))
+ax = Axis(p[1, 1])
+tricontourf!(f; levels=100)
+save("bubble10.png", p)
+
+
+using ContinuumArrays: AffineMap, affine
+using MultivariateOrthogonalPolynomials
+using MultivariateOrthogonalPolynomials: Triangle
+using StaticArrays
+
+a = affine(Triangle(), Triangle(SVector(1,0), SVector(0,1), SVector(1,1)))
+a[SVector(0.1,0.2)]
+
+P = JacobiTriangle()
+Q = P[affine(Triangle(SVector(1,0), SVector(0,1), SVector(1,1)), axes(P,1)), :]
 
 plot(f)
 
