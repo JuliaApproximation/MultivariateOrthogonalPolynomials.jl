@@ -763,7 +763,7 @@ function plotgrid(S::JacobiTriangle{T}, B::Block{1}) where T
     grid(S, Block(N)) # double sampling
 end
 
-function plotvalues(u::ApplyQuasiVector{T,typeof(*),<:Tuple{JacobiTriangle, AbstractVector}}, x) where T
+function plotvalues(u::ApplyQuasiVector{T,typeof(*),<:Tuple{JacobiTriangle, AbstractVector}}, x...) where T
     P,c = u.args
     B = findblock(axes(P,2), last(colsupport(c)))
 

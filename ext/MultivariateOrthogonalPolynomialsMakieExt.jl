@@ -232,18 +232,18 @@ triangle_meshdata(plotgridvalues(f)..., (a,b,c), getindex.(Ref(f), (a,b,c)))
 
 tricontourf(vec(x), vec(y), vec(F); levels=100)
 
-using Makie
+using Makie, MultivariateOrthogonalPolynomials
 using ContinuumArrays: ApplyQuasiVector, plotgridvalues
-Makie.plottype(a::ApplyQuasiVector{<:Any, typeof(*), <:Tuple{JacobiTriangle,AbstractVector}}) = Tricontourf
+# Makie.plottype(a::ApplyQuasiVector{<:Any, typeof(*), <:Tuple{JacobiTriangle,AbstractVector}}) = Tricontourf
 
 
-function Makie.tricontourf(f::ApplyQuasiVector{<:Any, typeof(*), <:Tuple{JacobiTriangle,AbstractVector}}; kwds...)
+function Makie.tricontourf(f::ApplyQuasiVector{<:Any, typeof(*)}; kwds...)
     xy,F = plotgridvalues(f)
     x,y = first.(xy),last.(xy)
     tricontourf(vec(x), vec(y), vec(F); kwds...)
 end
 
-function Makie.tricontourf!(f::ApplyQuasiVector{<:Any, typeof(*), <:Tuple{JacobiTriangle,AbstractVector}}; kwds...)
+function Makie.tricontourf!(f::ApplyQuasiVector{<:Any, typeof(*)}; kwds...)
     xy,F = plotgridvalues(f)
     x,y = first.(xy),last.(xy)
     tricontourf!(vec(x), vec(y), vec(F); kwds...)
@@ -274,7 +274,9 @@ a[SVector(0.1,0.2)]
 P = JacobiTriangle()
 Q = P[affine(Triangle(SVector(1,0), SVector(0,1), SVector(1,1)), axes(P,1)), :]
 
-plot(f)
+f = Q * [[randn(20); zeros(100)]; zeros(∞)]
+
+tricontourf(f; nlevels=300)
 
 
-# end # module
+# end # modul
