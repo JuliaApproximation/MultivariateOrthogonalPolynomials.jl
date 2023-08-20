@@ -80,8 +80,10 @@ struct JacobiTriangle{T,V} <: BivariateOrthogonalPolynomial{T}
 end
 
 
+JacobiTriangle{T}(a::V,b::V,c::V) where {T,V} = JacobiTriangle{T,V}(a, b, c)
 JacobiTriangle(a::T, b::T, c::T) where T = JacobiTriangle{float(T),T}(a, b, c)
 JacobiTriangle() = JacobiTriangle(0,0,0)
+JacobiTriangle{T}() where T = JacobiTriangle{T}(0,0,0)
 ==(K1::JacobiTriangle, K2::JacobiTriangle) = K1.a == K2.a && K1.b == K2.b && K1.c == K2.c
 
 axes(P::JacobiTriangle{T}) where T = (Inclusion(UnitTriangle{T}()),blockedrange(oneto(∞)))
@@ -167,16 +169,51 @@ end
 #     _lap_mul(P, eltype(axes(P,1)))
 # end
 
+# _BandedBlockBandedMatrix((@. exp(loggamma(n+k+b+c)+loggamma(n-k+a+1)+loggamma(k+b)+loggamma(k+c)-loggamma(n+k+a+b+c)-loggamma(k+b+c)-loggamma(n-k+1)-loggamma(k))/((2n+a+b+c)*(2k+b+c-1)))',
+# axes(k,1), (0,0), (0,0))
 
-
-@simplify function *(Ac::QuasiAdjoint{<:Any,<:JacobiTriangle}, B::JacobiTriangle)
-    A = parent(Ac)
-    @assert A == B == JacobiTriangle(0,0,0)
-    a,b,c = A.a,A.b,A.c
+function grammatrix(A::JacobiTriangle)
+    @assert A == JacobiTriangle()
     n = mortar(Fill.(oneto(∞),oneto(∞)))
     k = mortar(Base.OneTo.(oneto(∞)))
-    _BandedBlockBandedMatrix((@. exp(loggamma(n+k+b+c)+loggamma(n-k+a+1)+loggamma(k+b)+loggamma(k+c)-loggamma(n+k+a+b+c)-loggamma(k+b+c)-loggamma(n-k+1)-loggamma(k))/((2n+a+b+c)*(2k+b+c-1)))',
+    _BandedBlockBandedMatrix(BroadcastVector{eltype(A)}((n,k) -> exp(loggamma(n+k)+loggamma(n-k+1)+loggamma(k)+loggamma(k)-loggamma(n+k)-loggamma(k)-loggamma(n-k+1)-loggamma(k))/((2n)*(2k-1)), n, k)',
                                 axes(k,1), (0,0), (0,0))
+end
+
+"""
+    Conjugate(A,B)
+
+represents the matrix `B'A*B`
+"""
+struct Conjugate{T} <: LazyMatrix{T}
+    A
+    B
+end
+
+Conjugate(A, B) = Conjugate{promote_type(eltype(A), eltype(B))}(A, B)
+
+MemoryLayout(::Type{<:Conjugate}) = ApplyBandedBlockBandedLayout{typeof(*)}()
+axes(A::Conjugate) = (axes(A.B,2), axes(A.B,2))
+size(A::Conjugate) = (size(A.B,2), size(A.B,2))
+
+@inline arguments(A::Conjugate) = (A.B', A.A, A.B)
+@inline ApplyMatrix(A::Conjugate{T}) where T = ApplyMatrix{T}(*, arguments(A)...)
+blockbandwidths(A::Conjugate) = blockbandwidths(ApplyMatrix(A))
+subblockbandwidths(A::Conjugate) = subblockbandwidths(ApplyMatrix(A))
+
+getindex(A::Conjugate{T}, k::Int, j::Int) where T = ApplyMatrix(A)[k,j]::T
+function getindex(A::Conjugate, KR::BlockRange{1,Tuple{OneTo{Int}}}, JR::BlockRange{1,Tuple{OneTo{Int}}})
+    KR ≠ JR && return ApplyMatrix(A)[KR,JR]
+    MR = blockcolsupport(A.B, KR)
+    B = BandedBlockBandedMatrix(A.B[MR, KR])
+    B' * BandedBlockBandedMatrix(A.A[MR,MR]) * B
+end
+
+
+function grammatrix(W::Weighted{T,<:JacobiTriangle}) where T
+    P = JacobiTriangle{T}()
+    L = P \ W
+    Conjugate(grammatrix(P), L)
 end
 
 function Wy(a,b,c)
