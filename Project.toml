@@ -1,6 +1,6 @@
 name = "MultivariateOrthogonalPolynomials"
 uuid = "4f6956fd-4f93-5457-9149-7bfc4b2ce06d"
-version = "0.5.1"
+version = "0.6"
 
 [deps]
 ArrayLayouts = "4c555306-a7a7-4459-81d9-ec55ddd5c99a"
@@ -35,7 +35,7 @@ FastTransforms = "0.15"
 FillArrays = "1.0"
 HarmonicOrthogonalPolynomials = "0.5"
 InfiniteArrays = "0.12, 0.13"
-InfiniteLinearAlgebra = "0.6.6"
+InfiniteLinearAlgebra = "0.7"
 LazyArrays = "1.0"
 LazyBandedMatrices = "0.9"
 QuasiArrays = "0.11"
