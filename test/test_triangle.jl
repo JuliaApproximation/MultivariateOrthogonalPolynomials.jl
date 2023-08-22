@@ -363,8 +363,8 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
                 @test Rx[KR,JR] isa BandedBlockBandedMatrix
                 @test Ly[KR,JR] isa BandedBlockBandedMatrix
                 @test Ry[KR,JR] isa BandedBlockBandedMatrix
-                @test X[KR,JR] isa BandedBlockBandedMatrix
-                @test Y[KR,JR] isa BandedBlockBandedMatrix
+                @test X[KR,JR] isa ApplyMatrix
+                @test Y[KR,JR] isa ApplyMatrix
             end
 
             @testset "other parameters" begin
