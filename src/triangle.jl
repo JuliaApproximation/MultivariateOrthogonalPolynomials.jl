@@ -183,20 +183,26 @@ end
 """
     Conjugate(A,B)
 
-represents the matrix `B'A*B`
+represents the matrix `Q'A*Q`. `Q` may not be orthogonal.
 """
-struct Conjugate{T} <: LazyMatrix{T}
-    A
-    B
+struct Conjugate{T, AA, QQ} <: LazyMatrix{T}
+    A::AA
+    Q::QQ
 end
 
-Conjugate(A, B) = Conjugate{promote_type(eltype(A), eltype(B))}(A, B)
+Conjugate(A, Q) = Conjugate{promote_type(eltype(A), eltype(Q))}(A, Q)
 
 MemoryLayout(::Type{<:Conjugate}) = ApplyBandedBlockBandedLayout{typeof(*)}()
-axes(A::Conjugate) = (axes(A.B,2), axes(A.B,2))
-size(A::Conjugate) = (size(A.B,2), size(A.B,2))
+function axes(A::Conjugate)
+    _,ax = axes(A.Q)
+    (ax,ax)
+end
+function size(A::Conjugate)
+    _,sz = size(A.Q)
+    (sz,sz)
+end
 
-@inline arguments(A::Conjugate) = (A.B', A.A, A.B)
+@inline arguments(A::Conjugate) = (A.Q', A.A, A.Q)
 @inline ApplyMatrix(A::Conjugate{T}) where T = ApplyMatrix{T}(*, arguments(A)...)
 blockbandwidths(A::Conjugate) = blockbandwidths(ApplyMatrix(A))
 subblockbandwidths(A::Conjugate) = subblockbandwidths(ApplyMatrix(A))
@@ -204,8 +210,8 @@ subblockbandwidths(A::Conjugate) = subblockbandwidths(ApplyMatrix(A))
 getindex(A::Conjugate{T}, k::Int, j::Int) where T = ApplyMatrix(A)[k,j]::T
 function getindex(A::Conjugate, KR::BlockRange{1,Tuple{OneTo{Int}}}, JR::BlockRange{1,Tuple{OneTo{Int}}})
     KR ≠ JR && return ApplyMatrix(A)[KR,JR]
-    MR = blockcolsupport(A.B, KR)
-    B = BandedBlockBandedMatrix(A.B[MR, KR])
+    MR = blockcolsupport(A.Q, KR)
+    B = BandedBlockBandedMatrix(A.Q[MR, KR])
     B' * BandedBlockBandedMatrix(A.A[MR,MR]) * B
 end
 
