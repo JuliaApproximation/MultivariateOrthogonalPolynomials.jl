@@ -2,6 +2,72 @@ const UnitTriangle{T} = EuclideanUnitSimplex{2,T,:closed}
 
 ClassicalOrthogonalPolynomials.checkpoints(d::UnitTriangle{T}) where T = [SVector{2,T}(0.1,0.2), SVector{2,T}(0.2,0.3)]
 
+struct Triangle{T} <: Domain{SVector{2,T}}
+    a::SVector{2,T}
+    b::SVector{2,T}
+    c::SVector{2,T}
+    Triangle{T}(a::SVector{2,T}, b::SVector{2,T}, c::SVector{2,T}) where T = new{T}(a, b, c)
+end
+
+Triangle() = Triangle(SVector(0,0), SVector(1,0), SVector(0,1))
+Triangle(a, b, c) = Triangle{promote_type(eltype(eltype(a)), eltype(eltype(b)), eltype(eltype(c)))}(a,b, c)
+Triangle{T}(d::Triangle) where T = Triangle{T}(d.a, d.b, d.c)
+Triangle{T}(a, b, c) where T = Triangle{T}(convert(SVector{2,T}, a), convert(SVector{2,T}, b), convert(SVector{2,T}, c))
+
+==(A::Triangle, B::Triangle) = A.a == B.a && A.b == B.b && A.c == B.c
+
+Inclusion(d::Triangle{T}) where T = Inclusion{SVector{2,float(T)}}(d)
+
+function tocanonical(d::Triangle, 𝐱::AbstractVector)
+    if d.a == SVector(0,0)
+        [d.b d.c] \ 𝐱
+    else
+        tocanonical(d-d.a, 𝐱-d.a)
+    end
+end
+
+
+function fromcanonical(d::Triangle, 𝐱::AbstractVector)
+    if d.a == SVector(0,0)
+        [d.b d.c]*𝐱
+    else
+        fromcanonical(d-d.a, 𝐱) + d.a
+    end
+end
+
+fromcanonical(d::UnitTriangle, 𝐱::AbstractVector) = 𝐱
+tocanonical(d::UnitTriangle, 𝐱::AbstractVector) = 𝐱
+
+function getindex(a::ContinuumArrays.AffineMap{<:Any, <:Inclusion{<:Any,<:Union{Triangle,UnitTriangle}}, <:Inclusion{<:Any,<:Union{Triangle,UnitTriangle}}}, x::SVector{2})
+    checkbounds(a, x)
+    fromcanonical(a.range.domain, tocanonical(a.domain.domain, x))
+end
+
+
+# canonicaldomain(::Triangle) = Triangle()
+function in(p::SVector{2}, d::Triangle)
+    x,y = tocanonical(d, p)
+    0 ≤ x ≤ x + y ≤ 1
+end
+
+
+for op in (:-, :+)
+    @eval begin
+        $op(d::Triangle, x::SVector{2}) = Triangle($op(d.a,x), $op(d.b,x), $op(d.c,x))
+        $op(x::SVector{2}, d::Triangle) = Triangle($op(x,d.a), $op(x,d.b), $op(x,d.c))
+    end
+end
+
+for op in (:*, :/)
+    @eval $op(d::Triangle, x::Number) = Triangle($op(d.a,x), $op(d.b,x), $op(d.c,x))
+end
+
+for op in (:*, :\)
+    @eval $op(x::Number, d::Triangle) = Triangle($op(x,d.a), $op(x,d.b), $op(x,d.c))
+end
+
+
+
 # expansion in OPs orthogonal to
 # x^a*y^b*(1-x-y)^c
 # defined as
@@ -15,8 +81,10 @@ struct JacobiTriangle{T,V} <: BivariateOrthogonalPolynomial{T}
 end
 
 
+JacobiTriangle{T}(a::V,b::V,c::V) where {T,V} = JacobiTriangle{T,V}(a, b, c)
 JacobiTriangle(a::T, b::T, c::T) where T = JacobiTriangle{float(T),T}(a, b, c)
 JacobiTriangle() = JacobiTriangle(0,0,0)
+JacobiTriangle{T}() where T = JacobiTriangle{T}(0,0,0)
 ==(K1::JacobiTriangle, K2::JacobiTriangle) = K1.a == K2.a && K1.b == K2.b && K1.c == K2.c
 
 axes(P::JacobiTriangle{T}) where T = (Inclusion(UnitTriangle{T}()),blockedrange(oneto(∞)))
@@ -102,16 +170,61 @@ end
 #     _lap_mul(P, eltype(axes(P,1)))
 # end
 
+# _BandedBlockBandedMatrix((@. exp(loggamma(n+k+b+c)+loggamma(n-k+a+1)+loggamma(k+b)+loggamma(k+c)-loggamma(n+k+a+b+c)-loggamma(k+b+c)-loggamma(n-k+1)-loggamma(k))/((2n+a+b+c)*(2k+b+c-1)))',
+# axes(k,1), (0,0), (0,0))
 
-
-@simplify function *(Ac::QuasiAdjoint{<:Any,<:JacobiTriangle}, B::JacobiTriangle)
-    A = parent(Ac)
-    @assert A == B == JacobiTriangle(0,0,0)
-    a,b,c = A.a,A.b,A.c
+function grammatrix(A::JacobiTriangle)
+    @assert A == JacobiTriangle()
     n = mortar(Fill.(oneto(∞),oneto(∞)))
     k = mortar(Base.OneTo.(oneto(∞)))
-    _BandedBlockBandedMatrix((@. exp(loggamma(n+k+b+c)+loggamma(n-k+a+1)+loggamma(k+b)+loggamma(k+c)-loggamma(n+k+a+b+c)-loggamma(k+b+c)-loggamma(n-k+1)-loggamma(k))/((2n+a+b+c)*(2k+b+c-1)))',
+    _BandedBlockBandedMatrix(BroadcastVector{eltype(A)}((n,k) -> exp(loggamma(n+k)+loggamma(n-k+1)+loggamma(k)+loggamma(k)-loggamma(n+k)-loggamma(k)-loggamma(n-k+1)-loggamma(k))/((2n)*(2k-1)), n, k)',
                                 axes(k,1), (0,0), (0,0))
+end
+
+"""
+    Conjugate(A,B)
+
+represents the matrix `Q'A*Q`. `Q` may not be orthogonal.
+"""
+struct Conjugate{T, AA, QQ} <: LazyMatrix{T}
+    A::AA
+    Q::QQ
+end
+
+Conjugate{T}(A, Q) where T = Conjugate{T,typeof(A),typeof(Q)}(A, Q)
+Conjugate(A, Q) = Conjugate{promote_type(eltype(A), eltype(Q))}(A, Q)
+
+Base.array_summary(io::IO, B::Conjugate{T}, inds) where T = print(io, Base.dims2string(length.(inds)), " Conjugate{$T}")
+
+
+MemoryLayout(::Type{<:Conjugate}) = ApplyBandedBlockBandedLayout{typeof(*)}()
+function axes(A::Conjugate)
+    _,ax = axes(A.Q)
+    (ax,ax)
+end
+function size(A::Conjugate)
+    _,sz = size(A.Q)
+    (sz,sz)
+end
+
+@inline arguments(A::Conjugate) = (A.Q', A.A, A.Q)
+@inline ApplyMatrix(A::Conjugate{T}) where T = ApplyMatrix{T}(*, arguments(A)...)
+blockbandwidths(A::Conjugate) = blockbandwidths(ApplyMatrix(A))
+subblockbandwidths(A::Conjugate) = subblockbandwidths(ApplyMatrix(A))
+
+getindex(A::Conjugate{T}, k::Int, j::Int) where T = ApplyMatrix(A)[k,j]::T
+function getindex(A::Conjugate, KR::BlockRange{1,Tuple{OneTo{Int}}}, JR::BlockRange{1,Tuple{OneTo{Int}}})
+    KR ≠ JR && return ApplyMatrix(A)[KR,JR]
+    MR = blockcolsupport(A.Q, KR)
+    B = BandedBlockBandedMatrix(A.Q[MR, KR])
+    B' * BandedBlockBandedMatrix(A.A[MR,MR]) * B
+end
+
+
+function grammatrix(W::Weighted{T,<:JacobiTriangle}) where T
+    P = JacobiTriangle{T}()
+    L = P \ W
+    Conjugate(grammatrix(P), L)
 end
 
 function Wy(a,b,c)
@@ -698,12 +811,12 @@ function plotgrid(S::JacobiTriangle{T}, B::Block{1}) where T
     grid(S, Block(N)) # double sampling
 end
 
-function plotvalues(u::ApplyQuasiVector{T,typeof(*),<:Tuple{JacobiTriangle, AbstractVector}}, x) where T
+function plotvalues(u::ApplyQuasiVector{T,typeof(*),<:Tuple{JacobiTriangle, AbstractVector}}, x...) where T
     P,c = u.args
     B = findblock(axes(P,2), last(colsupport(c)))
 
     N = min(2Int(B), MAX_PLOT_BLOCKS)
     F = TriIPlan{T}(Block(N), P.a, P.b, P.c)
-    C = F * DiagTrav(c.array[1:N,1:N]) # transform to grid
+    C = F * DiagTrav(invdiagtrav(c)[1:N,1:N]) # transform to grid
     C
 end
