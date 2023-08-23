@@ -1,6 +1,6 @@
 using MultivariateOrthogonalPolynomials, StaticArrays, BlockArrays, BlockBandedMatrices, ArrayLayouts,
         QuasiArrays, Test, ClassicalOrthogonalPolynomials, BandedMatrices, FastTransforms, LinearAlgebra, ContinuumArrays
-import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleRecurrenceA, TriangleRecurrenceB, TriangleRecurrenceC, xy_muladd!, ExpansionLayout, Triangle
+import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleRecurrenceA, TriangleRecurrenceB, TriangleRecurrenceC, xy_muladd!, ExpansionLayout, Triangle, ApplyBandedBlockBandedLayout
 
 @testset "Triangle" begin
     @testset "basics" begin
@@ -429,6 +429,13 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
                 Q = JacobiTriangle(1,1,1)
                 W = Weighted(Q)
                 M = W'W
+                @test summary(M) == "ℵ₀×ℵ₀ Conjugate{Float64}"
+                @test MemoryLayout(M) isa ApplyBandedBlockBandedLayout
+                @test axes(M) == (axes(W,2), axes(W,2))
+                @test size(M) == (size(W,2), size(W,2))
+                @test blockbandwidths(M) == (3,3)
+                @test subblockbandwidths(M) == (2,2)
+                @test [M[k,j] for k=1:3,j=1:3] ≈ M[1:3,1:3] ≈ M[Block.(1:2), Block.(1:2)]
                 L = P\W
                 f = expand(P, splat((x,y) -> x*y*(1-x-y)*exp(x*cos(y))))
                 f̃ = expand(W, splat((x,y) -> x*y*(1-x-y)*exp(x*cos(y))))
