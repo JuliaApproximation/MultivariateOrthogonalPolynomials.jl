@@ -1,6 +1,6 @@
 using MultivariateOrthogonalPolynomials, StaticArrays, BlockArrays, BlockBandedMatrices, ArrayLayouts,
-        QuasiArrays, Test, ClassicalOrthogonalPolynomials, BandedMatrices, FastTransforms, LinearAlgebra
-import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleRecurrenceA, TriangleRecurrenceB, TriangleRecurrenceC, xy_muladd!, ExpansionLayout
+        QuasiArrays, Test, ClassicalOrthogonalPolynomials, BandedMatrices, FastTransforms, LinearAlgebra, ContinuumArrays
+import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleRecurrenceA, TriangleRecurrenceB, TriangleRecurrenceC, xy_muladd!, ExpansionLayout, Triangle
 
 @testset "Triangle" begin
     @testset "basics" begin
@@ -459,5 +459,20 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
     @testset "show" begin
         @test stringmime("text/plain", JacobiTriangle()) == "JacobiTriangle(0, 0, 0)"
         @test stringmime("text/plain", TriangleWeight(1,2,3)) == "x^1*y^2*(1-x-y)^3 on the unit triangle"
+    end
+
+    @testset "mapped" begin
+        d = Triangle(SVector(1,0), SVector(0,1), SVector(1,1))
+        @test SVector(0.6,0.7) in d
+        @test SVector(0.1,0.2) ∉ d
+        @test 2d == d*2 == Triangle(SVector(2,0), SVector(0,2), SVector(2,2))
+        @test d - SVector(1,2) ≈ Triangle(SVector(0,-2), SVector(-1,-1), SVector(0,-1))
+        @test SVector(1,2) - d ≈ Triangle(SVector(0,2), SVector(1,1), SVector(0,1))
+        a = affine(Triangle(), d)
+        𝐱 = SVector(0.1,0.2)
+        @test a[𝐱] ≈ SVector(0.9,0.3)
+        P = JacobiTriangle()
+        Q = P[affine(d, axes(P,1)), :]
+        @test Q[a[𝐱], 1:3] ≈ P[𝐱, 1:3]
     end
 end

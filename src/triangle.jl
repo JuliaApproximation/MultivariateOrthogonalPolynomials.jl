@@ -16,33 +16,30 @@ Triangle{T}(a, b, c) where T = Triangle{T}(convert(SVector{2,T}, a), convert(SVe
 
 Inclusion(d::Triangle{T}) where T = Inclusion{SVector{2,float(T)}}(d)
 
-function tocanonical(d::Triangle, xy::SVector)
+function tocanonical(d::Triangle, 𝐱::AbstractVector)
     if d.a == SVector(0,0)
-        [d.b d.c] \ xy
+        [d.b d.c] \ 𝐱
     else
-        tocanonical(d-d.a, xy-d.a)
+        tocanonical(d-d.a, 𝐱-d.a)
     end
 end
 
 
-function fromcanonical(d::Triangle, xy::SVector)
+function fromcanonical(d::Triangle, 𝐱::AbstractVector)
     if d.a == SVector(0,0)
-        [d.b d.c]*xy
+        [d.b d.c]*𝐱
     else
-        fromcanonical(d-d.a, xy) + d.a
+        fromcanonical(d-d.a, 𝐱) + d.a
     end
 end
 
-function getindex(a::ContinuumArrays.AffineMap{<:Any, <:Inclusion{<:Any,<:Triangle}, <:Inclusion{<:Any,<:UnitSimplex}}, x::SVector{2})
-    checkbounds(a, x)
-    tocanonical(a.domain.domain, x)
-end
+fromcanonical(d::UnitTriangle, 𝐱::AbstractVector) = 𝐱
+tocanonical(d::UnitTriangle, 𝐱::AbstractVector) = 𝐱
 
-function getindex(a::ContinuumArrays.AffineMap{<:Any, <:Inclusion{<:Any,<:UnitSimplex}, <:Inclusion{<:Any,<:Triangle}}, x::SVector{2})
+function getindex(a::ContinuumArrays.AffineMap{<:Any, <:Inclusion{<:Any,<:Union{Triangle,UnitTriangle}}, <:Inclusion{<:Any,<:Union{Triangle,UnitTriangle}}}, x::SVector{2})
     checkbounds(a, x)
-    fromcanonical(a.range.domain, x)
+    fromcanonical(a.range.domain, tocanonical(a.domain.domain, x))
 end
-
 
 
 # canonicaldomain(::Triangle) = Triangle()
@@ -63,7 +60,9 @@ for op in (:*, :/)
     @eval $op(d::Triangle, x::Number) = Triangle($op(d.a,x), $op(d.b,x), $op(d.c,x))
 end
 
-
+for op in (:*, :\)
+    @eval $op(x::Number, d::Triangle) = Triangle($op(x,d.a), $op(x,d.b), $op(x,d.c))
+end
 
 
 
