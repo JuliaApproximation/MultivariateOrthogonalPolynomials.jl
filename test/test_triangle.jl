@@ -6,6 +6,7 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
     @testset "basics" begin
         P = JacobiTriangle()
         @test copy(P) ≡ P
+        @test P ≡ JacobiTriangle{Float64}() ≡ JacobiTriangle{Float64}(0,0,0)
 
         𝐱 = axes(P,1)
         x,y = first.(𝐱),last.(𝐱)
@@ -422,6 +423,20 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
                         (w_0 .* P) \ Weighted(P) == Weighted(P) \ (w_0 .* P)
 
             @test ((w_0 .* Q) \ P)[1:10,1:10] == ((w_0 .* Q) \ (w_0 .* P))[1:10,1:10] == (Q \ (w_0 .* P))[1:10,1:10] == (Q \ P)[1:10,1:10]
+
+            @testset "gram matrix" begin
+                P = JacobiTriangle()
+                Q = JacobiTriangle(1,1,1)
+                W = Weighted(Q)
+                M = W'W
+                L = P\W
+                f = expand(P, splat((x,y) -> x*y*(1-x-y)*exp(x*cos(y))))
+                f̃ = expand(W, splat((x,y) -> x*y*(1-x-y)*exp(x*cos(y))))
+                c = coefficients(f)
+                c̃ = coefficients(f̃)
+                KR = Block.(oneto(20))
+                @test c[KR]' * (P'P)[KR,KR] * c[KR] ≈ c̃[KR]' * M[KR,KR] * c̃[KR]
+            end
         end
 
         @testset "general (broken)" begin
@@ -463,6 +478,8 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
 
     @testset "mapped" begin
         d = Triangle(SVector(1,0), SVector(0,1), SVector(1,1))
+        @test Triangle{Float64}(SVector(1,0), SVector(0,1), SVector(1,1)) ≡ Triangle{Float64}(d)
+        @test d == Triangle{Float64}(d)
         @test SVector(0.6,0.7) in d
         @test SVector(0.1,0.2) ∉ d
         @test 2d == d*2 == Triangle(SVector(2,0), SVector(0,2), SVector(2,2))
@@ -474,5 +491,7 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
         P = JacobiTriangle()
         Q = P[affine(d, axes(P,1)), :]
         @test Q[a[𝐱], 1:3] ≈ P[𝐱, 1:3]
+
+        @test affine(d, axes(P,1))[affine(axes(P,1), d)[𝐱]] ≈ 𝐱
     end
 end

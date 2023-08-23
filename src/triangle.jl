@@ -14,6 +14,8 @@ Triangle(a, b, c) = Triangle{promote_type(eltype(eltype(a)), eltype(eltype(b)), 
 Triangle{T}(d::Triangle) where T = Triangle{T}(d.a, d.b, d.c)
 Triangle{T}(a, b, c) where T = Triangle{T}(convert(SVector{2,T}, a), convert(SVector{2,T}, b), convert(SVector{2,T}, c))
 
+==(A::Triangle, B::Triangle) = A.a == B.a && A.b == B.b && A.c == B.c
+
 Inclusion(d::Triangle{T}) where T = Inclusion{SVector{2,float(T)}}(d)
 
 function tocanonical(d::Triangle, 𝐱::AbstractVector)
@@ -189,7 +191,11 @@ struct Conjugate{T, AA, QQ} <: LazyMatrix{T}
     Q::QQ
 end
 
+Conjugate{T}(A, Q) where T = Conjugate{T,typeof(A),typeof(Q)}(A, Q)
 Conjugate(A, Q) = Conjugate{promote_type(eltype(A), eltype(Q))}(A, Q)
+
+Base.array_summary(io::IO, B::Conjugate{T}, inds) where T = print(io, Base.dims2string(length.(inds)), " Conjugate{$T}")
+
 
 MemoryLayout(::Type{<:Conjugate}) = ApplyBandedBlockBandedLayout{typeof(*)}()
 function axes(A::Conjugate)
