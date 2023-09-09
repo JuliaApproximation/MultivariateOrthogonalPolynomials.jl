@@ -30,6 +30,8 @@ end
 
 DunklXuDiskWeight(β::T) where T = DunklXuDiskWeight{float(T),T}(β)
 
+==(a::DunklXuDiskWeight, b::DunklXuDiskWeight) = a.β == b.β
+
 axes(P::DunklXuDiskWeight{T}) where T = (Inclusion(UnitDisk{T}()),)
 
 show(io::IO, P::DunklXuDiskWeight) = summary(io, P)
