@@ -24,6 +24,9 @@ import MultivariateOrthogonalPolynomials: dunklxu_raising, dunklxu_lowering, Ang
         WP = WeightedDunklXuDisk(β)
         WQ = WeightedDunklXuDisk(β+1)
 
+        @test WP ≠ WQ
+        @test WP == WP
+
         x, y = first.(axes(P, 1)), last.(axes(P, 1))
 
         L = WP \ WQ

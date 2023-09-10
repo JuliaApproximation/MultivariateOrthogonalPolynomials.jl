@@ -74,6 +74,9 @@ import ClassicalOrthogonalPolynomials: expand
         W² = RectPolynomial(W, W)
         P² = RectPolynomial(P, P)
         Q² = RectPolynomial(Q, Q)
+
+        @test P² == RectPolynomial(Jacobi(0,0), Jacobi(0,0))
+
         𝐱 = axes(W²,1)
         D_x,D_y = PartialDerivative{1}(𝐱),PartialDerivative{2}(𝐱)
         Δ = Q²\(D_x^2 + D_y^2)*W²
