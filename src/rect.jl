@@ -16,6 +16,8 @@ function show(io::IO, P::KronPolynomial)
     end
 end
 
+==(A::KronPolynomial, B::KronPolynomial) = length(A.args) == length(B.args) && all(map(==, A.args, B.args))
+
 const RectPolynomial{T, PP} = KronPolynomial{2, T, PP}
 
 
