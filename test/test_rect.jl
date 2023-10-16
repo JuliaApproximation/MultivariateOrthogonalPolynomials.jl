@@ -1,5 +1,6 @@
 using MultivariateOrthogonalPolynomials, ClassicalOrthogonalPolynomials, StaticArrays, LinearAlgebra, BlockArrays, FillArrays, Base64, Test
 import ClassicalOrthogonalPolynomials: expand
+import MultivariateOrthogonalPolynomials: weaklaplacian
 
 @testset "RectPolynomial" begin
     @testset "Evaluation" begin
@@ -26,17 +27,18 @@ import ClassicalOrthogonalPolynomials: expand
         𝐱 = axes(T²ₙ,1)
         x,y = first.(𝐱),last.(𝐱)
         @test T²ₙ \ one.(x) == [1; zeros(14)]
-        T² \ x
-        f = expand(T², 𝐱 -> ((x,y) = 𝐱; exp(x*cos(y-0.1))))
+        @test (T² \ x)[1:5] ≈[0;1;zeros(3)]
+
+        f = expand(T², splat((x,y) -> exp(x*cos(y-0.1))))
         @test f[SVector(0.1,0.2)] ≈ exp(0.1*cos(0.1))
 
         U = ChebyshevU()
         U² = RectPolynomial(Fill(U, 2))
 
-        a,b = f.args
-        f[SVector(0.1,0.2)]
+        @test f[SVector(0.1,0.2)] ≈ exp(0.1cos(0.1))
 
-        a,b = T² , (T² \ broadcast(𝐱 -> ((x,y) = 𝐱; exp(x*cos(y))), 𝐱))
+        TU = RectPolynomial(T,U)
+        f = expand(TU, splat((x,y) -> exp(x*cos(y-0.1))))
     end
 
     @testset "Conversion" begin
@@ -77,12 +79,19 @@ import ClassicalOrthogonalPolynomials: expand
 
         @test P² == RectPolynomial(Jacobi(0,0), Jacobi(0,0))
 
-        𝐱 = axes(W²,1)
-        D_x,D_y = PartialDerivative{1}(𝐱),PartialDerivative{2}(𝐱)
-        Δ = Q²\(D_x^2 + D_y^2)*W²
+        @testset "strong form" begin
+            𝐱 = axes(W²,1)
+            D_x,D_y = PartialDerivative{1}(𝐱),PartialDerivative{2}(𝐱)
+            Δ = Q²\(D_x^2 + D_y^2)*W²
 
-        K = Block.(1:200); @time L = Δ[K,K]; @time qr(L);
-        \(qr(Δ), [1; zeros(∞)]; tolerance=1E-1)
+            K = Block.(1:200); @time L = Δ[K,K]; @time qr(L);
+            \(qr(Δ), [1; zeros(∞)]; tolerance=1E-1)
+        end
+
+        @testset "weakform" begin
+            Δ = weaklaplacian(W²)
+            c = transform(W², splat((x,y) -> (1-x^2)*(1-y^2)))
+        end
     end
 
     @testset "Legendre" begin
