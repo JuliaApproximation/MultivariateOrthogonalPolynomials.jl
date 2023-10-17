@@ -64,6 +64,8 @@ ApplyPlan(f, P) = ApplyPlan{eltype(P), typeof(f), typeof(P)}(f, P)
 
 *(A::ApplyPlan, B::AbstractArray) = A.f(A.plan*B)
 
+basis_axes(d::Inclusion{<:Any,<:ProductDomain}, v) = KronPolynomial(map(d -> basis(Inclusion(d)),components(d.domain))...)
+
 function checkpoints(P::RectPolynomial)
     x,y = checkpoints.(P.args)
     SVector.(x, y')
@@ -78,6 +80,12 @@ function plan_grid_transform(P::KronPolynomial{d,<:Any,<:Fill}, B::Tuple{Block{1
     x̃ = Vector(x)
     SVector.(x̃, x̃'), ApplyPlan(DiagTrav, F)
 end
+
+function plotgrid(P::RectPolynomial, B::Block{1})
+    x,y = plotgrid.(P.args, Int(B))
+    SVector.(x, y')
+end
+
 
 applylayout(::Type{typeof(*)}, ::Lay, ::DiagTravLayout) where Lay <: AbstractBasisLayout = ExpansionLayout{Lay}()
 ContinuumArrays._mul_plotgrid(::Tuple{Any,DiagTravLayout{<:PaddedLayout}}, (P,c)) = plotgrid(P, maximum(blockcolsupport(c)))
