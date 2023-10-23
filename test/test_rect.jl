@@ -1,6 +1,7 @@
 using MultivariateOrthogonalPolynomials, ClassicalOrthogonalPolynomials, StaticArrays, LinearAlgebra, BlockArrays, FillArrays, Base64, Test
-import ClassicalOrthogonalPolynomials: expand
-import MultivariateOrthogonalPolynomials: weaklaplacian
+using ClassicalOrthogonalPolynomials: expand
+using MultivariateOrthogonalPolynomials: weaklaplacian
+using ContinuumArrays: plotgridvalues
 
 @testset "RectPolynomial" begin
     @testset "Evaluation" begin
@@ -110,5 +111,12 @@ import MultivariateOrthogonalPolynomials: weaklaplacian
     @testset "Show" begin
         @test stringmime("text/plain", KronPolynomial(Legendre(), Chebyshev())) == "Legendre() ⊗ ChebyshevT()"
         @test stringmime("text/plain", KronPolynomial(Legendre(), Chebyshev(), Jacobi(1,1))) == "Legendre() ⊗ ChebyshevT() ⊗ Jacobi(1.0, 1.0)"
+    end
+
+    @testset "Plot" begin
+        P = RectPolynomial(Legendre(),Legendre())
+        x,F = plotgridvalues(P[:,1])
+        @test x == SVector.(ChebyshevGrid{2}(40), ChebyshevGrid{2}(40)')
+        @test F == ones(40,40)
     end
 end
