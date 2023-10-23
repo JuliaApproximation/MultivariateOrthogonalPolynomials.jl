@@ -49,11 +49,25 @@ end
     RectPolynomial(A,U) * KronTrav(M, Eye{eltype(M)}(∞))
 end
 
+function weaklaplacian(P::RectPolynomial)
+    A,B = P.args
+    Δ_A,Δ_B = weaklaplacian(A), weaklaplacian(B)
+    M_A,M_B = grammatrix(A), grammatrix(B)
+    KronTrav(Δ_A,M_B) + KronTrav(M_A,Δ_B)
+end
+
 function \(P::RectPolynomial, Q::RectPolynomial)
     PA,PB = P.args
     QA,QB = Q.args
     KronTrav(PA\QA, PB\QB)
 end
+
+@simplify function *(Ac::QuasiAdjoint{<:Any,<:RectPolynomial}, B::RectPolynomial)
+    PA,PB = Ac'.args
+    QA,QB = B.args
+    KronTrav(PA'QA, PB'QB)
+end
+
 
 struct ApplyPlan{T, F, Pl}
     f::F
@@ -64,6 +78,20 @@ ApplyPlan(f, P) = ApplyPlan{eltype(P), typeof(f), typeof(P)}(f, P)
 
 *(A::ApplyPlan, B::AbstractArray) = A.f(A.plan*B)
 
+
+struct TensorPlan{T, Plans}
+    plans::Plans
+end
+
+TensorPlan(P...) = TensorPlan{mapreduce(eltype,promote_type,P), typeof(P)}(P)
+
+function *(A::TensorPlan, B::AbstractArray)
+    for p in A.plans
+        B = p*B
+    end
+    B
+end
+
 function checkpoints(P::RectPolynomial)
     x,y = checkpoints.(P.args)
     SVector.(x, y')
@@ -73,10 +101,20 @@ function plan_grid_transform(P::KronPolynomial{d,<:Any,<:Fill}, B::Tuple{Block{1
     @assert dims == 1
 
     T = first(P.args)
-    x, F = plan_grid_transform(T, Array{eltype(P)}(undef, Fill(Int(B[1]),d)...))
+    x, F = plan_grid_transform(T, tuple(Fill(Int(B[1]),d)...))
     @assert d == 2
     x̃ = Vector(x)
     SVector.(x̃, x̃'), ApplyPlan(DiagTrav, F)
+end
+
+function plan_grid_transform(P::KronPolynomial{d}, B::Tuple{Block{1}}, dims=1:1) where d
+    @assert dims == 1 || dims == 1:1 || dims == (1,)
+    @assert d == 2
+    N = Int(B[1])
+    xF = [plan_grid_transform(P.args[k], (N,N), k) for k=1:length(P.args)]
+    x,y = map(first,xF)
+    Fx,Fy = map(last,xF)
+    SVector.(x, y'), ApplyPlan(DiagTrav, TensorPlan(Fx,Fy))
 end
 
 applylayout(::Type{typeof(*)}, ::Lay, ::DiagTravLayout) where Lay <: AbstractBasisLayout = ExpansionLayout{Lay}()

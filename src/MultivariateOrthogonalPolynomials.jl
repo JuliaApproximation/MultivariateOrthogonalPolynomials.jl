@@ -11,7 +11,7 @@ import Base.Broadcast: Broadcasted, broadcasted, DefaultArrayStyle
 import DomainSets: boundary, EuclideanDomain
 
 import QuasiArrays: LazyQuasiMatrix, LazyQuasiArrayStyle, domain
-import ContinuumArrays: @simplify, Weight, weight, grid, plotgrid, TransformFactorization, ExpansionLayout, plotvalues, unweighted, plan_grid_transform, checkpoints, transform_ldiv, AbstractBasisLayout, basis_axes, Inclusion, grammatrix
+import ContinuumArrays: @simplify, Weight, weight, grid, plotgrid, TransformFactorization, ExpansionLayout, plotvalues, unweighted, plan_grid_transform, checkpoints, transform_ldiv, AbstractBasisLayout, basis_axes, Inclusion, grammatrix, weaklaplacian
 
 import ArrayLayouts: MemoryLayout, sublayout, sub_materialize
 import BlockArrays: block, blockindex, BlockSlice, viewblock, blockcolsupport, AbstractBlockStyle, BlockStyle
