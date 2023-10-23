@@ -1,6 +1,6 @@
 name = "MultivariateOrthogonalPolynomials"
 uuid = "4f6956fd-4f93-5457-9149-7bfc4b2ce06d"
-version = "0.6.2"
+version = "0.6.3"
 
 [deps]
 ArrayLayouts = "4c555306-a7a7-4459-81d9-ec55ddd5c99a"
