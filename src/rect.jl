@@ -9,7 +9,17 @@ KronPolynomial{d,T}(a::AbstractVector) where {d,T} = KronPolynomial{d,T,typeof(a
 KronPolynomial{d}(a::AbstractVector) where d = KronPolynomial{d,eltype(eltype(a))}(a)
 KronPolynomial(a::AbstractVector) = KronPolynomial{length(a)}(a)
 
+function show(io::IO, P::KronPolynomial)
+    for k = 1:length(P.args)
+        print(io, "$(P.args[k])")
+        k ≠ length(P.args) && print(io, " ⊗ ")
+    end
+end
+
+==(A::KronPolynomial, B::KronPolynomial) = length(A.args) == length(B.args) && all(map(==, A.args, B.args))
+
 const RectPolynomial{T, PP} = KronPolynomial{2, T, PP}
+
 
 
 axes(P::KronPolynomial) = (Inclusion(×(map(domain, axes.(P.args, 1))...)), _krontrav_axes(axes.(P.args, 2)...))
@@ -39,10 +49,12 @@ end
     RectPolynomial(A,U) * KronTrav(M, Eye{eltype(M)}(∞))
 end
 
-@simplify function *(Pc::QuasiAdjoint{<:Any,<:RectPolynomial}, Q::RectPolynomial)
-    PA,PB = parent(Pc).args
-    QA,QB = Q.args
-    KronTrav(PB'QB, PA'QA)
+
+function weaklaplacian(P::RectPolynomial)
+    A,B = P.args
+    Δ_A,Δ_B = weaklaplacian(A), weaklaplacian(B)
+    M_A,M_B = grammatrix(A), grammatrix(B)
+    KronTrav(Δ_A,M_B) + KronTrav(M_A,Δ_B)
 end
 
 function \(P::RectPolynomial, Q::RectPolynomial)
@@ -51,11 +63,16 @@ function \(P::RectPolynomial, Q::RectPolynomial)
     KronTrav(PB\QB, PA\QA)
 end
 
+@simplify function *(Ac::QuasiAdjoint{<:Any,<:RectPolynomial}, B::RectPolynomial)
+    PA,PB = Ac'.args
+    QA,QB = B.args
+    KronTrav(PA'QA, PB'QB)
+end
+
 """
    ApplyPlan(f, plan)
 
-applies a plan and then the function f. If plan is a tuple
-it applies each plan (the assumption is that order doesn't matter).
+applies a plan and then the function f. 
 """
 struct ApplyPlan{T, F, Pl}
     f::F
@@ -66,36 +83,55 @@ ApplyPlan(f, P) = ApplyPlan{eltype(P), typeof(f), typeof(P)}(f, P)
 
 *(A::ApplyPlan, B::AbstractArray) = A.f(A.plan*B)
 
-_apply_plan(B) = B
-_apply_plan(B, A, C...) = _apply_plan(A*B, C...)
-*(A::ApplyPlan{<:Any,<:Any,<:Tuple}, B::AbstractArray) = A.f(_apply_plan(B, A.plan...))
+
+struct TensorPlan{T, Plans}
+    plans::Plans
+end
+
+TensorPlan(P...) = TensorPlan{mapreduce(eltype,promote_type,P), typeof(P)}(P)
+
+function *(A::TensorPlan, B::AbstractArray)
+    for p in A.plans
+        B = p*B
+    end
+    B
+end
 
 function checkpoints(P::RectPolynomial)
     x,y = checkpoints.(P.args)
     SVector.(x, y')
 end
 
+basis_axes(d::Inclusion{<:Any,<:ProductDomain}, v) = KronPolynomial(map(d -> basis(Inclusion(d)),components(d.domain))...)
+
 function plan_grid_transform(P::KronPolynomial{d,<:Any,<:Fill}, B::Tuple{Block{1}}, dims=1:1) where d
     @assert dims == 1
 
     T = first(P.args)
-    x, F = plan_grid_transform(T, Array{eltype(P)}(undef, Fill(Int(B[1]),d)...))
+    x, F = plan_grid_transform(T, tuple(Fill(Int(B[1]),d)...))
     @assert d == 2
     x̃ = Vector(x)
     SVector.(x̃, x̃'), ApplyPlan(DiagTrav, F)
 end
 
+function plotgrid(P::RectPolynomial, B::Block{1})
+    x,y = plotgrid.(P.args, Int(B))
+    SVector.(x, y')
+end
+
 
 function plan_grid_transform(P::KronPolynomial{d}, B::Tuple{Block{1}}, dims=1:1) where d
-    @assert dims == 1
+    @assert dims == 1 || dims == 1:1 || dims == (1,)
     @assert d == 2
-
-    P,Q = P.args
     N = Int(B[1])
-    x, F = plan_grid_transform(P, (N,N), 1)
-    y, G = plan_grid_transform(Q, (N,N), 2)
-    SVector.(x, y'), ApplyPlan(DiagTrav, (F, G))
+    xF = [plan_grid_transform(P.args[k], (N,N), k) for k=1:length(P.args)]
+    x,y = map(first,xF)
+    Fx,Fy = map(last,xF)
+    SVector.(x, y'), ApplyPlan(DiagTrav, TensorPlan(Fx,Fy))
 end
+
+applylayout(::Type{typeof(*)}, ::Lay, ::DiagTravLayout) where Lay <: AbstractBasisLayout = ExpansionLayout{Lay}()
+ContinuumArrays._mul_plotgrid(::Tuple{Any,DiagTravLayout{<:PaddedLayout}}, (P,c)) = plotgrid(P, maximum(blockcolsupport(c)))
 
 pad(C::DiagTrav, ::BlockedUnitRange{RangeCumsum{Int,OneToInf{Int}}}) = DiagTrav(pad(C.array, ∞, ∞))
 

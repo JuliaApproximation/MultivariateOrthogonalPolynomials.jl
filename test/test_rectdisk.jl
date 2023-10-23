@@ -1,4 +1,4 @@
-using MultivariateOrthogonalPolynomials, StaticArrays, BlockArrays, BlockBandedMatrices, ArrayLayouts,
+using MultivariateOrthogonalPolynomials, StaticArrays, BlockArrays, BlockBandedMatrices, ArrayLayouts, Base64,
         QuasiArrays, Test, ClassicalOrthogonalPolynomials, BandedMatrices, FastTransforms, LinearAlgebra
 import MultivariateOrthogonalPolynomials: dunklxu_raising, dunklxu_lowering, AngularMomentum
 
@@ -23,6 +23,9 @@ import MultivariateOrthogonalPolynomials: dunklxu_raising, dunklxu_lowering, Ang
         Q = DunklXuDisk(β+1)
         WP = WeightedDunklXuDisk(β)
         WQ = WeightedDunklXuDisk(β+1)
+
+        @test WP ≠ WQ
+        @test WP == WP
 
         x, y = first.(axes(P, 1)), last.(axes(P, 1))
 
@@ -80,5 +83,10 @@ import MultivariateOrthogonalPolynomials: dunklxu_raising, dunklxu_lowering, Ang
             @test Dx[KR,JR] isa BandedBlockBandedMatrix
             @test Dy[KR,JR] isa BandedBlockBandedMatrix
         end
+    end
+
+    @testset "show" begin
+        @test stringmime("text/plain", DunklXuDisk()) == "DunklXuDisk(0)"
+        @test stringmime("text/plain", DunklXuDiskWeight(0)) == "(1-x^2-y^2)^0 on the unit disk"
     end
 end

@@ -15,8 +15,8 @@ DunklXuDisk() = DunklXuDisk(0)
 axes(P::DunklXuDisk{T}) where T = (Inclusion(UnitDisk{T}()),blockedrange(oneto(∞)))
 
 copy(A::DunklXuDisk) = A
-
-Base.summary(io::IO, P::DunklXuDisk) = print(io, "DunklXuDisk($(P.β))")
+show(io::IO, P::DunklXuDisk) = summary(io, P)
+summary(io::IO, P::DunklXuDisk) = print(io, "DunklXuDisk($(P.β))")
 
 
 """
@@ -30,9 +30,12 @@ end
 
 DunklXuDiskWeight(β::T) where T = DunklXuDiskWeight{float(T),T}(β)
 
+==(a::DunklXuDiskWeight, b::DunklXuDiskWeight) = a.β == b.β
+
 axes(P::DunklXuDiskWeight{T}) where T = (Inclusion(UnitDisk{T}()),)
 
-Base.summary(io::IO, P::DunklXuDiskWeight) = print(io, "(1-x^2-y^2)^$(P.β) on the unit disk")
+show(io::IO, P::DunklXuDiskWeight) = summary(io, P)
+summary(io::IO, P::DunklXuDiskWeight) = print(io, "(1-x^2-y^2)^$(P.β) on the unit disk")
 
 const WeightedDunklXuDisk{T} = WeightedBasis{T,<:DunklXuDiskWeight,<:DunklXuDisk}
 
