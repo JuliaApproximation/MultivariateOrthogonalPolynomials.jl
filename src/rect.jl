@@ -49,6 +49,7 @@ end
     RectPolynomial(A,U) * KronTrav(M, Eye{eltype(M)}(∞))
 end
 
+
 function weaklaplacian(P::RectPolynomial)
     A,B = P.args
     Δ_A,Δ_B = weaklaplacian(A), weaklaplacian(B)
@@ -59,7 +60,7 @@ end
 function \(P::RectPolynomial, Q::RectPolynomial)
     PA,PB = P.args
     QA,QB = Q.args
-    KronTrav(PA\QA, PB\QB)
+    KronTrav(PB\QB, PA\QA)
 end
 
 @simplify function *(Ac::QuasiAdjoint{<:Any,<:RectPolynomial}, B::RectPolynomial)
@@ -68,7 +69,11 @@ end
     KronTrav(PA'QA, PB'QB)
 end
 
+"""
+   ApplyPlan(f, plan)
 
+applies a plan and then the function f. 
+"""
 struct ApplyPlan{T, F, Pl}
     f::F
     plan::Pl
@@ -78,7 +83,6 @@ ApplyPlan(f, P) = ApplyPlan{eltype(P), typeof(f), typeof(P)}(f, P)
 
 *(A::ApplyPlan, B::AbstractArray) = A.f(A.plan*B)
 
-basis_axes(d::Inclusion{<:Any,<:ProductDomain}, v) = KronPolynomial(map(d -> basis(Inclusion(d)),components(d.domain))...)
 
 struct TensorPlan{T, Plans}
     plans::Plans
@@ -97,6 +101,8 @@ function checkpoints(P::RectPolynomial)
     x,y = checkpoints.(P.args)
     SVector.(x, y')
 end
+
+basis_axes(d::Inclusion{<:Any,<:ProductDomain}, v) = KronPolynomial(map(d -> basis(Inclusion(d)),components(d.domain))...)
 
 function plan_grid_transform(P::KronPolynomial{d,<:Any,<:Fill}, B::Tuple{Block{1}}, dims=1:1) where d
     @assert dims == 1
@@ -150,3 +156,12 @@ function transform_ldiv(K::KronPolynomial{d,V,<:Fill{<:Legendre}}, f::Union{Abst
     dat = (T \ f).array
     DiagTrav(pad(FastTransforms.th_cheb2leg(paddeddata(dat)), axes(dat)...))
 end
+
+
+function Base.summary(io::IO, P::RectPolynomial)
+    A,B = P.args
+    summary(io, A)
+    print(io, " ⊗ ")
+    summary(io, B)
+end
+

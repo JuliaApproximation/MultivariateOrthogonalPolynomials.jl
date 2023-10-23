@@ -108,6 +108,24 @@ using ContinuumArrays: plotgridvalues
         @test (P²[:,Block.(1:100)] \ f) ≈ f.args[2][Block.(1:100)]
     end
 
+    @testset "Weak Laplacian" begin
+        W = Weighted(Jacobi(1,1))
+        P = Legendre()
+        W² = RectPolynomial(Fill(W, 2))
+        P² = RectPolynomial(Fill(P, 2))
+        𝐱 = axes(P²,1)
+        D_x,D_y = PartialDerivative{1}(𝐱),PartialDerivative{2}(𝐱)
+        Δ = -((D_x * W²)'*(D_x * W²) + (D_y * W²)'*(D_y * W²))
+
+        f = expand(P² , 𝐱 -> ((x,y) = 𝐱; x^2 + y^2 - 2))
+
+        KR = Block.(Base.OneTo(100))
+        @time 𝐜 = Δ[KR,KR] \ (W²'*f)[KR];
+        @test W²[SVector(0.1,0.2),KR]'*𝐜 ≈ (1-0.1^2)*(1-0.2^2)/2 
+
+        @test \(Δ, (W²'*f); tolerance=1E-15) ≈ [0.5; zeros(∞)]
+    end
+    
     @testset "Show" begin
         @test stringmime("text/plain", KronPolynomial(Legendre(), Chebyshev())) == "Legendre() ⊗ ChebyshevT()"
         @test stringmime("text/plain", KronPolynomial(Legendre(), Chebyshev(), Jacobi(1,1))) == "Legendre() ⊗ ChebyshevT() ⊗ Jacobi(1.0, 1.0)"
