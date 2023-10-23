@@ -62,6 +62,13 @@ function \(P::RectPolynomial, Q::RectPolynomial)
     KronTrav(PA\QA, PB\QB)
 end
 
+@simplify function *(Ac::QuasiAdjoint{<:Any,<:RectPolynomial}, B::RectPolynomial)
+    PA,PB = Ac'.args
+    QA,QB = B.args
+    KronTrav(PA'QA, PB'QB)
+end
+
+
 struct ApplyPlan{T, F, Pl}
     f::F
     plan::Pl
@@ -101,7 +108,7 @@ function plan_grid_transform(P::KronPolynomial{d,<:Any,<:Fill}, B::Tuple{Block{1
 end
 
 function plan_grid_transform(P::KronPolynomial{d}, B::Tuple{Block{1}}, dims=1:1) where d
-    @assert dims == 1
+    @assert dims == 1 || dims == 1:1 || dims == (1,)
     @assert d == 2
     N = Int(B[1])
     xF = [plan_grid_transform(P.args[k], (N,N), k) for k=1:length(P.args)]

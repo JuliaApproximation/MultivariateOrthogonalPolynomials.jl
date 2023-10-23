@@ -21,7 +21,7 @@ import MultivariateOrthogonalPolynomials: weaklaplacian
     end
 
     @testset "Transform" begin
-        T = ChebyshevT()
+        T,U = ChebyshevT(),ChebyshevU()
         T² = RectPolynomial(Fill(T, 2))
         T²ₙ = T²[:,Block.(Base.OneTo(5))]
         𝐱 = axes(T²ₙ,1)
@@ -32,13 +32,14 @@ import MultivariateOrthogonalPolynomials: weaklaplacian
         f = expand(T², splat((x,y) -> exp(x*cos(y-0.1))))
         @test f[SVector(0.1,0.2)] ≈ exp(0.1*cos(0.1))
 
-        U = ChebyshevU()
         U² = RectPolynomial(Fill(U, 2))
 
         @test f[SVector(0.1,0.2)] ≈ exp(0.1cos(0.1))
 
         TU = RectPolynomial(T,U)
+        x,F = ClassicalOrthogonalPolynomials.plan_grid_transform(TU, Block(5))
         f = expand(TU, splat((x,y) -> exp(x*cos(y-0.1))))
+        @test f[SVector(0.1,0.2)] ≈ exp(0.1*cos(0.1))
     end
 
     @testset "Conversion" begin
@@ -90,7 +91,9 @@ import MultivariateOrthogonalPolynomials: weaklaplacian
 
         @testset "weakform" begin
             Δ = weaklaplacian(W²)
-            c = transform(W², splat((x,y) -> (1-x^2)*(1-y^2)))
+            c = transform(P², _ -> 1)
+            f = expand(P², splat((x,y) -> -2*((1-y^2) + (1-x^2))))
+            @test (Δ*c)[Block.(1:5)] ≈ (W²'f)[Block.(1:5)]
         end
     end
 
