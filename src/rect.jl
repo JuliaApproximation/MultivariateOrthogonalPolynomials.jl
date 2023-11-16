@@ -98,14 +98,17 @@ function checkpoints(P::RectPolynomial)
     SVector.(x, y')
 end
 
-function plan_grid_transform(P::KronPolynomial{d,<:Any,<:Fill}, B::Tuple{Block{1}}, dims=1:1) where d
+function plan_transform(P::KronPolynomial{d,<:Any,<:Fill}, B::Tuple{Block{1}}, dims=1:1) where d
     @assert dims == 1
 
     T = first(P.args)
-    x, F = plan_grid_transform(T, tuple(Fill(Int(B[1]),d)...))
     @assert d == 2
-    x̃ = Vector(x)
-    SVector.(x̃, x̃'), ApplyPlan(DiagTrav, F)
+    ApplyPlan(DiagTrav, plan_transform(T, tuple(Fill(Int(B[1]),d)...)))
+end
+
+function grid(P::RectPolynomial, B::Block{1})
+    x,y = grid.(P.args, Int(B))
+    SVector.(x, y')
 end
 
 function plotgrid(P::RectPolynomial, B::Block{1})
@@ -114,14 +117,12 @@ function plotgrid(P::RectPolynomial, B::Block{1})
 end
 
 
-function plan_grid_transform(P::KronPolynomial{d}, B::Tuple{Block{1}}, dims=1:1) where d
+function plan_transform(P::KronPolynomial{d}, B::Tuple{Block{1}}, dims=1:1) where d
     @assert dims == 1 || dims == 1:1 || dims == (1,)
     @assert d == 2
     N = Int(B[1])
-    xF = [plan_grid_transform(P.args[k], (N,N), k) for k=1:length(P.args)]
-    x,y = map(first,xF)
-    Fx,Fy = map(last,xF)
-    SVector.(x, y'), ApplyPlan(DiagTrav, TensorPlan(Fx,Fy))
+    Fx,Fy = plan_transform(P.args[1], (N,N), 1),plan_transform(P.args[2], (N,N), 2)
+    ApplyPlan(DiagTrav, TensorPlan(Fx,Fy))
 end
 
 applylayout(::Type{typeof(*)}, ::Lay, ::DiagTravLayout) where Lay <: AbstractBasisLayout = ExpansionLayout{Lay}()
