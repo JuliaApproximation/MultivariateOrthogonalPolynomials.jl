@@ -784,10 +784,9 @@ TriPlan{T}(N::Block{1}, a, b, c) where T = TriPlan{T}(Matrix{T}(undef, Int(N), I
 
 *(T::TriPlan, F::AbstractMatrix) = DiagTrav(tridenormalize!(T.tri2cheb\(T.grid2cheb*F),T.a,T.b,T.c))
 
-function plan_grid_transform(P::JacobiTriangle, Bs::Tuple{Block{1}}, dims=1:1)
+function plan_transform(P::JacobiTriangle, (N,)::Tuple{Block{1}}, dims=1)
     T = eltype(P)
-    N = Bs[1]
-    grid(P, N), TriPlan{T}(N, P.a, P.b, P.c)
+    TriPlan{T}(N, P.a, P.b, P.c)
 end
 
 struct TriIPlan{T}

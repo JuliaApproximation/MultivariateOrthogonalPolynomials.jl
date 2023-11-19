@@ -256,7 +256,7 @@ end
 *(P::ZernikeTransform{T}, f::Matrix{T}) where T = ModalTrav(P.disk2cxf \ (P.analysis * f))
 *(P::ZernikeITransform, f::AbstractVector) = P.synthesis * (P.disk2cxf * ModalTrav(f).matrix)
 
-plan_grid_transform(Z::Zernike{T}, B::Tuple{Block{1}}, dims=1:1) where T = grid(Z,B[1]), ZernikeTransform{T}(Int(B[1]), Z.a, Z.b)
+plan_transform(Z::Zernike{T}, (N,)::Tuple{Block{1}}, dims=1) where T = ZernikeTransform{T}(Int(N), Z.a, Z.b)
 
 ##
 # Laplacian
