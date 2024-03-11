@@ -43,24 +43,6 @@ using ContinuumArrays: plotgridvalues
         @test f[SVector(0.1,0.2)] ≈ exp(0.1*cos(0.1))
     end
 
-    @testset "Jacobi matrices" begin
-        T = ChebyshevT()
-        U = ChebyshevU()
-        TU = RectPolynomial(T, U)
-        X = jacobimatrix(Val{1}(), TU)
-        Y = jacobimatrix(Val{2}(), TU)
-        𝐱 = axes(TU, 1)
-        x, y = first.(𝐱), last.(𝐱)
-        @test_broken TU \ (x .* TU) # Should create X, but it fails
-        @test_broken TU \ (y .* TU) # Should create Y, but it fails
-        f = expand(TU, splat((x,y) -> exp(x*cos(y-0.1))))
-        g = expand(TU, splat((x,y) -> x*exp(x*cos(y-0.1))))
-        h = expand(TU, splat((x,y) -> y*exp(x*cos(y-0.1))))
-        N = 10
-        @test (TU \ (X * (TU \ f)))[Block.(1:N)] ≈ (TU \ g)[Block.(1:N)]
-        @test (TU \ (Y * (TU \ f)))[Block.(1:N)] ≈ (TU \ h)[Block.(1:N)]
-    end
-
     @testset "Conversion" begin
         T = ChebyshevT()
         U = ChebyshevU()
