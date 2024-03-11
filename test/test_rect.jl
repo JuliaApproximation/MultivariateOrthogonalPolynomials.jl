@@ -51,14 +51,15 @@ using ContinuumArrays: plotgridvalues
         Y = jacobimatrix(Val{2}(), TU)
         𝐱 = axes(TU, 1)
         x, y = first.(𝐱), last.(𝐱)
-        @test_broken TU \ (x .* TU) # Should create X, but it fails
-        @test_broken TU \ (y .* TU) # Should create Y, but it fails
+        N = 10
+        KR = Block.(1:N)
+        @test (TU \ (x .* TU))[KR,KR] == X[KR,KR]
+        @test (TU \ (y .* TU))[KR,KR] == Y[KR,KR]
         f = expand(TU, splat((x,y) -> exp(x*cos(y-0.1))))
         g = expand(TU, splat((x,y) -> x*exp(x*cos(y-0.1))))
         h = expand(TU, splat((x,y) -> y*exp(x*cos(y-0.1))))
-        N = 10
-        @test (TU \ (X * (TU \ f)))[Block.(1:N)] ≈ (TU \ g)[Block.(1:N)]
-        @test (TU \ (Y * (TU \ f)))[Block.(1:N)] ≈ (TU \ h)[Block.(1:N)]
+        @test (X * (TU \ f))[KR] ≈ (TU \ g)[KR]
+        @test (Y * (TU \ f))[KR] ≈ (TU \ h)[KR]
     end
 
     @testset "Conversion" begin

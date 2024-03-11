@@ -40,13 +40,13 @@ end
 function jacobimatrix(::Val{1}, P::RectPolynomial)
     A,B = P.args
     X = jacobimatrix(A)
-    P * KronTrav(Eye{eltype(X)}(∞), X)
+    KronTrav(Eye{eltype(X)}(∞), X)
 end
 # Actually Jyᵀ
 function jacobimatrix(::Val{2}, P::RectPolynomial)
     A,B = P.args
     Y = jacobimatrix(B)
-    P * KronTrav(Y, Eye{eltype(Y)}(∞))
+    KronTrav(Y, Eye{eltype(Y)}(∞))
 end
 @simplify function *(Dx::PartialDerivative{1}, P::RectPolynomial)
     A,B = P.args
