@@ -36,6 +36,18 @@ function getindex(P::RectPolynomial, xy::StaticVector{2}, JR::BlockOneTo)
     N = size(JR,1)
     DiagTrav(A[x,OneTo(N)] .* B[y,OneTo(N)]')
 end
+# Actually Jxᵀ
+function jacobimatrix(::Val{1}, P::RectPolynomial)
+    A,B = P.args
+    X = jacobimatrix(A)
+    KronTrav(Eye{eltype(X)}(∞), X)
+end
+# Actually Jyᵀ
+function jacobimatrix(::Val{2}, P::RectPolynomial)
+    A,B = P.args
+    Y = jacobimatrix(B)
+    KronTrav(Y, Eye{eltype(Y)}(∞))
+end
 @simplify function *(Dx::PartialDerivative{1}, P::RectPolynomial)
     A,B = P.args
     U,M = (Derivative(axes(A,1))*A).args
