@@ -2,7 +2,7 @@ using MultivariateOrthogonalPolynomials, ClassicalOrthogonalPolynomials, StaticA
 using RecipesBase
 import MultivariateOrthogonalPolynomials: ModalTrav, grid, ZernikeTransform, ZernikeITransform, *, ModalInterlace
 import ClassicalOrthogonalPolynomials: HalfWeighted, expand
-import ForwardDiff: hessian
+import ForwardDiff: hessian, gradient
 
 @testset "Disk" begin
     @testset "Transform" begin
@@ -319,6 +319,38 @@ import ForwardDiff: hessian
         rep = RecipesBase.apply_recipe(Dict{Symbol, Any}(), u)
         g = MultivariateOrthogonalPolynomials.plotgrid(W[:,1:3])
         @test all(rep[1].args .≈ (first.(g),last.(g),u[g]))
+    end
+
+    @testset "partial derivatives" begin
+        W = Weighted(Zernike(1))
+        Z⁰ = Zernike(0)
+        Z¹ = Zernike(1)
+        Z² = Zernike(2)
+
+        𝐱 = axes(W,1)
+        # ∂ˣ = PartialDerivative{1}(𝐱)
+        ∂ʸ = PartialDerivative{2}(𝐱)
+
+        ∂Y⁰ = Z⁰ \ (∂ʸ * W)
+        ∂Y¹ = Z¹ \ (∂ʸ * Z⁰)
+        ∂Y² = Z² \ (∂ʸ * Z¹)
+
+        B = Block.(1:10); xy = SVector(0.2,0.3)
+
+        for (i,n,m) in zip((1,2,3,4,5,6,14,17), (0,1,1,2,2,2,4,5), (0,-1,1,0,-2,2,-4,1))
+            g⁰ =  𝐱 -> gradient(𝐱 -> (1-norm(𝐱)^2)*zernikez(n, m, 1, 𝐱), 𝐱)[2]
+            c⁰ = ModalTrav(transform(Z⁰, g⁰)[B])[B]
+            @test Z⁰[xy,B]'*∂Y⁰[B,i] ≈ Z⁰[xy, B]' * c⁰
+
+            g¹ =  𝐱 -> gradient(𝐱 -> zernikez(n, m, 0, 𝐱), 𝐱)[2]
+            c¹ = ModalTrav(transform(Z¹, g¹)[B])[B]
+            @test Z¹[xy,B]'*∂Y¹[B,i] ≈ Z¹[xy, B]' * c¹
+
+            g² =  𝐱 -> gradient(𝐱 -> zernikez(n, m, 1, 𝐱), 𝐱)[2]
+            c² = ModalTrav(transform(Z², g²)[B])[B]
+            @test Z²[xy,B]'*∂Y²[B,i] ≈ Z²[xy, B]' * c²
+        end
+
     end
 end
 
