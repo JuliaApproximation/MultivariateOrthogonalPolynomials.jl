@@ -165,6 +165,13 @@ end
     JacobiTriangle(a,b+1,c+1) * _BandedBlockBandedMatrix((k .+ convert(T, b+c))', axes(k,1), (-1,1), (-1,1))
 end
 
+@simplify function *(Dy::PartialDerivative{2}, P::WeightedTriangle)
+    a,b,c = P.P.a,P.P.b,P.P.c
+    k = mortar(Base.OneTo.(oneto(∞)))
+    T = promote_type(eltype(Dy), eltype(P)) # avoid bug in convert
+    WeightedTriangle(a,b-1,c-1) * _BandedBlockBandedMatrix((-one(T) .* k)', axes(k,1), (1,-1), (1,-1))
+end
+
 
 # @simplify function *(Δ::Laplacian, P)
 #     _lap_mul(P, eltype(axes(P,1)))

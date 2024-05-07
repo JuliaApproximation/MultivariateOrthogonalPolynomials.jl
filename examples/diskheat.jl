@@ -3,9 +3,9 @@ pyplot() # pyplot supports disks
 
 Z = Zernike(1)
 W = Weighted(Z)
-xy = axes(W,1)
-x,y = first.(xy),last.(xy)
-Δ = Z \ Laplacian(xy) * W
+𝐱 = axes(W,1)
+x,y = first.(𝐱),last.(𝐱)
+Δ = Z \ Laplacian(𝐱) * W
 S = Z \ W
 
 # initial condition is (1-r^2) * exp(-(x-0.1)^2 - (y-0.2)^2)

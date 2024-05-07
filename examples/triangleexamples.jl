@@ -1,15 +1,31 @@
-using ApproxFun, MultivariateOrthogonalPolynomials, BlockArrays, SpecialFunctions, FillArrays, Plots
-import ApproxFun: blockbandwidths, Vec, PiecewiseSegment
-import MultivariateOrthogonalPolynomials: DirichletTriangle
-
+using ContinuumArrays, MultivariateOrthogonalPolynomials, BlockArrays, SpecialFunctions, FillArrays, StaticArrays, Plots
 
 
 #######
 # Example 1 Poisson
 #######
 
-S = TriangleWeight(1,1,1,JacobiTriangle(1,1,1))
-Δ = Laplacian(S)
+P = JacobiTriangle()
+W = WeightedTriangle(1,1,1)
+
+
+𝐱 = axes(P,1)
+∂ˣ = PartialDerivative{1}(𝐱)
+∂ʸ = PartialDerivative{2}(𝐱)
+
+u = expand(P, splat((x,y) -> exp(x*cos(y))))
+@test (∂ˣ*u)[SVector(0.1,0.2)] ≈ cos(0.2)exp(0.1*cos(0.2))
+@test (∂ʸ*u)[SVector(0.1,0.2)] ≈ -0.1*sin(0.2)exp(0.1*cos(0.2))
+
+
+W = WeightedTriangle(1,1,1)
+u = expand(W, splat((x,y) -> x*y*(1-x-y) * cos(x*y)))
+let (x,y) = (0.1,0.2)
+      @test (∂ʸ*u)[SVector(x,y)] ≈ x*(1 - x - y)*cos(x*y) - x*y*cos(x*y) - (x^2)*(1 - x - y)*y*sin(x*y) 
+end
+
+
+# Δ = Laplacian(𝐱)
 
 N = 500
 M = sparse(Δ[Block.(1:N), Block.(1:N)])

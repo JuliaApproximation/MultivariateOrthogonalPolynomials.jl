@@ -501,4 +501,27 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
 
         @test affine(d, axes(P,1))[affine(axes(P,1), d)[𝐱]] ≈ 𝐱
     end
+
+    @testset "weighted derivatives" begin
+        P = JacobiTriangle()
+        W = WeightedTriangle(1,1,1)
+        
+        
+        𝐱 = axes(P,1)
+        ∂ˣ = PartialDerivative{1}(𝐱)
+        ∂ʸ = PartialDerivative{2}(𝐱)
+        
+        u = expand(P, splat((x,y) -> exp(x*cos(y))))
+        let (x,y) = (0.1,0.2)
+            @test (∂ˣ*u)[SVector(x,y)] ≈ cos(y)exp(x*cos(y))
+            @test (∂ʸ*u)[SVector(x,y)] ≈ -x*sin(y)exp(x*cos(y))
+        end
+        
+        
+        W = WeightedTriangle(1,1,1)
+        u = expand(W, splat((x,y) -> x*y*(1-x-y) * cos(x*y)))
+        let (x,y) = (0.1,0.2)
+              @test (∂ʸ*u)[SVector(x,y)] ≈ x*(1 - x - y)*cos(x*y) - x*y*cos(x*y) - (x^2)*(1 - x - y)*y*sin(x*y) 
+        end
+    end
 end
