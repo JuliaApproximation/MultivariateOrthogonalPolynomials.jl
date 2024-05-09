@@ -1,415 +1,133 @@
-using ApproxFun, MultivariateOrthogonalPolynomials, Test, StaticArrays
-import MultivariateOrthogonalPolynomials: DirichletTriangle
-import ApproxFunBase: testbandedblockbandedoperator, testblockbandedoperator, Vec
-x,y=0.1,0.2
+using MultivariateOrthogonalPolynomials, StaticArrays, BlockArrays, BlockBandedMatrices, ArrayLayouts,
+    QuasiArrays, Test, ClassicalOrthogonalPolynomials, BandedMatrices, FastTransforms, LinearAlgebra, ContinuumArrays
+import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleRecurrenceA, TriangleRecurrenceB, TriangleRecurrenceC, xy_muladd!, ExpansionLayout, Triangle, ApplyBandedBlockBandedLayout
 
+# Basic checks 
+a, b, c = true, false, true
+P = DirichletTriangle(a, b, c)
+@test P == P == DirichletTriangle(1, 0, 1) == DirichletTriangle(1.0, 0.0, 1.0)
+@test DirichletTriangle(false, true, false) ≠ DirichletTriangle(true, false, false)
+@test axes(P) == axes(JacobiTriangle(a, b, c))
+@test copy(P) == P
+@test JacobiTriangle(P) == JacobiTriangle(1.0, 0.0, 1.0)
 
-@testset "Dirchlet conversions" begin
-    C=Conversion(DirichletTriangle{1,0,0}(),JacobiTriangle(0,0,0))
-        testbandedblockbandedoperator(C)
-        u=C*Fun(domainspace(C),[1.0])
-        @test u(0.1,0.2) ≈ 1
-        u=C*Fun(domainspace(C),[0,1.0])
-        @test u(0.1,0.2) ≈ 0.1*Fun(JacobiTriangle(1,0,0),[1.])(0.1,0.2)
-        u=C*Fun(domainspace(C),[0,0,1.0])
-        @test u(0.1,0.2) ≈ Fun(JacobiTriangle(0,0,0),[0,0,1.])(0.1,0.2)
-        u=C*Fun(domainspace(C),[0,0,0,1.0])
-        @test u(0.1,0.2) ≈ 0.1*Fun(JacobiTriangle(1,0,0),[0,1.])(0.1,0.2)
-        u=C*Fun(domainspace(C),[0,0,0,0,1.0])
-        @test u(0.1,0.2) ≈ 0.1*Fun(JacobiTriangle(1,0,0),[0,0,1.])(0.1,0.2)
-        u=C*Fun(domainspace(C),[0,0,0,0,0,1.0])
-        @test u(0.1,0.2) ≈ Fun(JacobiTriangle(0,0,0),[0,0,0,0,0,1.])(0.1,0.2)
-
-
-    C=Conversion(DirichletTriangle{0,1,0}(),JacobiTriangle(0,0,0))
-        testbandedblockbandedoperator(C)
-        u=C*Fun(domainspace(C),[1.0])
-        @test u(0.1,0.2) ≈ 1
-        u=C*Fun(domainspace(C),[0,1.0])
-        @test u(0.1,0.2) ≈ Fun(Legendre(0..1),[0,1.])(0.1)
-        u=C*Fun(domainspace(C),[zeros(2);1.0])
-        @test u(0.1,0.2) ≈ 0.2Fun(JacobiTriangle(0,1,0),[1.])(0.1,0.2)
-        u=C*Fun(domainspace(C),[zeros(3);1.0])
-        @test u(0.1,0.2) ≈ Fun(Legendre(0..1),[0,0,1.])(0.1)
-        u=C*Fun(domainspace(C),[zeros(4);1.0])
-        @test u(0.1,0.2) ≈ 0.2*Fun(JacobiTriangle(0,1,0),[0,1.])(0.1,0.2)
-        u=C*Fun(domainspace(C),[zeros(5);1.0])
-        @test u(0.1,0.2) ≈ 0.2*Fun(JacobiTriangle(0,1,0),[0,0,1.])(0.1,0.2)
-        u=C*Fun(domainspace(C),[zeros(6);1.0])
-        @test u(0.1,0.2) ≈ Fun(Legendre(0..1),[0,0,0,1.])(0.1)
-
-    C=Conversion(DirichletTriangle{0,0,1}(),JacobiTriangle(0,0,0))
-        testbandedblockbandedoperator(C)
-        u=C*Fun(domainspace(C),[1.0])
-        @test u(0.1,0.2) ≈ 1
-        u=C*Fun(domainspace(C),[0,1.0])
-        @test u(0.1,0.2) ≈ Fun(Legendre(0..1),[0,1.])(0.1)
-        u=C*Fun(domainspace(C),[zeros(2);1.0])
-        @test u(0.1,0.2) ≈ (1-x-y)*Fun(JacobiTriangle(0,0,1),[1.])(0.1,0.2)
-        u=C*Fun(domainspace(C),[zeros(3);1.0])
-        @test u(0.1,0.2) ≈ Fun(Legendre(0..1),[0,0,1.])(0.1)
-        u=C*Fun(domainspace(C),[zeros(4);1.0])
-        @test u(0.1,0.2) ≈ (1-x-y)*Fun(JacobiTriangle(0,0,1),[0,1.])(0.1,0.2)
-        u=C*Fun(domainspace(C),[zeros(5);1.0])
-        @test u(0.1,0.2) ≈ (1-x-y)*Fun(JacobiTriangle(0,0,1),[0,0,1.])(0.1,0.2)
-        u=C*Fun(domainspace(C),[zeros(6);1.0])
-        @test u(0.1,0.2) ≈ Fun(Legendre(0..1),[0,0,0,1.])(0.1)
-
-    C=Conversion(DirichletTriangle{1,1,0}(),DirichletTriangle{0,1,0}(),JacobiTriangle(0,0,0))
-        testbandedblockbandedoperator(C)
-        n,k=0,0;u=C*Fun(domainspace(C),[zeros(sum(0:n)+k);1.0])
-        @test u(x,y) ≈ 1
-        n,k=1,0;u=C*Fun(domainspace(C),[zeros(sum(0:n)+k);1.0])
-        @test u(x,y) ≈ x*Fun(Jacobi(1,0,0..1),[zeros(n-1);1.0])(x)
-        n,k=1,1;u=C*Fun(domainspace(C),[zeros(sum(0:n)+k);1.0])
-        @test u(x,y) ≈ y*Fun(JacobiTriangle(0,1,0),[zeros(sum(0:(n-1))+n-1);1.0])(x,y)
-        n,k=2,0;u=C*Fun(domainspace(C),[zeros(sum(0:n)+k);1.0])
-        @test u(x,y) ≈ x*Fun(Jacobi(1,0,0..1),[zeros(n-1);1.0])(x)
-        n,k=2,1;u=C*Fun(domainspace(C),[zeros(sum(0:n)+k);1.0])
-        @test u(x,y) ≈ x*y*Fun(JacobiTriangle(1,1,0),[zeros(sum(0:(n-2))+k-1);1.0])(x,y)
-        n,k=2,2;u=C*Fun(domainspace(C),[zeros(sum(0:n)+k);1.0])
-        @test u(x,y) ≈ y*Fun(JacobiTriangle(0,1,0),[zeros(sum(0:(n-1))+n-1);1.0])(x,y)
-        n,k=3,0;u=C*Fun(domainspace(C),[zeros(sum(0:n)+k);1.0])
-        @test u(x,y) ≈ x*Fun(Jacobi(1,0,0..1),[zeros(n-1);1.0])(x)
-        n,k=3,1;u=C*Fun(domainspace(C),[zeros(sum(0:n)+k);1.0])
-        @test u(x,y) ≈ x*y*Fun(JacobiTriangle(1,1,0),[zeros(sum(0:(n-2))+k-1);1.0])(x,y)
-        n,k=3,2;u=C*Fun(domainspace(C),[zeros(sum(0:n)+k);1.0])
-        @test u(x,y) ≈ x*y*Fun(JacobiTriangle(1,1,0),[zeros(sum(0:(n-2))+k-1);1.0])(x,y)
-        n,k=3,3;u=C*Fun(domainspace(C),[zeros(sum(0:n)+k);1.0])
-        @test u(x,y) ≈ y*Fun(JacobiTriangle(0,1,0),[zeros(sum(0:(n-1))+n-1);1.0])(x,y)
-
-    C̃=Conversion(DirichletTriangle{1,1,0}(),DirichletTriangle{1,0,0}(),JacobiTriangle(0,0,0))
-        testbandedblockbandedoperator(C̃)
-        @test C[1:20,1:20] ≈ C̃[1:20,1:20]
-
-
-
-    C=Conversion(DirichletTriangle{1,0,1}(),DirichletTriangle{0,0,1}(),JacobiTriangle(0,0,0))
-        testbandedblockbandedoperator(C)
-        n,k=0,0;u=C*Fun(domainspace(C),[zeros(sum(0:n)+k);1.0])
-        @test u(x,y) ≈ 1
-        n,k=1,0;u=C*Fun(domainspace(C),[zeros(sum(0:n)+k);1.0])
-        @test u(x,y) ≈ x*Fun(Jacobi(1,0,0..1),[zeros(n-1);1.0])(x)
-        n,k=1,1;u=C*Fun(domainspace(C),[zeros(sum(0:n)+k);1.0])
-        @test u(x,y) ≈ (1-x-y)*Fun(JacobiTriangle(0,0,1),[zeros(sum(0:(n-1))+n-1);1.0])(x,y)
-        n,k=2,0;u=C*Fun(domainspace(C),[zeros(sum(0:n)+k);1.0])
-        @test u(x,y) ≈ x*Fun(Jacobi(1,0,0..1),[zeros(n-1);1.0])(x)
-        n,k=2,1;u=C*Fun(domainspace(C),[zeros(sum(0:n)+k);1.0])
-        @test u(x,y) ≈ x*(1-x-y)*Fun(JacobiTriangle(1,0,1),[zeros(sum(0:(n-2))+k-1);1.0])(x,y)
-        n,k=2,2;u=C*Fun(domainspace(C),[zeros(sum(0:n)+k);1.0])
-        @test u(x,y) ≈ (1-x-y)*Fun(JacobiTriangle(0,0,1),[zeros(sum(0:(n-1))+n-1);1.0])(x,y)
-        n,k=3,0;u=C*Fun(domainspace(C),[zeros(sum(0:n)+k);1.0])
-        @test u(x,y) ≈ x*Fun(Jacobi(1,0,0..1),[zeros(n-1);1.0])(x)
-        n,k=3,1;u=C*Fun(domainspace(C),[zeros(sum(0:n)+k);1.0])
-        @test u(x,y) ≈ x*(1-x-y)*Fun(JacobiTriangle(1,0,1),[zeros(sum(0:(n-2))+k-1);1.0])(x,y)
-        n,k=3,2;u=C*Fun(domainspace(C),[zeros(sum(0:n)+k);1.0])
-        @test u(x,y) ≈ x*(1-x-y)*Fun(JacobiTriangle(1,0,1),[zeros(sum(0:(n-2))+k-1);1.0])(x,y)
-        n,k=3,3;u=C*Fun(domainspace(C),[zeros(sum(0:n)+k);1.0])
-        @test u(x,y) ≈ (1-x-y)*Fun(JacobiTriangle(0,0,1),[zeros(sum(0:(n-1))+n-1);1.0])(x,y)
-
-
-    C̃=Conversion(DirichletTriangle{1,0,1}(),DirichletTriangle{1,0,0}(),JacobiTriangle(0,0,0))
-        testbandedblockbandedoperator(C̃)
-        @test C[1:20,1:20] ≈ C̃[1:20,1:20]
-
-
-    C=Conversion(DirichletTriangle{0,1,1}(),DirichletTriangle{0,1,0}(),JacobiTriangle(0,0,0))
-        testbandedblockbandedoperator(C)
-        n,k=0,0;u=C*Fun(domainspace(C),[zeros(sum(0:n)+k);1.0])
-        @test u(x,y) ≈ 1
-        n,k=1,0;u=C*Fun(domainspace(C),[zeros(sum(0:n)+k);1.0])
-        @test u(x,y) ≈ (1-x)*Fun(Jacobi(0,1,0..1),[zeros(n-1);1.0])(x)
-        n,k=1,1;u=C*Fun(domainspace(C),[zeros(sum(0:n)+k);1.0])
-        @test u(x,y) ≈ (1-x-2y)*Fun(Jacobi(0,1,0..1),[zeros(n-1);1.0])(x)
-        n,k=2,0;u=C*Fun(domainspace(C),[zeros(sum(0:n)+k);1.0])
-        @test u(x,y) ≈ (1-x)*Fun(Jacobi(0,1,0..1),[zeros(n-1);1.0])(x)
-        n,k=2,1;u=C*Fun(domainspace(C),[zeros(sum(0:n)+k);1.0])
-        @test u(x,y) ≈ (1-x-2y)*Fun(Jacobi(0,1,0..1),[zeros(n-1);1.0])(x)
-        n,k=2,2;u=C*Fun(domainspace(C),[zeros(sum(0:n)+k);1.0])
-        @test u(x,y) ≈ y*(1-x-y)*Fun(JacobiTriangle(0,1,1),[zeros(sum(0:(n-2))+k-2);1.0])(x,y)
-        n,k=3,0;u=C*Fun(domainspace(C),[zeros(sum(0:n)+k);1.0])
-        @test u(x,y) ≈ (1-x)*Fun(Jacobi(0,1,0..1),[zeros(n-1);1.0])(x)
-        n,k=3,1;u=C*Fun(domainspace(C),[zeros(sum(0:n)+k);1.0])
-        @test u(x,y) ≈ (1-x-2y)*Fun(Jacobi(0,1,0..1),[zeros(n-1);1.0])(x)
-        n,k=3,2;u=C*Fun(domainspace(C),[zeros(sum(0:n)+k);1.0])
-        @test u(x,y) ≈ y*(1-x-y)*Fun(JacobiTriangle(0,1,1),[zeros(sum(0:(n-2))+k-2);1.0])(x,y)
-        n,k=3,3;u=C*Fun(domainspace(C),[zeros(sum(0:n)+k);1.0])
-        @test u(x,y) ≈ y*(1-x-y)*Fun(JacobiTriangle(0,1,1),[zeros(sum(0:(n-2))+k-2);1.0])(x,y)
-
-    C̃=Conversion(DirichletTriangle{0,1,1}(),DirichletTriangle{0,0,1}(),JacobiTriangle(0,0,0))
-        testbandedblockbandedoperator(C̃)
-        @test C[1:20,1:20] ≈ C̃[1:20,1:20]
-
-
-    C=Conversion(DirichletTriangle{1,1,1}(),DirichletTriangle{0,1,1}(),DirichletTriangle{0,0,1}(),JacobiTriangle(0,0,0))
-        testbandedblockbandedoperator(C)
-        n,k=0,0;u=C*Fun(domainspace(C),[zeros(sum(0:n)+k);1.0])
-        @test u(x,y) ≈ 1
-        n,k=1,0;u=C*Fun(domainspace(C),[zeros(sum(0:n)+k);1.0])
-        @test u(x,y) ≈ 1-2x
-        n,k=1,1;u=C*Fun(domainspace(C),[zeros(sum(0:n)+k);1.0])
-        @test u(x,y) ≈ 1-x-2y
-        n,k=2,0;u=C*Fun(domainspace(C),[zeros(sum(0:n)+k);1.0])
-        @test u(x,y) ≈ x*(1-x)*Fun(Jacobi(1,1,0..1),[zeros(n-2);1.0])(x)
-        n,k=2,1;u=C*Fun(domainspace(C),[zeros(sum(0:n)+k);1.0])
-        @test u(x,y) ≈ x*(1-x-2y)*Fun(Jacobi(1,1,0..1),[zeros(n-2);1.0])(x)
-        n,k=2,2;u=C*Fun(domainspace(C),[zeros(sum(0:n)+k);1.0])
-        @test u(x,y) ≈ y*(1-x-y)*Fun(JacobiTriangle(0,1,1),[zeros(sum(0:(n-2))+n-2);1.0])(x,y)
-        n,k=3,0;u=C*Fun(domainspace(C),[zeros(sum(0:n)+k);1.0])
-        @test u(x,y) ≈ x*(1-x)*Fun(Jacobi(1,1,0..1),[zeros(n-2);1.0])(x)
-        n,k=3,1;u=C*Fun(domainspace(C),[zeros(sum(0:n)+k);1.0])
-        @test u(x,y) ≈ x*(1-x-2y)*Fun(Jacobi(1,1,0..1),[zeros(n-2);1.0])(x)
-        n,k=3,2;u=C*Fun(domainspace(C),[zeros(sum(0:n)+k);1.0])
-        @test u(x,y) ≈ x*y*(1-x-y)*Fun(JacobiTriangle(1,1,1),[zeros(sum(0:(n-3))+k-2);1.0])(x,y)
-        n,k=3,3;u=C*Fun(domainspace(C),[zeros(sum(0:n)+k);1.0])
-        @test u(x,y) ≈ y*(1-x-y)*Fun(JacobiTriangle(0,1,1),[zeros(sum(0:(n-2))+n-2);1.0])(x,y)
-        n,k=4,0;u=C*Fun(domainspace(C),[zeros(sum(0:n)+k);1.0])
-        @test u(x,y) ≈ x*(1-x)*Fun(Jacobi(1,1,0..1),[zeros(n-2);1.0])(x)
-        n,k=4,1;u=C*Fun(domainspace(C),[zeros(sum(0:n)+k);1.0])
-        @test u(x,y) ≈ x*(1-x-2y)*Fun(Jacobi(1,1,0..1),[zeros(n-2);1.0])(x)
-        n,k=4,2;u=C*Fun(domainspace(C),[zeros(sum(0:n)+k);1.0])
-        @test u(x,y) ≈ x*y*(1-x-y)*Fun(JacobiTriangle(1,1,1),[zeros(sum(0:(n-3))+k-2);1.0])(x,y)
-        n,k=4,3;u=C*Fun(domainspace(C),[zeros(sum(0:n)+k);1.0])
-        @test u(x,y) ≈ x*y*(1-x-y)*Fun(JacobiTriangle(1,1,1),[zeros(sum(0:(n-3))+k-2);1.0])(x,y)
-        n,k=4,4;u=C*Fun(domainspace(C),[zeros(sum(0:n)+k);1.0])
-        @test u(x,y) ≈ y*(1-x-y)*Fun(JacobiTriangle(0,1,1),[zeros(sum(0:(n-2))+n-2);1.0])(x,y)
-
-    C̃=Conversion(DirichletTriangle{1,1,1}(),DirichletTriangle{1,0,1}(),DirichletTriangle{0,0,1}(),JacobiTriangle(0,0,0))
-        testbandedblockbandedoperator(C̃)
-        @test C[1:20,1:20] ≈ C̃[1:20,1:20]
-
-    C̃=Conversion(DirichletTriangle{1,1,1}(),DirichletTriangle{1,0,1}(),DirichletTriangle{1,0,0}(),JacobiTriangle(0,0,0))
-        @test C[1:20,1:20] ≈ C̃[1:20,1:20]
-
-    C̃=Conversion(DirichletTriangle{1,1,1}(),DirichletTriangle{1,1,0}(),DirichletTriangle{0,1,0}(),JacobiTriangle(0,0,0))
-        @test C[1:20,1:20] ≈ C̃[1:20,1:20]
-
-    C̃=Conversion(DirichletTriangle{1,1,1}(),DirichletTriangle{1,1,0}(),DirichletTriangle{1,0,0}(),JacobiTriangle(0,0,0))
-        @test C[1:20,1:20] ≈ C̃[1:20,1:20]
-end
-
-@testset "Dirichlet evaluation" begin
-    f=Fun((x,y)->exp(x-0.12*cos(y)),JacobiTriangle(0,0,0))
-
-    C=Conversion(DirichletTriangle{1,0,0}(),JacobiTriangle(0,0,0))
-    R=Conversion(domainspace(C),Legendre(Segment(Vec(0.,0.),Vec(0.,1.))))
-    u=C\f
-    @test (R*u)(0.,0.3) ≈ f(0.,0.3)
-    @test u(0.1,0.2) ≈ f(0.1,0.2)
-
-
-    C=Conversion(DirichletTriangle{0,1,0}(),JacobiTriangle(0,0,0))
-    R=Conversion(domainspace(C),Legendre(Segment(Vec(0.,0.),Vec(1.,0.))))
-    u=C\f
-    @test (R*u)(0.3,0.) ≈ f(0.3,0.)
-    @test u(0.1,0.2) ≈ f(0.1,0.2)
-
-    C=Conversion(DirichletTriangle{0,0,1}(),JacobiTriangle(0,0,0))
-    R=Conversion(domainspace(C),Legendre(Segment(Vec(0.,1.),Vec(1.,0.))))
-    u=C\f
-    @test (R*u)(0.3,1-0.3) ≈ f(0.3,1-0.3)
-    @test u(0.1,0.2) ≈ f(0.1,0.2)
-
-    C=Conversion(DirichletTriangle{1,1,0}(),DirichletTriangle{1,0,0}(),JacobiTriangle(0,0,0))
-    Rx=Conversion(DirichletTriangle{1,1,0}(),DirichletTriangle{1,0,0}(),Legendre(Segment(Vec(0.,0.),Vec(0.,1.))))
-    Ry=Conversion(DirichletTriangle{1,1,0}(),DirichletTriangle{0,1,0}(),Legendre(Segment(Vec(0.,0.),Vec(1.,0.))))
-    u=C\f
-    @test (Rx*u)(0.,0.3) ≈ f(0.,0.3)
-    @test (Ry*u)(0.3,0.) ≈ f(0.3,0.)
-    @test u(0.1,0.2) ≈ f(0.1,0.2)
-
-    C=Conversion(DirichletTriangle{1,0,1}(),DirichletTriangle{1,0,0}(),JacobiTriangle(0,0,0))
-    Rx=Conversion(DirichletTriangle{1,0,1}(),DirichletTriangle{1,0,0}(),Legendre(Segment(Vec(0.,0.),Vec(0.,1.))))
-    Rz=Conversion(DirichletTriangle{1,0,1}(),DirichletTriangle{0,0,1}(),Legendre(Segment(Vec(0.,1.),Vec(1.,0.))))
-    u=C\f
-    @test (Rx*u)(0.,0.3) ≈ f(0.,0.3)
-    @test (Rz*u)(0.3,1-0.3) ≈ f(0.3,1-0.3)
-    @test u(0.1,0.2) ≈ f(0.1,0.2)
-
-    C=Conversion(DirichletTriangle{1,1,1}(),DirichletTriangle{1,1,0}(),DirichletTriangle{1,0,0}(),JacobiTriangle(0,0,0))
-    Rx=Conversion(DirichletTriangle{1,1,1}(),DirichletTriangle{1,1,0}(),DirichletTriangle{1,0,0}(),Legendre(Segment(Vec(0.,0.),Vec(0.,1.))))
-    Ry=Conversion(DirichletTriangle{1,1,1}(),DirichletTriangle{1,1,0}(),DirichletTriangle{0,1,0}(),Legendre(Segment(Vec(0.,0.),Vec(1.,0.))))
-    Rz=Conversion(DirichletTriangle{1,1,1}(),DirichletTriangle{0,1,1}(),DirichletTriangle{0,0,1}(),Legendre(Segment(Vec(0.,1.),Vec(1.,0.))))
-    u=C\f
-    @test (Rx*u)(0.,0.3) ≈ f(0.,0.3)
-    @test (Ry*u)(0.3,0.) ≈ f(0.3,0.)
-    @test (Rz*u)(0.3,1-0.3) ≈ f(0.3,1-0.3)
-    @test u(0.1,0.2) ≈ f(0.1,0.2)
-end
-
-@testset "Dirichlet restriction" begin
-    f=Fun((x,y)->exp(x-0.12*cos(y)),JacobiTriangle(0,0,0))
-    C=Conversion(DirichletTriangle{1,1,1}(),DirichletTriangle{1,1,0}(),DirichletTriangle{1,0,0}(),JacobiTriangle(0,0,0))
-    u=C\f
-
-    B=Dirichlet(DirichletTriangle{1,1,1}())
-    testblockbandedoperator(B)
-    ∂u=B*u
-    @test ∂u(0.3,0.)≈ f(0.3,0.)
-    @test ∂u(0.,0.3)≈ f(0.,0.3)
-    @test ∂u(0.3,1-0.3)≈ f(0.3,1-0.3)
-
-    d = Triangle(Vec(2,3),Vec(3,4),Vec(1,6))
-    f=Fun((x,y)->exp(x-0.12*cos(y)),JacobiTriangle(0,0,0,d))
-    C=Conversion(DirichletTriangle{1,1,1}(d),DirichletTriangle{1,1,0}(d),DirichletTriangle{1,0,0}(d),JacobiTriangle(0,0,0,d))
-    u=C\f
-
-    B=Dirichlet(DirichletTriangle{1,1,1}(d))
-    testblockbandedoperator(B)
-    ∂u=B*u
-    @test ∂u(2.5,3.5)≈ f(2.5,3.5)
-    @test ∂u(1.5,4.5)≈ f(1.5,4.5)
-    @test ∂u(2,5)≈ f(2,5)
-
-end
-
-@testset "Triangle Dirichlet Derivatives" begin
-    @testset "Triangle() Derivative" begin
-        S = DirichletTriangle{1,0,1}()
-        Dx = Derivative(S, [1,0])
-        testbandedblockbandedoperator(Dx)
-        @test rangespace(Dx) == JacobiTriangle()
-        f = Fun(S, randn(20))
-        @test (Dx*f)(0.1,0.2) ≈ (Derivative([1,0])*Fun(f,JacobiTriangle(0,0,0)))(0.1,0.2)
-
-        Dx = Derivative(S, [2,0])
-        testbandedblockbandedoperator(Dx)
-        @test rangespace(Dx) == JacobiTriangle(1,0,1)
-        f = Fun(S, randn(20))
-        @test (Dx*f)(0.1,0.2) ≈ (Derivative([2,0])*Fun(f,JacobiTriangle(0,0,0)))(0.1,0.2)
-
-        Dx = Derivative(S, [2,1])
-        testbandedblockbandedoperator(Dx)
-        @test rangespace(Dx) == JacobiTriangle(1,1,2)
-        f = Fun(S, randn(20))
-        @test (Dx*f)(0.1,0.2) ≈ (Derivative([2,1])*Fun(f,JacobiTriangle(0,0,0)))(0.1,0.2)
-
-        S = DirichletTriangle{0,1,1}()
-        Dy = Derivative(S, [0,1])
-        testbandedblockbandedoperator(Dy)
-        @test rangespace(Dy) == JacobiTriangle()
-        f = Fun(S, randn(20))
-        @test (Dy*f)(0.1,0.2) ≈ (Derivative([0,1])*Fun(f,JacobiTriangle(0,0,0)))(0.1,0.2)
-
-        Dx = Derivative(S, [1,0])
-        testbandedblockbandedoperator(Dx)
-        @test rangespace(Dx) == JacobiTriangle(1,0,1)
-        f = Fun(S, randn(20))
-        @test (Dx*f)(0.1,0.2) ≈ (Derivative([1,0])*Fun(f,JacobiTriangle(0,0,0)))(0.1,0.2)
-
-        Dx = Derivative(S, [2,0])
-        testbandedblockbandedoperator(Dx)
-        @test rangespace(Dx) == JacobiTriangle(2,0,2)
-        f = Fun(S, randn(20))
-        @test (Dx*f)(0.1,0.2) ≈ (Derivative([2,0])*Fun(f,JacobiTriangle(0,0,0)))(0.1,0.2)
-
-        Dx = Derivative(S, [1,1])
-        testbandedblockbandedoperator(Dx)
-        @test rangespace(Dx) == JacobiTriangle(1,0,1)
-        f = Fun(S, randn(20))
-        @test (Dx*f)(0.1,0.2) ≈ (Derivative([1,1])*Fun(f,JacobiTriangle(0,0,0)))(0.1,0.2)
-
-
-        S = DirichletTriangle{1,1,1}()
-        Dx = Derivative(S,[1,0])
-        @test rangespace(Dx) == JacobiTriangle()
-        testbandedblockbandedoperator(Dx)
-        f = Fun(S, randn(20))
-        @test (Dx*f)(0.1,0.2) ≈ (Derivative([1,0])*Fun(f,JacobiTriangle(0,0,0)))(0.1,0.2)
-        Dy = Derivative(S, [0,1])
-        testbandedblockbandedoperator(Dy)
-        @test rangespace(Dy) == JacobiTriangle()
-        f = Fun(S, randn(20))
-        @test (Dy*f)(0.1,0.2) ≈ (Derivative([0,1])*Fun(f,JacobiTriangle(0,0,0)))(0.1,0.2)
+## Evaluation checks 
+const Pₙᵃᵇf = (n, a, b, x) -> jacobip(n, a, b, x) # Jacobi polynomials 
+const P̃ₙᵃᵇf = (n, a, b, x) -> Pₙᵃᵇf(n, a, b, 2 * x - 1) # rescaled Jacobi polynomials on [0, 1]
+const Pₙₖf = (n, k, x, y) -> P̃ₙᵃᵇf(n - k, 2k + 1, 0, x) * (1 - x)^k * P̃ₙᵃᵇf(k, 0, 0, y / (1 - x))
+const Pₙₖᵃᵇᶜf = (n, k, a, b, c, x, y) -> P̃ₙᵃᵇf(n - k, 2k + b + c + 1, a, x) * (1 - x)^k * P̃ₙᵃᵇf(k, c, b, y / (1 - x)) # Jacobi polynomials on the unit simplex
+const to_idx = (n, k) -> n * (n + 1) ÷ 2 + k + 1 # lexicographical ordering to linear indexing
+function to_nk(j) # linear indexing to lexicographical ordering
+    n = 0
+    while to_idx(n + 1, 0) ≤ j
+        n += 1
     end
-
-    @testset "Other triangle Derivative" begin
-        d = Triangle(Vec(2,3),Vec(3,4),Vec(1,6))
-        S = DirichletTriangle{1,0,1}(d)
-        Dx = Derivative(S, [1,0])
-        testbandedblockbandedoperator(Dx)
-        @test rangespace(Dx) == JacobiTriangle(1,1,1,d)
-        f = Fun(S, randn(20))
-        @test (Dx*f)(0.1,0.2) ≈ (Derivative([1,0])*Fun(f,JacobiTriangle(0,0,0,d)))(0.1,0.2)
-
-        Dx = Derivative(S, [2,0])
-        testbandedblockbandedoperator(Dx)
-        @test rangespace(Dx) == JacobiTriangle(2,2,2,d)
-        f = Fun(S, randn(20))
-        @test (Dx*f)(0.1,0.2) ≈ (Derivative([2,0])*Fun(f,JacobiTriangle(0,0,0,d)))(0.1,0.2)
-
-        Dx = Derivative(S, [2,1])
-        testbandedblockbandedoperator(Dx)
-        @test rangespace(Dx) == JacobiTriangle(3,3,3,d)
-        f = Fun(S, randn(20))
-        @test (Dx*f)(0.1,0.2) ≈ (Derivative([2,1])*Fun(f,JacobiTriangle(0,0,0,d)))(0.1,0.2)
-
-        S = DirichletTriangle{0,1,1}(d)
-        Dy = Derivative(S, [0,1])
-        testbandedblockbandedoperator(Dy)
-        @test rangespace(Dy) == JacobiTriangle(1,1,1,d)
-        f = Fun(S, randn(20))
-        @test (Dy*f)(0.1,0.2) ≈ (Derivative([0,1])*Fun(f,JacobiTriangle(0,0,0,d)))(0.1,0.2)
-
-        Dx = Derivative(S, [1,0])
-        testbandedblockbandedoperator(Dx)
-        @test rangespace(Dx) == JacobiTriangle(1,1,1,d)
-        f = Fun(S, randn(20))
-        @test (Dx*f)(0.1,0.2) ≈ (Derivative([1,0])*Fun(f,JacobiTriangle(0,0,0,d)))(0.1,0.2)
-
-
-        S = DirichletTriangle{1,1,1}(d)
-        Dx = Derivative(S,[1,0])
-        @test rangespace(Dx) == JacobiTriangle(0,0,0,d)
-        testbandedblockbandedoperator(Dx)
-        f = Fun(S, randn(20))
-        @test (Dx*f)(0.1,0.2) ≈ (Derivative([1,0])*Fun(f,JacobiTriangle(0,0,0,d)))(0.1,0.2)
-        Dy = Derivative(S, [0,1])
-        testbandedblockbandedoperator(Dy)
-        @test rangespace(Dy) == JacobiTriangle(0,0,0,d)
-        f = Fun(S, randn(20))
-        @test (Dy*f)(0.1,0.2) ≈ (Derivative([0,1])*Fun(f,JacobiTriangle(0,0,0,d)))(0.1,0.2)
+    k = j - to_idx(n, 0)
+    return n, k
+    # could also just put this in terms of rounding to the lowest triangular number, but this works fine
+end
+function Qₙₖᵃᵇᶜf(n, k, a, b, c, x, y)
+    z = 1 - x - y
+    if a == 1 && b == 0 && c == 0
+        if n == k == 0
+            return Pₙₖf(0, 0, x, y)
+        elseif n ≠ k
+            return x * Pₙₖᵃᵇᶜf(n - 1, k, 1, 0, 0, x, y)
+        else
+            return Pₙₖᵃᵇᶜf(n, n, 1, 0, 0, x, y)
+        end
+    elseif a == 0 && b == 1 && c == 0
+        if k == 0
+            return P̃ₙᵃᵇf(n, 0, 0, x)
+        else
+            return y * Pₙₖᵃᵇᶜf(n - 1, k - 1, 0, 1, 0, x, y)
+        end
+    elseif a == 0 && b === 0 && c == 1
+        if k == 0
+            return P̃ₙᵃᵇf(n, 0, 0, x)
+        else
+            return z * Pₙₖᵃᵇᶜf(n - 1, k - 1, 0, 0, 1, x, y)
+        end
+    elseif a == 1 && b == 1 && c == 0
+        if n == k == 0
+            return 1.0
+        elseif k == 0
+            return x * P̃ₙᵃᵇf(n - 1, 0, 1, x)
+        elseif n ≠ k
+            return x * y * Pₙₖᵃᵇᶜf(n - 2, k - 1, 1, 1, 0, x, y)
+        else
+            return y * Pₙₖᵃᵇᶜf(n - 1, n - 1, 0, 1, 0, x, y)
+        end
+    elseif a == 1 && b == 0 && c == 1
+        if n == k == 0
+            return 1.0
+        elseif k == 0
+            return x * P̃ₙᵃᵇf(n - 1, 0, 1, x)
+        elseif n ≠ k
+            return x * z * Pₙₖᵃᵇᶜf(n - 2, k - 1, 1, 0, 1, x, y)
+        else
+            return z * Pₙₖᵃᵇᶜf(n - 1, n - 1, 0, 0, 1, x, y)
+        end
+    elseif a == 0 && b == 1 && c == 1
+        if n == k == 0
+            return 1.0
+        elseif k == 0
+            return (1 - x) * Pₙₖf(n - 1, 0, x, y)
+        elseif k == 1
+            return (1 - x - 2y) * Pₙₖf(n - 1, 0, x, y)
+        else
+            return y * z * Pₙₖᵃᵇᶜ(n - 2, k - 2, 0, 1, 1, x, y)
+        end
+    elseif a == 1 && b == 1 && c == 1
+        if n == k == 0
+            return 1.0
+        elseif n == 1 && k == 0
+            return 1 - 2x
+        elseif n == k == 1
+            return 1 - x - 2y
+        elseif k == 0
+            return x * (1 - x) * Pₙₖᵃᵇᶜf(n - 2, 0, 1, 0, 0, x, y)
+        elseif k == 1
+            return x * (1 - x - 2y) * Pₙₖᵃᵇᶜf(n - 2, 0, 1, 0, 0, x, y)
+        elseif n ≠ k
+            return x * y * z * Pₙₖᵃᵇᶜf(n - 3, k - 2, 1, 1, 1, x, y)
+        else
+            return y * z * Pₙₖᵅᵇᶜf(n - 2, n - 2, 0, 1, 1, x, y)
+        end
+    else
+        throw(ArgumentError("Invalid values for a, b, c"))
     end
 end
-
-@testset "Triangle Dirichlet Laplacian" begin
-    @testset "Triangle Laplace" begin
-        S = DirichletTriangle{1,1,1}()
-        Δ=Laplacian(S)
-        testbandedblockbandedoperator(Δ)
-        @test rangespace(Δ) == JacobiTriangle(1,1,1)
-        f = Fun(S, randn(20))
-        @test (Δ*f)(0.1,0.2) ≈ (Laplacian()*Fun(f,JacobiTriangle(0,0,0)))(0.1,0.2)
-        B=Dirichlet(S)
-        f=Fun((x,y)->real(exp(x+im*y)),rangespace(B))
-        u=\([B;Δ],[f;0.];tolerance=1E-13)
-        @test u(0.1,0.2) ≈ real(exp(0.1+0.2im))
-    end
-
-    @testset "Triangle Laplace via JacobiTriangle(0,0,0)" begin
-        C=Conversion(DirichletTriangle{1,1,1}(),DirichletTriangle{1,1,0}(),DirichletTriangle{1,0,0}(),JacobiTriangle(0,0,0))
-        B=Dirichlet(DirichletTriangle{1,1,1}())
-        Δ=Laplacian(rangespace(C))
-        f=Fun((x,y)->real(exp(x+im*y)),rangespace(B))
-        u=\([B;Δ*C],[f;0.];tolerance=1E-13)
-
-        @test u(0.1,0.2) ≈ real(exp(0.1+0.2im))
-    end
-
-    @testset "Other triangle Laplace" begin
-        d = Triangle(Vec(2,3),Vec(3,4),Vec(1,6))
-        S = DirichletTriangle{1,1,1}(d)
-        Δ=Laplacian(S)
-        @test rangespace(Δ) == JacobiTriangle(1,1,1,d)
-        testbandedblockbandedoperator(Δ)
-        f = Fun(S, randn(5))
-        x,y = fromcanonical(S, 0.1,0.2)
-        @test (Δ*f)(x,y) ≈ (Laplacian()*Fun(f, JacobiTriangle(0,0,0,d)))(0.1,0.2)
-
-        B = Dirichlet(d)
-        f=Fun((x,y)->real(exp(x+im*y)),rangespace(B))
-        u=\([B;Δ],[f;0.];tolerance=1E-13)
-
-        @test u(x,y) ≈ real(exp(x+y*im))
-    end
+for (a, b, c) in ((1, 0, 0), (0, 1, 0), (0, 0, 1))
+    P = DirichletTriangle(a, b, c)
+    xy = SVector(0.2, 0.3)
+    vals = P[xy, BlockRange(1:10)]
+    Qvals = [Qₙₖᵃᵇᶜf(to_nk(i)..., a, b, c, xy...) for i in 1:to_idx(10 - 1, 10 - 1)]
+    @test vals ≈ Qvals
 end
+
+a, b, c = 0, 1, 0
+P = DirichletTriangle(a, b, c)
+xy = SVector(0.2, 0.3)
+vals = P[xy, 17]
+vals ≈ Qₙₖᵃᵇᶜf(to_nk(17)..., a, b, c, xy[1], xy[2])
+
+P[xy, 1], Qₙₖᵃᵇᶜf(to_nk(1)..., a, b, c, xy[1], xy[2])
+P[xy, 2], Qₙₖᵃᵇᶜf(to_nk(2)..., a, b, c, xy[1], xy[2])
+
+P[xy, 3], Qₙₖᵃᵇᶜf(to_nk(3)..., a, b, c, xy[1], xy[2])
+
+
+JR = findblockindex(axes(P, 2), 3) |> BlockArrays.block |> x -> Block.(Base.OneTo(Int(x)))
+a, b, c = P.a, P.b, P.c
+n = length(JR)
+x, y = xy
+PJ = JacobiTriangle(P)
+jacobi_vals = PJ[xy, JR]
+dirichlet_vals = copy(jacobi_vals)
+P̃ = Jacobi(0.0, 0.0)[2x-1, 1:n]
+prev_block = view(jacobi_vals, Block(1))
+mult = b ? y : z
+i = 2
+block = view(jacobi_vals, Block(i))
+dirichlet_block = view(dirichlet_vals, Block(i))
