@@ -29,6 +29,7 @@ import HarmonicOrthogonalPolynomials: BivariateOrthogonalPolynomial, Multivariat
 export MultivariateOrthogonalPolynomial, BivariateOrthogonalPolynomial,
        UnitTriangle, UnitDisk,
        JacobiTriangle, TriangleWeight, WeightedTriangle,
+       DirichletTriangle,
        DunklXuDisk, DunklXuDiskWeight, WeightedDunklXuDisk,
        Zernike, ZernikeWeight, zerniker, zernikez,
        PartialDerivative, Laplacian, AbsLaplacianPower, AngularMomentum,
@@ -39,7 +40,9 @@ include("ModalInterlace.jl")
 include("rect.jl")
 include("disk.jl")
 include("rectdisk.jl")
-include("triangle.jl")
 
+include("triangle/triangle_defn.jl")
+include("triangle/jacobi_triangle.jl")
+include("triangle/dirichlet_triangle.jl")
 
 end # module
