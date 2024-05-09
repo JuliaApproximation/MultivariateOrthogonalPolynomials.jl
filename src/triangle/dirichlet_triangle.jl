@@ -38,7 +38,7 @@ function getindex(P::DirichletTriangle, xy::SVector{2}, JR::BlockOneTo)
 end
 
 function _getindex_dirichlet_1(P::DirichletTriangle, xy::SVector{2}, JR::BlockOneTo)
-    a, b, c = P.a, P.b, P.c
+    a, b, _ = P.a, P.b, P.c
     n = length(JR)
     x, y = xy
     z = 1 - x - y
@@ -82,15 +82,64 @@ function _getindex_dirichlet_2(P::DirichletTriangle, xy::SVector{2}, JR::BlockOn
     jacobi_vals = PJ[xy, JR]
     dirichlet_vals = copy(jacobi_vals)
     dirichlet_vals[1] = 1.0
-    if a && b 
-        prev_block = view(jacobi_vals, Block(1))
-    elseif a && c 
-
+    if a && b
+        P̃ = Jacobi(0.0, 1.0)[2x-1, 1:n]
+        PJ_one = JacobiTriangle(0.0, 1.0, 0.0)
+        jacobi_one_vals = PJ_one[xy, JR]
+        for i in 2:n
+            dirichlet_block = view(dirichlet_vals, Block(i))
+            dirichlet_block[1] = x * P̃[i-1]
+            dirichlet_block[end] = y * view(jacobi_one_vals, Block(i - 1))[end]
+            for k in 2:(i-1)
+                dirichlet_block[k] = x * y * view(jacobi_vals, Block(i - 2))[k-1]
+            end
+        end
+    elseif a && c
+        P̃ = Jacobi(0.0, 1.0)[2x-1, 1:n]
+        PJ_one = JacobiTriangle(0.0, 0.0, 1.0)
+        jacobi_one_vals = PJ_one[xy, JR]
+        for i in 2:n
+            dirichlet_block = view(dirichlet_vals, Block(i))
+            dirichlet_block[1] = x * P̃[i-1]
+            dirichlet_block[end] = z * view(jacobi_one_vals, Block(i - 1))[end]
+            for k in 2:(i-1)
+                dirichlet_block[k] = x * z * view(jacobi_vals, Block(i - 2))[k-1]
+            end
+        end
     else
-
+        P̃ = Jacobi(1.0, 0.0)[2x-1, 1:n]
+        for i in 2:n
+            dirichlet_block = view(dirichlet_vals, Block(i))
+            dirichlet_block[1] = (1 - x) * P̃[i-1]
+            dirichlet_block[2] = (1 - x - 2y) * P̃[i-1]
+            for k in 3:i
+                dirichlet_block[k] = y * z * view(jacobi_vals, Block(i - 2))[k-2]
+            end
+        end
     end
+    return dirichlet_vals
 end
 
 function _getindex_dirichlet_3(P::DirichletTriangle, xy::SVector{2}, JR::BlockOneTo)
-    a, b, c = P.a, P.b, P.c
+    n = length(JR)
+    x, y = xy 
+    z = 1 - x - y
+    dirichlet_vals = PseudoBlockVector(zeros(n * (n - 1) ÷ 2 + n), 1:n)
+    dirichlet_vals[1] = 1.0
+    n ==1 && return dirichlet_vals
+    dirichlet_vals[2] = 1.0 - 2.0x
+    dirichlet_vals[3] = 1.0 - x - 2.0y
+    P¹¹_vals = Jacobi(1.0, 1.0)[x, 1:n]
+    P¹¹¹_vals = JacobiTriangle(1.0, 1.0, 1.0)[xy, JR]
+    P⁰¹¹_vals = JacobiTriangle(0.0, 1.0, 1.0)[xy, JR]
+    for i in 3:n
+        dirichlet_block = view(dirichlet_vals, Block(i))
+        dirichlet_block[1] = x * (1 - x) * P¹¹_vals[i-2]
+        dirichlet_block[2] = x * (1.0 - x - 2.0y) * P¹¹_vals[i-2]
+        dirichlet_block[end] = y * z * view(P⁰¹¹_vals, Block(i - 2))[end]
+        for k in 3:(i-1)
+            dirichlet_block[k] = x * y * z * view(P¹¹¹_vals, Block(i - 3))[k-2]
+        end
+    end
+    return dirichlet_vals
 end

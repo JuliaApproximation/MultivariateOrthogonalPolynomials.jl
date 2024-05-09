@@ -76,7 +76,7 @@ function Qₙₖᵃᵇᶜf(n, k, a, b, c, x, y)
         elseif k == 1
             return (1 - x - 2y) * Pₙₖf(n - 1, 0, x, y)
         else
-            return y * z * Pₙₖᵃᵇᶜ(n - 2, k - 2, 0, 1, 1, x, y)
+            return y * z * Pₙₖᵃᵇᶜf(n - 2, k - 2, 0, 1, 1, x, y)
         end
     elseif a == 1 && b == 1 && c == 1
         if n == k == 0
@@ -86,48 +86,25 @@ function Qₙₖᵃᵇᶜf(n, k, a, b, c, x, y)
         elseif n == k == 1
             return 1 - x - 2y
         elseif k == 0
-            return x * (1 - x) * Pₙₖᵃᵇᶜf(n - 2, 0, 1, 0, 0, x, y)
+            # return x * (1 - x) * Pₙₖᵃᵇᶜf(n - 2, 0, 1, 0, 0, x, y) # Not the same as x(1-x)Pₙ₋₂¹¹(x)?
+            return x * (1 - x) * Pₙᵃᵇf(n - 2, 1, 1, x)
         elseif k == 1
-            return x * (1 - x - 2y) * Pₙₖᵃᵇᶜf(n - 2, 0, 1, 0, 0, x, y)
+            # return x * (1 - x - 2y) * Pₙₖᵃᵇᶜf(n - 2, 0, 1, 0, 0, x, y)
+            return x * (1 - x - 2y) * Pₙᵃᵇf(n - 2, 1, 1, x)
         elseif n ≠ k
             return x * y * z * Pₙₖᵃᵇᶜf(n - 3, k - 2, 1, 1, 1, x, y)
         else
-            return y * z * Pₙₖᵅᵇᶜf(n - 2, n - 2, 0, 1, 1, x, y)
+            return y * z * Pₙₖᵃᵇᶜf(n - 2, n - 2, 0, 1, 1, x, y)
         end
     else
         throw(ArgumentError("Invalid values for a, b, c"))
     end
 end
-for (a, b, c) in ((1, 0, 0), (0, 1, 0), (0, 0, 1))
+for (a, b, c) in ((1, 0, 0), (0, 1, 0), (0, 0, 1), (1, 1, 0), (1, 0, 1), (0, 1, 1), (1, 1, 1))
+    @show a, b, c
     P = DirichletTriangle(a, b, c)
     xy = SVector(0.2, 0.3)
     vals = P[xy, BlockRange(1:10)]
     Qvals = [Qₙₖᵃᵇᶜf(to_nk(i)..., a, b, c, xy...) for i in 1:to_idx(10 - 1, 10 - 1)]
     @test vals ≈ Qvals
 end
-
-a, b, c = 0, 1, 0
-P = DirichletTriangle(a, b, c)
-xy = SVector(0.2, 0.3)
-vals = P[xy, 17]
-vals ≈ Qₙₖᵃᵇᶜf(to_nk(17)..., a, b, c, xy[1], xy[2])
-
-P[xy, 1], Qₙₖᵃᵇᶜf(to_nk(1)..., a, b, c, xy[1], xy[2])
-P[xy, 2], Qₙₖᵃᵇᶜf(to_nk(2)..., a, b, c, xy[1], xy[2])
-
-P[xy, 3], Qₙₖᵃᵇᶜf(to_nk(3)..., a, b, c, xy[1], xy[2])
-
-
-JR = findblockindex(axes(P, 2), 3) |> BlockArrays.block |> x -> Block.(Base.OneTo(Int(x)))
-a, b, c = P.a, P.b, P.c
-n = length(JR)
-x, y = xy
-PJ = JacobiTriangle(P)
-jacobi_vals = PJ[xy, JR]
-dirichlet_vals = copy(jacobi_vals)
-P̃ = Jacobi(0.0, 0.0)[2x-1, 1:n]
-prev_block = view(jacobi_vals, Block(1))
-mult = b ? y : z
-i = 2
-block = view(jacobi_vals, Block(i))
-dirichlet_block = view(dirichlet_vals, Block(i))
