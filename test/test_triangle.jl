@@ -501,4 +501,35 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
 
         @test affine(d, axes(P,1))[affine(axes(P,1), d)[𝐱]] ≈ 𝐱
     end
+
+    @testset "Weighted derivatives" begin
+        for a in (0.001, 0.1, 0.2, 1.0)
+            for b in (0.001, 0.1, 0.2, 1.0)
+                for c in (0.001, 0.1, 0.2, 1.0)
+                    f = let a = a, b = b, c = c
+                        ((x, y),) -> x^a * y^b * (1 - x - y)^c * (x^2 + 3y^2 + x * y)
+                    end
+                    dfx = let a = a, b = b, c = c
+                        ((x, y),) -> x^a * y^b * (1 - x - y)^c * (2x + y - c * (x^2 + 3y^2 + x * y) / (1 - x - y) + a * (x + y + 3 * y^2 / x))
+                    end
+                    dfy = let a = a, b = b, c = c
+                        ((x, y),) -> x^a * y^b * (1 - x - y)^c * (x + 6y + b * (x + x^2 / y + 3y) - c * (x^2 + 3y^2 + x * y) / (1 - x - y))
+                    end
+                    P = Weighted(JacobiTriangle(a, b, c))
+                    Pf = expand(P, f)
+                    𝐱 = axes(P, 1)
+                    ∂ˣ = PartialDerivative{1}(𝐱)
+                    ∂ʸ = PartialDerivative{2}(𝐱)
+                    Pfx = ∂ˣ * Pf
+                    Pfy = ∂ʸ * Pf
+                    for _ in 1:100 
+                        u, v = minmax(rand(2)...)
+                        x, y = v - u, 1 - v # random point in the triangle
+                        @test Pfx[SVector(x, y)] ≈ dfx((x, y))
+                        @test Pfy[SVector(x, y)] ≈ dfy((x, y))
+                    end
+                end 
+            end
+        end
+    end
 end
