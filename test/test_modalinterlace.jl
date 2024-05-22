@@ -3,7 +3,7 @@ import MultivariateOrthogonalPolynomials: ModalInterlace, ModalInterlaceLayout, 
 
 @testset "modalTrav" begin
     a = ModalTrav(randn(2,5))
-    b = PseudoBlockArray(a)
+    b = BlockedArray(a)
     v = Vector(a)
 
     @test zero(a) isa ModalTrav
@@ -12,7 +12,7 @@ import MultivariateOrthogonalPolynomials: ModalInterlace, ModalInterlaceLayout, 
     @test exp.(a) isa ModalTrav
     @test 2a isa ModalTrav
     @test a+a isa ModalTrav
-    @test a+b isa PseudoBlockArray
+    @test a+b isa BlockedArray
     @test a+v isa BlockArray
     @test a .+ exp.(a .+ 1) isa ModalTrav
 

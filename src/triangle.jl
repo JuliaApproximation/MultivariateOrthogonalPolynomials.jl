@@ -664,7 +664,7 @@ end
 # The functionality will need to be added to LazyBandedMatrices.jl
 function tri_forwardrecurrence(N::Int, X, Y, x, y)
     T = promote_type(eltype(X),eltype(Y))
-    ret = PseudoBlockVector{T}(undef, 1:N)
+    ret = BlockedVector{T}(undef, 1:N)
     N < 1 && return ret
     ret[1] = 1
     N < 2 && return ret

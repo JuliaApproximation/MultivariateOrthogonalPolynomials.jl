@@ -31,7 +31,7 @@ convert(::Type{ModalTrav{T,M}}, v::ModalTrav) where {T,M} = ModalTrav{T,M}(conve
 
 function convert(::Type{ModalTrav{T,M}}, v_in::AbstractVector) where {T,M}
     N =  (isqrt(8length(v_in)+1)-1) ÷ 2
-    v = PseudoBlockVector(v_in, OneTo(N))
+    v = BlockedVector(v_in, OneTo(N))
     m = N ÷ 2 + 1
     n = 4(m-1) + 1
     mat = zeros(T, m, n)
