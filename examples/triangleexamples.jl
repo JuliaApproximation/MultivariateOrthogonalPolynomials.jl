@@ -69,7 +69,7 @@ u_3 = F \ pad(coefficients(Fun((x,y) -> x*y*(1-x-y), rangespace(L))), size(M,1))
 u_4 = F \ pad(coefficients(Fun((x,y) -> exp(-25((x-0.2)^2+(y-0.2)^2)), rangespace(L))), size(M,1))
 
 
-bnrms = u -> [norm(PseudoBlockArray(u, 1:N)[Block(K)],Inf) for K=1:N]
+bnrms = u -> [norm(BlockedArray(u, 1:N)[Block(K)],Inf) for K=1:N]
 
 plot(bnrms(u_1); xscale=:log10, yscale=:log10, linewidth=3, label="1")
 plot!(bnrms(u_2); xscale=:log10, yscale=:log10, linewidth=3, linestyle=:dot, label="x^2 + y^2")

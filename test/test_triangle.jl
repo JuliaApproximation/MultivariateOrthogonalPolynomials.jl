@@ -51,22 +51,22 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
         @testset "function" begin
             P = JacobiTriangle()
             𝐱 = SVector(0.1,0.2)
-            c = PseudoBlockVector([1; Zeros(∞)], (axes(P,2),))
+            c = BlockedVector([1; Zeros(∞)], (axes(P,2),))
             f = P*c
             @test MemoryLayout(f) isa ExpansionLayout
             @test @inferred(f[𝐱]) == 1.0
-            c = PseudoBlockVector([1:3; Zeros(∞)], (axes(P,2),))
+            c = BlockedVector([1:3; Zeros(∞)], (axes(P,2),))
             f = P*c
             @test f[𝐱] ≈ P[𝐱,1:3]'*(1:3)
-            c = PseudoBlockVector([1:6; Zeros(∞)], (axes(P,2),))
+            c = BlockedVector([1:6; Zeros(∞)], (axes(P,2),))
             f = P*c
             @test f[𝐱] ≈ P[𝐱,1:6]'*(1:6)
 
-            c = PseudoBlockVector([randn(5050); Zeros(∞)], (axes(P,2),))
+            c = BlockedVector([randn(5050); Zeros(∞)], (axes(P,2),))
             f = P*c
             @test f[𝐱] ≈ P[𝐱,1:5050]'*c[1:5050]
 
-            c = PseudoBlockVector([1:10; zeros(∞)], (axes(P,2),))
+            c = BlockedVector([1:10; zeros(∞)], (axes(P,2),))
             f = P*c
             𝐱 = SVector(0.1,0.2)
             @test f[𝐱] ≈ dot(P[𝐱,1:10],1:10)
@@ -98,7 +98,7 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
 
         @testset "relation with transform" begin
             P = JacobiTriangle()
-            c = PseudoBlockVector([1:10; zeros(∞)], (axes(P,2),))
+            c = BlockedVector([1:10; zeros(∞)], (axes(P,2),))
             f = P*c
             N = 5
             P_N = P[:,Block.(Base.OneTo(N))]
@@ -375,7 +375,7 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
                 X = P \ (x .* P)
                 Y = P \ (y .* P)
 
-                P_ex = PseudoBlockVector{Float64}(undef, 1:5)
+                P_ex = BlockedVector{Float64}(undef, 1:5)
                 for n = 0:4, k=0:n
                     P_ex[Block(n+1)[k+1]] = p(n,k,1,0,0,0.1,0.2)
                 end

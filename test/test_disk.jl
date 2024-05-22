@@ -10,7 +10,7 @@ import ForwardDiff: hessian
         T = ZernikeTransform{Float64}(N, 0, 0)
         Ti = ZernikeITransform{Float64}(N, 0, 0)
 
-        v = PseudoBlockArray(randn(sum(1:N)),1:N)
+        v = BlockedArray(randn(sum(1:N)),1:N)
         @test T * (Ti * v) ≈ v
 
 
@@ -60,7 +60,7 @@ import ForwardDiff: hessian
         @test_throws ArgumentError ModalTrav([1 2 3 4; 5 6 7 8])
 
         for N = 1:10
-            v = PseudoBlockArray(1:sum(1:N),1:N)
+            v = BlockedArray(1:sum(1:N),1:N)
             if iseven(N)
                 @test ModalTrav(v) == [v; zeros(N+1)]
             else
