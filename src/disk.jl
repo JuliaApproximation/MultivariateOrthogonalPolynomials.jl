@@ -344,3 +344,75 @@ function Base._sum(P::Zernike{T}, dims) where T
     @assert P.a == P.b == 0
     Hcat(sqrt(convert(T, π)), Zeros{T}(1,∞))
 end
+
+
+###
+# Partial derivatives
+###
+
+@simplify function *(∂ʸ::PartialDerivative{2}, WZ::Weighted{<:Any,<:Zernike})
+    @assert WZ.P.a == 0 && WZ.P.b == 1
+    T = eltype(eltype(WZ))
+
+    k = mortar(Base.OneTo.(oneto(∞)))     # k counts the the angular mode (+1)
+    n = mortar(Fill.(oneto(∞),oneto(∞))) .- 1  # n counts the block number which corresponds to the order
+    m = k .- isodd.(k).*iseven.(n) .- iseven.(k).*isodd.(n) # Fourier mode number
+
+    # Raising Fourier mode coefficients, split into sin and cos parts + m=0 change
+    N = sqrt.(massmatrix(Jacobi{T}(0,1)).diag)
+    c=-BroadcastVector(n->N[n+1], (n .- m) .÷ 2) ./ BroadcastVector(n->N[n+1], (n .- m) .÷ 2 .+ m)
+    c1 = c .* ((n  .- m) .÷ 2 .+ 1) .* (-1).^(iseven.(k.-n)) .* (iszero.(m) * sqrt(2*one(T)) + (1 .- iszero.(m)))
+    c2 = c1 .* iseven.(n .- k)
+    c3 = c1 .* isodd.(n .- k)
+
+    # Lowering Fourier mode coefficients, split into sin and cos parts + m=1 change
+    d1 = c .* ((n  .- m) .÷ 2 .+ 1) .* (-1).^(isodd.(k.-n)) .* (isone.(m) * sqrt(2*one(T)) + (1 .- isone.(m)))
+    d2 = d1 .* iseven.(n .- k)
+    d3 = d1 .* isodd.(n .- k)
+
+    # Put coefficients together
+    A = BlockBandedMatrices._BandedBlockBandedMatrix(BlockBroadcastArray(hcat, c3, Zeros((axes(n,1),)), c2)', axes(n,1), (1,-1), (2,0))
+    B = BlockBandedMatrices._BandedBlockBandedMatrix(BlockBroadcastArray(hcat, d3, Zeros((axes(n,1),)), d2)', axes(n,1), (1,-1), (0,2))
+    Zernike{T}(0) * (A + B)
+end
+
+@simplify function *(∂ʸ::PartialDerivative{2}, Z::Zernike)
+    @assert Z.a == 0
+    T = eltype(eltype(Z))
+    b = convert(T, Z.b)
+
+    k = mortar(Base.OneTo.(oneto(∞)))     # k counts the the angular mode (+1)
+    n = mortar(Fill.(oneto(∞),oneto(∞))) .- 1  # n counts the block number which corresponds to the order
+    m = k .- isodd.(k).*iseven.(n) .- iseven.(k).*isodd.(n) # Fourier mode number
+
+    # Computes the entries for the component that lowers the Fourier mode
+    D = BroadcastVector(P->diff(P; dims=1), HalfWeighted{:b}.(Normalized.(Jacobi.(b,1:∞))))
+    Ds = BroadcastVector{AbstractMatrix{T}}((P,D) -> P \ D, HalfWeighted{:b}.(Normalized.(Jacobi.(b+1,0:∞))) , D)
+    M = ModalInterlace(Ds, (ℵ₀,ℵ₀), (0,0))
+    db = ones(axes(n)) .* (view(view(M, 1:∞, 1:∞),band(0)))
+
+    # Computes the entries for the component that lowers the Fourier mode
+    # the -1 in the parameters is a trick to make ModalInterlace think that the
+    # 0-parameter is the second Fourier mode (we use the -1 as a dummy matrix in the ModalInterlace)
+    D = BroadcastVector(P->diff(P; dims=1), Normalized.(Jacobi.(b,-1:∞)))
+    Ds = BroadcastVector{AbstractMatrix{T}}((P,D) -> P \ D, Normalized.(Jacobi.(b+1,0:∞)), D)
+    Dss = BroadcastVector{AbstractMatrix{T}}(P -> Diagonal(view(P, band(1))), Ds)
+    M = ModalInterlace(Dss, (ℵ₀,ℵ₀), (0,0))
+    d = ones(axes(n)) .*  view(view(M, 1:∞, 1:∞),band(0))
+
+    # Lowering Fourier mode coefficients, split into sin and cos parts + m=1 change
+    c1 = d .* (-1).^(isodd.(k.-n)) .* (isone.(m) .* sqrt(2*one(T)) + (1 .- isone.(m)))
+    c2 = c1 .* iseven.(n .- k)
+    c3 = c1 .* isodd.(n .- k)
+
+    # Raising Fourier mode coefficients, split into sin and cos parts + m=0 change
+    d1 = db .* (-1).^(iseven.(k.-n)) .* (iszero.(m) * sqrt(2*one(T)) + (1 .- iszero.(m)))
+    d2 = d1 .* iseven.(n .- k)
+    d3 = d1 .* isodd.(n .- k)
+
+    # Put coefficients together
+    A = BlockBandedMatrices._BandedBlockBandedMatrix(BlockBroadcastArray(hcat, c3, Zeros{T}((axes(n,1),)), c2)', axes(n,1), (1,-1), (0,2))
+    B = BlockBandedMatrices._BandedBlockBandedMatrix(BlockBroadcastArray(hcat, d3, Zeros{T}((axes(n,1),)), d2)', axes(n,1), (1,-1), (2,0))
+
+    Zernike{T}(Z.b+1) * (A+B)'
+end
