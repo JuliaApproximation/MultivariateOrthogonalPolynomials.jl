@@ -1,6 +1,6 @@
 using MultivariateOrthogonalPolynomials, StaticArrays, BlockArrays, BlockBandedMatrices, ArrayLayouts,
         QuasiArrays, Test, ClassicalOrthogonalPolynomials, BandedMatrices, FastTransforms, LinearAlgebra, ContinuumArrays
-import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleRecurrenceA, TriangleRecurrenceB, TriangleRecurrenceC, xy_muladd!, ExpansionLayout, Triangle, ApplyBandedBlockBandedLayout
+import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleRecurrenceA, TriangleRecurrenceB, TriangleRecurrenceC, xy_muladd!, ExpansionLayout, Triangle, ApplyBandedBlockBandedLayout, weightedgrammatrix
 
 @testset "Triangle" begin
     @testset "basics" begin
@@ -531,5 +531,39 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
                 end 
             end
         end
+    end
+
+    @testset "Weighted grammatrix" begin
+        P = JacobiTriangle()
+
+        D = weightedgrammatrix(P)
+        
+        @test D isa Diagonal
+        KR = Block.(1:10)
+        @test D[KR,KR] == grammatrix(P)[KR,KR]
+        for k = 1:5
+            @test sum(P[:,k].^2) ≈ D[k,k]
+        end
+
+        Q = JacobiTriangle(1,1,1)
+        D = weightedgrammatrix(Q)
+
+        @test D isa Diagonal
+        𝐱 = axes(P,1)
+        x,y = first.(𝐱),last.(𝐱)
+        for k = 1:5
+            @test sum(x .* y .* (1 .- x .- y) .* Q[:,k].^2) ≈ D[k,k]
+        end
+    end
+
+    @testset "Weak formulation" begin
+        P = JacobiTriangle()
+        W = Weighted(JacobiTriangle(1,1,1))
+        𝐱 = axes(W,1)
+        ∂_x = PartialDerivative{1}(𝐱)
+        ∂_y = PartialDerivative{2}(𝐱)
+        Δ = -((∂_x*W)'*(∂_x*W) + (∂_y*W)'*(∂_y*W))
+        f = expand(P, splat((x,y) -> exp(x*cos(y))))
+        W'f
     end
 end

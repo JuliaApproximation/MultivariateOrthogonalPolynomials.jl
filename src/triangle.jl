@@ -188,15 +188,20 @@ end
 #     _lap_mul(P, eltype(axes(P,1)))
 # end
 
-# _BandedBlockBandedMatrix((@. exp(loggamma(n+k+b+c)+loggamma(n-k+a+1)+loggamma(k+b)+loggamma(k+c)-loggamma(n+k+a+b+c)-loggamma(k+b+c)-loggamma(n-k+1)-loggamma(k))/((2n+a+b+c)*(2k+b+c-1)))',
-# axes(k,1), (0,0), (0,0))
+
 
 function grammatrix(A::JacobiTriangle)
     @assert A == JacobiTriangle()
     n = mortar(Fill.(oneto(∞),oneto(∞)))
     k = mortar(Base.OneTo.(oneto(∞)))
-    _BandedBlockBandedMatrix(BroadcastVector{eltype(A)}((n,k) -> exp(loggamma(n+k)+loggamma(n-k+1)+loggamma(k)+loggamma(k)-loggamma(n+k)-loggamma(k)-loggamma(n-k+1)-loggamma(k))/((2n)*(2k-1)), n, k)',
-                                axes(k,1), (0,0), (0,0))
+    Diagonal(BroadcastVector{eltype(A)}((n,k) -> exp(loggamma(n+k)+loggamma(n-k+1)+loggamma(k)+loggamma(k)-loggamma(n+k)-loggamma(k)-loggamma(n-k+1)-loggamma(k))/((2n)*(2k-1)), n, k))
+end
+
+function weightedgrammatrix(A::JacobiTriangle)
+    n = mortar(Fill.(oneto(∞),oneto(∞)))
+    a,b,c = A.a,A.b,A.c
+    k = mortar(Base.OneTo.(oneto(∞)))
+    Diagonal(BroadcastVector{eltype(A)}((n,k,a,b,c) -> exp(loggamma(n+k+b+c)+loggamma(n-k+a+1)+loggamma(k+b)+loggamma(k+c)-loggamma(n+k+a+b+c)-loggamma(k+b+c)-loggamma(n-k+1)-loggamma(k))/((2n+a+b+c)*(2k+b+c-1)), n, k, a, b, c))
 end
 
 """
@@ -853,4 +858,12 @@ function plotvalues(u::ApplyQuasiVector{T,typeof(*),<:Tuple{JacobiTriangle, Abst
     F = TriIPlan{T}(Block(N), P.a, P.b, P.c)
     C = F * DiagTrav(invdiagtrav(c)[1:N,1:N]) # transform to grid
     C
+end
+
+
+
+function Base._sum(P::JacobiTriangle{T}, dims) where T
+    @assert dims == 1
+    @assert P.a == P.b == P.c == 0
+    Hcat(one(T)/2, Zeros{T}(1,∞))
 end
