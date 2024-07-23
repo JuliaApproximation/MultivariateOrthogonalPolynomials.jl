@@ -742,6 +742,23 @@ end
 getindex(f::ApplyQuasiVector{T,typeof(*),<:Tuple{JacobiTriangle,AbstractVector}}, xys::AbstractArray{<:SVector{2}}) where T =
     [f[xy] for xy in xys]
 
+####
+# Grammatrices
+####
+
+"""
+    legendre_triangle_grammatrix
+
+computes the grammatrix by first re-expanding in Legendre
+"""
+function legendre_triangle_grammatrix(A, B)
+    P = JacobiTriangle{eltype(B)}()
+    (P\A)'*grammatrix(P)*(P\B)
+end
+
+@simplify *(Ac::QuasiAdjoint{<:Any,<:JacobiTriangle}, B::Weighted{<:Any,<:JacobiTriangle}) = legendre_triangle_grammatrix(parent(Ac),B)
+
+
 # getindex(f::Expansion{T,<:JacobiTriangle}, x::AbstractVector{<:Number}) where T =
 #     copyto!(Vector{T}(undef, length(x)), view(f, x))
 
