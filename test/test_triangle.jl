@@ -535,10 +535,8 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
 
     @testset "Weighted grammatrix" begin
         P = JacobiTriangle()
-
         D = weightedgrammatrix(P)
-        
-        @test D isa Diagonal
+    
         KR = Block.(1:10)
         @test D[KR,KR] == grammatrix(P)[KR,KR]
         for k = 1:5
@@ -548,12 +546,21 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
         Q = JacobiTriangle(1,1,1)
         D = weightedgrammatrix(Q)
 
-        @test D isa Diagonal
+    
         𝐱 = axes(P,1)
         x,y = first.(𝐱),last.(𝐱)
         for k = 1:5
             @test sum(x .* y .* (1 .- x .- y) .* Q[:,k].^2) ≈ D[k,k]
         end
+
+        W = Weighted(Q)
+        f = expand(P, splat((x,y) -> exp(x*cos(y))))
+        
+        c = W'f
+
+        for k = 1:5
+            @test c[k] ≈ sum(expand(P, splat((x,y) -> (W[SVector(x,y),k]::Float64) * exp(x*cos(y)))))
+        end 
     end
 
     @testset "Weak formulation" begin
@@ -563,7 +570,11 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
         ∂_x = PartialDerivative{1}(𝐱)
         ∂_y = PartialDerivative{2}(𝐱)
         Δ = -((∂_x*W)'*(∂_x*W) + (∂_y*W)'*(∂_y*W))
+        M = W'W
         f = expand(P, splat((x,y) -> exp(x*cos(y))))
-        W'f
+        κ = 10
+        A = Δ + κ^2*M
+        c = \(A, W'f; tolerance=1E-4)
+        @test (W*c)[SVector(0.1,0.2)] ≈ -0.005927539175184257 # empirical
     end
 end

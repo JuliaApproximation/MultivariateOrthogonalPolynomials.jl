@@ -194,14 +194,16 @@ function grammatrix(A::JacobiTriangle)
     @assert A == JacobiTriangle()
     n = mortar(Fill.(oneto(∞),oneto(∞)))
     k = mortar(Base.OneTo.(oneto(∞)))
-    Diagonal(BroadcastVector{eltype(A)}((n,k) -> exp(loggamma(n+k)+loggamma(n-k+1)+loggamma(k)+loggamma(k)-loggamma(n+k)-loggamma(k)-loggamma(n-k+1)-loggamma(k))/((2n)*(2k-1)), n, k))
+    _BandedBlockBandedMatrix(BroadcastVector{eltype(A)}((n,k) -> exp(loggamma(n+k)+loggamma(n-k+1)+loggamma(k)+loggamma(k)-loggamma(n+k)-loggamma(k)-loggamma(n-k+1)-loggamma(k))/((2n)*(2k-1)), n, k)',
+    axes(k,1), (0,0), (0,0))
 end
 
 function weightedgrammatrix(A::JacobiTriangle)
     n = mortar(Fill.(oneto(∞),oneto(∞)))
     a,b,c = A.a,A.b,A.c
     k = mortar(Base.OneTo.(oneto(∞)))
-    Diagonal(BroadcastVector{eltype(A)}((n,k,a,b,c) -> exp(loggamma(n+k+b+c)+loggamma(n-k+a+1)+loggamma(k+b)+loggamma(k+c)-loggamma(n+k+a+b+c)-loggamma(k+b+c)-loggamma(n-k+1)-loggamma(k))/((2n+a+b+c)*(2k+b+c-1)), n, k, a, b, c))
+    _BandedBlockBandedMatrix(BroadcastVector{eltype(A)}((n,k,a,b,c) -> exp(loggamma(n+k+b+c)+loggamma(n-k+a+1)+loggamma(k+b)+loggamma(k+c)-loggamma(n+k+a+b+c)-loggamma(k+b+c)-loggamma(n-k+1)-loggamma(k))/((2n+a+b+c)*(2k+b+c-1)), n, k, a, b, c)',
+    axes(k,1), (0,0), (0,0))
 end
 
 """
@@ -404,7 +406,7 @@ function \(w_A::WeightedTriangle, B::JacobiTriangle)
     w_A \ (TriangleWeight(0,0,0) .* B)
 end
 
-function \(A::JacobiTriangle, B::JacobiTriangle)
+@simplify function \(A::JacobiTriangle, B::JacobiTriangle)
     if A == B
         Eye{promote_type(eltype(A),eltype(B))}((axes(B,2),))
     elseif A.a == B.a + 1 && A.b == B.b && A.c == B.c
