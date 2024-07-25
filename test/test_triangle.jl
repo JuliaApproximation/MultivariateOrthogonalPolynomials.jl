@@ -549,13 +549,23 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
         D = weightedgrammatrix(Q)
 
 
+
         𝐱 = axes(P,1)
         x,y = first.(𝐱),last.(𝐱)
         for k = 1:5
             @test sum(x .* y .* (1 .- x .- y) .* Q[:,k].^2) ≈ D[k,k]
         end
 
+
         W = Weighted(Q)
+
+        PW = P'W
+        WP = W'P
+        for k = 1:5, j=1:5
+            @test sum(W[:,j] .* P[:,k]) ≈ PW[k,j] atol=1E-14
+            @test PW[k,j] ≈ WP[j,k] atol=1E-14
+        end
+
         f = expand(P, splat((x,y) -> exp(x*cos(y))))
 
         c = W'f
