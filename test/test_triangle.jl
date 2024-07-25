@@ -522,13 +522,15 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
                     ∂ʸ = PartialDerivative{2}(𝐱)
                     Pfx = ∂ˣ * Pf
                     Pfy = ∂ʸ * Pf
-                    for _ in 1:100 
+
+                    @test (coefficients(∂ˣ * P) * coefficients(Pf))[1:50] ≈ coefficients(Pfx)[1:50] ≈ coefficients(∂ˣ * P)[1:50,1:50] * coefficients(Pf)[1:50]
+                    for _ in 1:100
                         u, v = minmax(rand(2)...)
                         x, y = v - u, 1 - v # random point in the triangle
                         @test Pfx[SVector(x, y)] ≈ dfx((x, y))
                         @test Pfy[SVector(x, y)] ≈ dfy((x, y))
                     end
-                end 
+                end
             end
         end
     end
@@ -536,7 +538,7 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
     @testset "Weighted grammatrix" begin
         P = JacobiTriangle()
         D = weightedgrammatrix(P)
-    
+
         KR = Block.(1:10)
         @test D[KR,KR] == grammatrix(P)[KR,KR]
         for k = 1:5
@@ -546,7 +548,7 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
         Q = JacobiTriangle(1,1,1)
         D = weightedgrammatrix(Q)
 
-    
+
         𝐱 = axes(P,1)
         x,y = first.(𝐱),last.(𝐱)
         for k = 1:5
@@ -555,12 +557,12 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
 
         W = Weighted(Q)
         f = expand(P, splat((x,y) -> exp(x*cos(y))))
-        
+
         c = W'f
 
         for k = 1:5
             @test c[k] ≈ sum(expand(P, splat((x,y) -> (W[SVector(x,y),k]::Float64) * exp(x*cos(y)))))
-        end 
+        end
     end
 
     @testset "Weak formulation" begin
