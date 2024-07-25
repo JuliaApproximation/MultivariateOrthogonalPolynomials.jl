@@ -188,15 +188,22 @@ end
 #     _lap_mul(P, eltype(axes(P,1)))
 # end
 
-# _BandedBlockBandedMatrix((@. exp(loggamma(n+k+b+c)+loggamma(n-k+a+1)+loggamma(k+b)+loggamma(k+c)-loggamma(n+k+a+b+c)-loggamma(k+b+c)-loggamma(n-k+1)-loggamma(k))/((2n+a+b+c)*(2k+b+c-1)))',
-# axes(k,1), (0,0), (0,0))
+
 
 function grammatrix(A::JacobiTriangle)
     @assert A == JacobiTriangle()
     n = mortar(Fill.(oneto(∞),oneto(∞)))
     k = mortar(Base.OneTo.(oneto(∞)))
     _BandedBlockBandedMatrix(BroadcastVector{eltype(A)}((n,k) -> exp(loggamma(n+k)+loggamma(n-k+1)+loggamma(k)+loggamma(k)-loggamma(n+k)-loggamma(k)-loggamma(n-k+1)-loggamma(k))/((2n)*(2k-1)), n, k)',
-                                axes(k,1), (0,0), (0,0))
+    axes(k,1), (0,0), (0,0))
+end
+
+function weightedgrammatrix(A::JacobiTriangle)
+    n = mortar(Fill.(oneto(∞),oneto(∞)))
+    a,b,c = A.a,A.b,A.c
+    k = mortar(Base.OneTo.(oneto(∞)))
+    _BandedBlockBandedMatrix(BroadcastVector{eltype(A)}((n,k,a,b,c) -> exp(loggamma(n+k+b+c)+loggamma(n-k+a+1)+loggamma(k+b)+loggamma(k+c)-loggamma(n+k+a+b+c)-loggamma(k+b+c)-loggamma(n-k+1)-loggamma(k))/((2n+a+b+c)*(2k+b+c-1)), n, k, a, b, c)',
+    axes(k,1), (0,0), (0,0))
 end
 
 """
@@ -399,7 +406,7 @@ function \(w_A::WeightedTriangle, B::JacobiTriangle)
     w_A \ (TriangleWeight(0,0,0) .* B)
 end
 
-function \(A::JacobiTriangle, B::JacobiTriangle)
+@simplify function \(A::JacobiTriangle, B::JacobiTriangle)
     if A == B
         Eye{promote_type(eltype(A),eltype(B))}((axes(B,2),))
     elseif A.a == B.a + 1 && A.b == B.b && A.c == B.c
@@ -742,6 +749,23 @@ end
 getindex(f::ApplyQuasiVector{T,typeof(*),<:Tuple{JacobiTriangle,AbstractVector}}, xys::AbstractArray{<:SVector{2}}) where T =
     [f[xy] for xy in xys]
 
+####
+# Grammatrices
+####
+
+"""
+    legendre_triangle_grammatrix
+
+computes the grammatrix by first re-expanding in Legendre
+"""
+function legendre_triangle_grammatrix(A, B)
+    P = JacobiTriangle{eltype(B)}()
+    (P\A)'*grammatrix(P)*(P\B)
+end
+
+@simplify *(Ac::QuasiAdjoint{<:Any,<:JacobiTriangle}, B::Weighted{<:Any,<:JacobiTriangle}) = legendre_triangle_grammatrix(parent(Ac),B)
+
+
 # getindex(f::Expansion{T,<:JacobiTriangle}, x::AbstractVector{<:Number}) where T =
 #     copyto!(Vector{T}(undef, length(x)), view(f, x))
 
@@ -836,4 +860,12 @@ function plotvalues(u::ApplyQuasiVector{T,typeof(*),<:Tuple{JacobiTriangle, Abst
     F = TriIPlan{T}(Block(N), P.a, P.b, P.c)
     C = F * DiagTrav(invdiagtrav(c)[1:N,1:N]) # transform to grid
     C
+end
+
+
+
+function Base._sum(P::JacobiTriangle{T}, dims) where T
+    @assert dims == 1
+    @assert P.a == P.b == P.c == 0
+    Hcat(one(T)/2, Zeros{T}(1,∞))
 end

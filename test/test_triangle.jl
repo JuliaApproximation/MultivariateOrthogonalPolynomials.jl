@@ -1,6 +1,6 @@
 using MultivariateOrthogonalPolynomials, StaticArrays, BlockArrays, BlockBandedMatrices, ArrayLayouts,
         QuasiArrays, Test, ClassicalOrthogonalPolynomials, BandedMatrices, FastTransforms, LinearAlgebra, ContinuumArrays
-import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleRecurrenceA, TriangleRecurrenceB, TriangleRecurrenceC, xy_muladd!, ExpansionLayout, Triangle, ApplyBandedBlockBandedLayout
+import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleRecurrenceA, TriangleRecurrenceB, TriangleRecurrenceC, xy_muladd!, ExpansionLayout, Triangle, ApplyBandedBlockBandedLayout, weightedgrammatrix
 
 @testset "Triangle" begin
     @testset "basics" begin
@@ -522,14 +522,71 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
                     ∂ʸ = PartialDerivative{2}(𝐱)
                     Pfx = ∂ˣ * Pf
                     Pfy = ∂ʸ * Pf
-                    for _ in 1:100 
+
+                    @test (coefficients(∂ˣ * P) * coefficients(Pf))[1:50] ≈ coefficients(Pfx)[1:50] ≈ coefficients(∂ˣ * P)[1:50,1:50] * coefficients(Pf)[1:50]
+                    for _ in 1:100
                         u, v = minmax(rand(2)...)
                         x, y = v - u, 1 - v # random point in the triangle
                         @test Pfx[SVector(x, y)] ≈ dfx((x, y))
                         @test Pfy[SVector(x, y)] ≈ dfy((x, y))
                     end
-                end 
+                end
             end
         end
+    end
+
+    @testset "Weighted grammatrix" begin
+        P = JacobiTriangle()
+        D = weightedgrammatrix(P)
+
+        KR = Block.(1:10)
+        @test D[KR,KR] == grammatrix(P)[KR,KR]
+        for k = 1:5
+            @test sum(P[:,k].^2) ≈ D[k,k]
+        end
+
+        Q = JacobiTriangle(1,1,1)
+        D = weightedgrammatrix(Q)
+
+
+
+        𝐱 = axes(P,1)
+        x,y = first.(𝐱),last.(𝐱)
+        for k = 1:5
+            @test sum(x .* y .* (1 .- x .- y) .* Q[:,k].^2) ≈ D[k,k]
+        end
+
+
+        W = Weighted(Q)
+
+        PW = P'W
+        WP = W'P
+        for k = 1:5, j=1:5
+            @test sum(W[:,j] .* P[:,k]) ≈ PW[k,j] atol=1E-14
+            @test PW[k,j] ≈ WP[j,k] atol=1E-14
+        end
+
+        f = expand(P, splat((x,y) -> exp(x*cos(y))))
+
+        c = W'f
+
+        for k = 1:5
+            @test c[k] ≈ sum(expand(P, splat((x,y) -> (W[SVector(x,y),k]::Float64) * exp(x*cos(y)))))
+        end
+    end
+
+    @testset "Weak formulation" begin
+        P = JacobiTriangle()
+        W = Weighted(JacobiTriangle(1,1,1))
+        𝐱 = axes(W,1)
+        ∂_x = PartialDerivative{1}(𝐱)
+        ∂_y = PartialDerivative{2}(𝐱)
+        Δ = -((∂_x*W)'*(∂_x*W) + (∂_y*W)'*(∂_y*W))
+        M = W'W
+        f = expand(P, splat((x,y) -> exp(x*cos(y))))
+        κ = 10
+        A = Δ + κ^2*M
+        c = \(A, W'f; tolerance=1E-4)
+        @test (W*c)[SVector(0.1,0.2)] ≈ -0.005927539175184257 # empirical
     end
 end
