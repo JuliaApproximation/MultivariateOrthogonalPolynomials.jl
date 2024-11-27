@@ -163,3 +163,11 @@ function transform_ldiv(K::KronPolynomial{d,V,<:Fill{<:Legendre}}, f::Union{Abst
     dat = (T \ f).array
     DiagTrav(pad(FastTransforms.th_cheb2leg(paddeddata(dat)), axes(dat)...))
 end
+
+
+## sum
+
+function Base._sum(P::RectPolynomial, dims)
+    @assert dims == 1
+    KronTrav(sum.(P.args; dims=1)...)
+end

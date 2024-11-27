@@ -138,4 +138,12 @@ using ContinuumArrays: plotgridvalues
         @test x == SVector.(ChebyshevGrid{2}(40), ChebyshevGrid{2}(40)')
         @test F == ones(40,40)
     end
+
+    @testset "plot" begin
+        P = RectPolynomial(Legendre(),Legendre())
+        p₀ = expand(P, 𝐱 -> 1)
+        @test sum(p₀) ≈ 4.0
+        f = expand(P, splat((x,y) -> exp(cos(x^2*y))))
+        @test sum(f) ≈ 10.546408460894801 # empirical
+    end
 end
