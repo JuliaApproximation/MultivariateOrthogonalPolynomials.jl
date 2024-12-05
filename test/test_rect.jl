@@ -139,7 +139,7 @@ using ContinuumArrays: plotgridvalues
         @test F == ones(40,40)
     end
 
-    @testset "plot" begin
+    @testset "sum" begin
         P = RectPolynomial(Legendre(),Legendre())
         p₀ = expand(P, 𝐱 -> 1)
         @test sum(p₀) ≈ 4.0
