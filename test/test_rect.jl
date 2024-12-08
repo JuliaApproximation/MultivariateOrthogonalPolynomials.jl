@@ -129,7 +129,7 @@ using ContinuumArrays: plotgridvalues
 
     @testset "Show" begin
         @test stringmime("text/plain", KronPolynomial(Legendre(), Chebyshev())) == "Legendre() ⊗ ChebyshevT()"
-        @test stringmime("text/plain", KronPolynomial(Legendre(), Chebyshev(), Jacobi(1,1))) == "Legendre() ⊗ ChebyshevT() ⊗ Jacobi(1.0, 1.0)"
+        @test stringmime("text/plain", KronPolynomial(Legendre(), Chebyshev(), Jacobi(1,1))) == "Legendre() ⊗ ChebyshevT() ⊗ Jacobi(1, 1)"
     end
 
     @testset "Plot" begin
