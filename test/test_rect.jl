@@ -1,4 +1,4 @@
-using MultivariateOrthogonalPolynomials, ClassicalOrthogonalPolynomials, StaticArrays, LinearAlgebra, BlockArrays, FillArrays, Base64, Test
+using MultivariateOrthogonalPolynomials, ClassicalOrthogonalPolynomials, StaticArrays, LinearAlgebra, BlockArrays, FillArrays, Base64, LazyBandedMatrices, Test
 using ClassicalOrthogonalPolynomials: expand
 using MultivariateOrthogonalPolynomials: weaklaplacian
 using ContinuumArrays: plotgridvalues
@@ -145,5 +145,13 @@ using ContinuumArrays: plotgridvalues
         @test sum(p₀) ≈ 4.0
         f = expand(P, splat((x,y) -> exp(cos(x^2*y))))
         @test sum(f) ≈ 10.546408460894801 # empirical
+    end
+
+    @testset "KronTrav bug" begin
+        W = Weighted(Ultraspherical(3/2))
+        D² = diff(W)'diff(W)
+        M = W'W
+        Dₓ = KronTrav(D²,M)
+        @test Dₓ[Block.(1:1),Block.(1:1)] == Dₓ[Block(1,1)]
     end
 end
