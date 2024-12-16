@@ -1,5 +1,5 @@
 using MultivariateOrthogonalPolynomials, ClassicalOrthogonalPolynomials, StaticArrays, LinearAlgebra, BlockArrays, FillArrays, Base64, LazyBandedMatrices, Test
-using ClassicalOrthogonalPolynomials: expand
+using ClassicalOrthogonalPolynomials: expand, coefficients, recurrencecoefficients
 using MultivariateOrthogonalPolynomials: weaklaplacian
 using ContinuumArrays: plotgridvalues
 
@@ -153,5 +153,34 @@ using ContinuumArrays: plotgridvalues
         M = W'W
         Dₓ = KronTrav(D²,M)
         @test Dₓ[Block.(1:1),Block.(1:1)] == Dₓ[Block(1,1)]
+    end
+
+    @testset "variable coefficients" begin
+        T,U = ChebyshevT(), ChebyshevU()
+        P = RectPolynomial(T, U)
+        𝐱 = axes(P,1)
+        x,y = first.(𝐱), last.(𝐱)
+        X = P\(x .* P)
+        Y = P\(y .* P)
+
+        @test X isa KronTrav
+        @test Y isa KronTrav
+
+        a =  (x,y) -> I + x + 2y + 3x^2 +4x*y + 5y^2
+        𝐚 = expand(P,splat(a))
+        A = a(X,Y)
+
+        C = LazyBandedMatrices.paddeddata(LazyBandedMatrices.invdiagtrav(coefficients(𝐚)))
+        m,n = size(C)
+        using RecurrenceRelationshipArrays
+        X_T = jacobimatrix(T)
+        X_U = jacobimatrix(U)
+        cfs = [Clenshaw(C[1:m-j+1,j], recurrencecoefficients(T)..., X_T) for j=1:n]
+
+    
+        KR = Block.(1:3)
+        
+        @test (KronTrav(Eye(∞),cfs[1]) + KronTrav(2X_U,cfs[2]) + KronTrav((4X_U^2 - I),cfs[3]))[KR,KR] ≈
+                KronTrav(Eye(3),cfs[1][1:3,1:3]) + KronTrav(2X_U[1:3,1:3],cfs[2][1:3,1:3])+ KronTrav((4X_U^2 - I)[1:3,1:3],cfs[3][1:3,1:3]) ≈ A[KR,KR]
     end
 end

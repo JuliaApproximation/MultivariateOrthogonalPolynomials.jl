@@ -148,7 +148,7 @@ function Base.unsafe_getindex(f::Mul{MultivariateOPLayout{2},<:DiagTravLayout{<:
     P,c = f.A, f.B
     A,B = P.args
     x,y = 𝐱
-    clenshaw(clenshaw(paddeddata(c.array), recurrencecoefficients(A)..., x), recurrencecoefficients(B)..., y)
+    clenshaw(vec(clenshaw(paddeddata(c.array), recurrencecoefficients(A)..., x; dims=1)), recurrencecoefficients(B)..., y)
 end
 
 Base.@propagate_inbounds function getindex(f::Mul{MultivariateOPLayout{2},<:DiagTravLayout{<:PaddedLayout}}, x::SVector, j...)
