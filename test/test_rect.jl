@@ -172,7 +172,7 @@ using ContinuumArrays: plotgridvalues
 
         C = LazyBandedMatrices.paddeddata(LazyBandedMatrices.invdiagtrav(coefficients(𝐚)))
         m,n = size(C)
-        using RecurrenceRelationshipArrays
+        using RecurrenceRelationshipArrays, RecurrenceRelationships
         X_T = jacobimatrix(T)
         X_U = jacobimatrix(U)
         cfs = [Clenshaw(C[1:m-j+1,j], recurrencecoefficients(T)..., X_T) for j=1:n]
@@ -182,5 +182,13 @@ using ContinuumArrays: plotgridvalues
         
         @test (KronTrav(Eye(∞),cfs[1]) + KronTrav(2X_U,cfs[2]) + KronTrav((4X_U^2 - I),cfs[3]))[KR,KR] ≈
                 KronTrav(Eye(3),cfs[1][1:3,1:3]) + KronTrav(2X_U[1:3,1:3],cfs[2][1:3,1:3])+ KronTrav((4X_U^2 - I)[1:3,1:3],cfs[3][1:3,1:3]) ≈ A[KR,KR]
+
+        g = (a,b,N) -> LazyBandedMatrices.krontrav(a[1:N,1:N], b[1:N,1:N])
+        N = 10
+        M = m-2+N # over sample
+        @time U_X = forwardrecurrence(length(cfs), recurrencecoefficients(U)..., X_U[1:M,1:M]);
+        @time Ks = broadcast(g, U_X, cfs, N);
+        @time A_N = +(Ks...)
+        @test A_N ≈ A[Block.(1:N),Block.(1:N)]
     end
 end
