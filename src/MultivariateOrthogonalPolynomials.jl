@@ -4,7 +4,7 @@ using QuasiArrays: AbstractVector
 using ClassicalOrthogonalPolynomials, FastTransforms, BlockBandedMatrices, BlockArrays, DomainSets,
       QuasiArrays, StaticArrays, ContinuumArrays, InfiniteArrays, InfiniteLinearAlgebra,
       LazyArrays, SpecialFunctions, LinearAlgebra, BandedMatrices, LazyBandedMatrices, ArrayLayouts,
-      HarmonicOrthogonalPolynomials
+      HarmonicOrthogonalPolynomials, RecurrenceRelationships
 
 import Base: axes, in, ==, +, -, /, *, ^, \, copy, copyto!, OneTo, getindex, size, oneto, all, resize!, BroadcastStyle, similar, fill!, setindex!, convert, show, summary
 import Base.Broadcast: Broadcasted, broadcasted, DefaultArrayStyle
@@ -21,7 +21,7 @@ import LazyArrays: arguments, paddeddata, LazyArrayStyle, LazyLayout, PaddedLayo
 import LazyBandedMatrices: LazyBandedBlockBandedLayout, AbstractBandedBlockBandedLayout, AbstractLazyBandedBlockBandedLayout, _krontrav_axes, DiagTravLayout, invdiagtrav, ApplyBandedBlockBandedLayout
 import InfiniteArrays: InfiniteCardinal, OneToInf
 
-import ClassicalOrthogonalPolynomials: jacobimatrix, Weighted, orthogonalityweight, HalfWeighted, WeightedBasis, pad, recurrencecoefficients, clenshaw, weightedgrammatrix
+import ClassicalOrthogonalPolynomials: jacobimatrix, Weighted, orthogonalityweight, HalfWeighted, WeightedBasis, pad, recurrencecoefficients, clenshaw, weightedgrammatrix, Clenshaw
 import HarmonicOrthogonalPolynomials: BivariateOrthogonalPolynomial, MultivariateOrthogonalPolynomial, Plan,
                                           PartialDerivative, AngularMomentum, BlockOneTo, BlockRange1, interlace,
                                           MultivariateOPLayout, MAX_PLOT_BLOCKS
@@ -36,6 +36,7 @@ export MultivariateOrthogonalPolynomial, BivariateOrthogonalPolynomial,
        grammatrix, oneto
 
 include("ModalInterlace.jl")
+include("clenshawkron.jl")
 include("rect.jl")
 include("disk.jl")
 include("rectdisk.jl")
