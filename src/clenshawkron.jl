@@ -23,6 +23,9 @@ axes(M::ClenshawKron) = (blockedrange(oneto(∞)),blockedrange(oneto(∞)))
 blockbandwidths(M::ClenshawKron) = (size(M.c,1)-1,size(M.c,1)-1)
 subblockbandwidths(M::ClenshawKron) = (size(M.c,2)-1,size(M.c,2)-1)
 
+struct ClenshawKronLayout <: AbstractLazyBandedBlockBandedLayout end
+MemoryLayout(::Type{<:ClenshawKron}) = ClenshawKronLayout()
+
 function square_getindex(M::ClenshawKron, N::Block{1})
     # Consider P(x) = L^1_x \ 𝐞_0 
     # So that if a(x,y) = P(x)*c*Q(y)' then we have
@@ -47,5 +50,7 @@ getindex(M::ClenshawKron, K::Block{1}, J::Block{1}) = square_getindex(M, max(K, 
 getindex(M::ClenshawKron, Kk::BlockIndex{1}, Jj::BlockIndex{1}) = M[block(Kk), block(Jj)][blockindex(Kk), blockindex(Jj)]
 getindex(M::ClenshawKron, k::Int, j::Int) = M[findblockindex(axes(M,1),k), findblockindex(axes(M,2),j)]
 
-Base.array_summary(io::IO, C::ClenshawKron{T}, inds::Tuple{Vararg{OneToInf{Int}}}) where T =
+Base.array_summary(io::IO, C::ClenshawKron{T}, inds) where T =
     print(io, Base.dims2string(length.(inds)), " ClenshawKron{$T} with $(size(C.c)) polynomial")
+
+Base.summary(io::IO, C::ClenshawKron) = Base.array_summary(io, C, axes(C))

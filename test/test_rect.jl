@@ -169,19 +169,33 @@ using Base: oneto
 
         a =  (x,y) -> I + x + 2y + 3x^2 +4x*y + 5y^2
         𝐚 = expand(P,splat(a))
-        
-        C = LazyBandedMatrices.paddeddata(LazyBandedMatrices.invdiagtrav(coefficients(𝐚)))
-        
-        A = ClenshawKron(C, (recurrencecoefficients(T), recurrencecoefficients(U)), (jacobimatrix(T), jacobimatrix(U)))
 
+        @testset "ClenshawKron" begin
+            C = LazyBandedMatrices.paddeddata(LazyBandedMatrices.invdiagtrav(coefficients(𝐚)))
 
-        Ã = a(X,Y)
-        for (k,j) in ((Block.(oneto(5)),Block.(oneto(5))), Block.(oneto(5)),Block.(oneto(6)), (Block(2), Block(3)), (4,5),
-                    (Block(2)[2], Block(3)[3]), (Block(2)[2], Block(3)))
-            @test A[k,j] ≈ Ã[k,j]
+            A = ClenshawKron(C, (recurrencecoefficients(T), recurrencecoefficients(U)), (jacobimatrix(T), jacobimatrix(U)))
+
+            @test copy(A) ≡ A
+            @test size(A) == size(X)
+            @test summary(A) == "ℵ₀×ℵ₀ ClenshawKron{Float64} with (3, 3) polynomial"
+
+            Ã = a(X,Y)
+            for (k,j) in ((Block.(oneto(5)),Block.(oneto(5))), Block.(oneto(5)),Block.(oneto(6)), (Block(2), Block(3)), (4,5),
+                        (Block(2)[2], Block(3)[3]), (Block(2)[2], Block(3)))
+                @test A[k,j] ≈ Ã[k,j]
+            end
+
+            @test A[Block(1,2)] ≈ Ã[Block(1,2)]
+            @test A[Block(1,2)][1,2] ≈ Ã[Block(1,2)[1,2]]
         end
 
-        @test A[Block(1,2)] ≈ Ã[Block(1,2)]
-        @test A[Block(1,2)][1,2] ≈ Ã[Block(1,2)[1,2]]
+        @test P \ (𝐚 .* P) isa ClenshawKron
+
+        @test (𝐚 .* 𝐚)[SVector(0.1,0.2)] ≈ 𝐚[SVector(0.1,0.2)]^2
+
+        𝐛 = expand(RectPolynomial(Legendre(),Ultraspherical(3/2)),splat((x,y) -> cos(x*sin(y))))
+        @test (𝐛 .* 𝐚)[SVector(0.1,0.2)] ≈ 𝐚[SVector(0.1,0.2)]𝐛[SVector(0.1,0.2)]
+
+        𝐜 = expand(RectPolynomial(Legendre(),Jacobi(1,0)),splat((x,y) -> cos(x*sin(y))))
     end
 end
