@@ -1,7 +1,8 @@
 using MultivariateOrthogonalPolynomials, ClassicalOrthogonalPolynomials, StaticArrays, LinearAlgebra, BlockArrays, FillArrays, Base64, LazyBandedMatrices, Test
-using ClassicalOrthogonalPolynomials: expand
-using MultivariateOrthogonalPolynomials: weaklaplacian
+using ClassicalOrthogonalPolynomials: expand, coefficients, recurrencecoefficients
+using MultivariateOrthogonalPolynomials: weaklaplacian, ClenshawKron
 using ContinuumArrays: plotgridvalues
+using Base: oneto
 
 @testset "RectPolynomial" begin
     @testset "Evaluation" begin
@@ -153,5 +154,48 @@ using ContinuumArrays: plotgridvalues
         M = W'W
         Dₓ = KronTrav(D²,M)
         @test Dₓ[Block.(1:1),Block.(1:1)] == Dₓ[Block(1,1)]
+    end
+
+    @testset "variable coefficients" begin
+        T,U = ChebyshevT(), ChebyshevU()
+        P = RectPolynomial(T, U)
+        𝐱 = axes(P,1)
+        x,y = first.(𝐱), last.(𝐱)
+        X = P\(x .* P)
+        Y = P\(y .* P)
+
+        @test X isa KronTrav
+        @test Y isa KronTrav
+
+        a =  (x,y) -> I + x + 2y + 3x^2 +4x*y + 5y^2
+        𝐚 = expand(P,splat(a))
+
+        @testset "ClenshawKron" begin
+            C = LazyBandedMatrices.paddeddata(LazyBandedMatrices.invdiagtrav(coefficients(𝐚)))
+
+            A = ClenshawKron(C, (recurrencecoefficients(T), recurrencecoefficients(U)), (jacobimatrix(T), jacobimatrix(U)))
+
+            @test copy(A) ≡ A
+            @test size(A) == size(X)
+            @test summary(A) == "ℵ₀×ℵ₀ ClenshawKron{Float64} with (3, 3) polynomial"
+
+            Ã = a(X,Y)
+            for (k,j) in ((Block.(oneto(5)),Block.(oneto(5))), Block.(oneto(5)),Block.(oneto(6)), (Block(2), Block(3)), (4,5),
+                        (Block(2)[2], Block(3)[3]), (Block(2)[2], Block(3)))
+                @test A[k,j] ≈ Ã[k,j]
+            end
+
+            @test A[Block(1,2)] ≈ Ã[Block(1,2)]
+            @test A[Block(1,2)][1,2] ≈ Ã[Block(1,2)[1,2]]
+        end
+
+        @test P \ (𝐚 .* P) isa ClenshawKron
+
+        @test (𝐚 .* 𝐚)[SVector(0.1,0.2)] ≈ 𝐚[SVector(0.1,0.2)]^2
+
+        𝐛 = expand(RectPolynomial(Legendre(),Ultraspherical(3/2)),splat((x,y) -> cos(x*sin(y))))
+        @test (𝐛 .* 𝐚)[SVector(0.1,0.2)] ≈ 𝐚[SVector(0.1,0.2)]𝐛[SVector(0.1,0.2)]
+
+        𝐜 = expand(RectPolynomial(Legendre(),Jacobi(1,0)),splat((x,y) -> cos(x*sin(y))))
     end
 end

@@ -18,6 +18,10 @@ end
 
 ==(A::KronPolynomial, B::KronPolynomial) = length(A.args) == length(B.args) && all(map(==, A.args, B.args))
 
+
+struct KronOPLayout{d} <: AbstractMultivariateOPLayout{d} end
+MemoryLayout(::Type{<:KronPolynomial{d}}) where d = KronOPLayout{d}()
+
 const RectPolynomial{T, PP} = KronPolynomial{2, T, PP}
 
 
@@ -71,7 +75,7 @@ end
 function \(P::RectPolynomial, Q::RectPolynomial)
     PA,PB = P.args
     QA,QB = Q.args
-    KronTrav(PA\QA, PB\QB)
+    krontrav(PA\QA, PB\QB)
 end
 
 @simplify function *(Ac::QuasiAdjoint{<:Any,<:RectPolynomial}, B::RectPolynomial)
@@ -144,14 +148,14 @@ pad(C::DiagTrav, ::BlockedOneTo{Int,RangeCumsum{Int,OneToInf{Int}}}) = DiagTrav(
 
 QuasiArrays.mul(A::BivariateOrthogonalPolynomial, b::DiagTrav) = ApplyQuasiArray(*, A, b)
 
-function Base.unsafe_getindex(f::Mul{MultivariateOPLayout{2},<:DiagTravLayout{<:PaddedLayout}}, 𝐱::SVector)
+function Base.unsafe_getindex(f::Mul{KronOPLayout{2},<:DiagTravLayout{<:PaddedLayout}}, 𝐱::SVector)
     P,c = f.A, f.B
     A,B = P.args
     x,y = 𝐱
-    clenshaw(clenshaw(paddeddata(c.array), recurrencecoefficients(A)..., x), recurrencecoefficients(B)..., y)
+    clenshaw(vec(clenshaw(paddeddata(c.array), recurrencecoefficients(A)..., x; dims=1)), recurrencecoefficients(B)..., y)
 end
 
-Base.@propagate_inbounds function getindex(f::Mul{MultivariateOPLayout{2},<:DiagTravLayout{<:PaddedLayout}}, x::SVector, j...)
+Base.@propagate_inbounds function getindex(f::Mul{KronOPLayout{2},<:DiagTravLayout{<:PaddedLayout}}, x::SVector, j...)
     @inbounds checkbounds(ApplyQuasiArray(*,f.A,f.B), x, j...)
     Base.unsafe_getindex(f, x, j...)
 end
@@ -170,4 +174,17 @@ end
 function Base._sum(P::RectPolynomial, dims)
     @assert dims == 1
     KronTrav(sum.(P.args; dims=1)...)
+end
+
+## multiplication
+
+function layout_broadcasted(::Tuple{ExpansionLayout{KronOPLayout{2}},KronOPLayout{2}}, ::typeof(*), a, P)
+    axes(a,1) == axes(P,1) || throw(DimensionMismatch())
+
+    A,B = basis(a).args
+    T,U = P.args
+
+    C = paddeddata(invdiagtrav(coefficients(a)))
+        
+    P * ClenshawKron(C, (recurrencecoefficients(A), recurrencecoefficients(B)), (jacobimatrix(T), jacobimatrix(U)))
 end
