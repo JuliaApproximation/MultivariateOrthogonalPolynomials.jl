@@ -23,7 +23,7 @@ import InfiniteArrays: InfiniteCardinal, OneToInf
 
 import ClassicalOrthogonalPolynomials: jacobimatrix, Weighted, orthogonalityweight, HalfWeighted, WeightedBasis, pad, recurrencecoefficients, clenshaw, weightedgrammatrix, Clenshaw
 import HarmonicOrthogonalPolynomials: BivariateOrthogonalPolynomial, MultivariateOrthogonalPolynomial, Plan,
-                                          PartialDerivative, AngularMomentum, BlockOneTo, BlockRange1, interlace,
+                                          AngularMomentum, BlockOneTo, BlockRange1, interlace,
                                           MultivariateOPLayout, AbstractMultivariateOPLayout, MAX_PLOT_BLOCKS
 
 export MultivariateOrthogonalPolynomial, BivariateOrthogonalPolynomial,
@@ -31,7 +31,7 @@ export MultivariateOrthogonalPolynomial, BivariateOrthogonalPolynomial,
        JacobiTriangle, TriangleWeight, WeightedTriangle,
        DunklXuDisk, DunklXuDiskWeight, WeightedDunklXuDisk,
        Zernike, ZernikeWeight, zerniker, zernikez,
-       PartialDerivative, Laplacian, AbsLaplacianPower, AngularMomentum,
+       Laplacian, AbsLaplacianPower, AngularMomentum,
        RadialCoordinate, Weighted, Block, jacobimatrix, KronPolynomial, RectPolynomial,
        grammatrix, oneto
 

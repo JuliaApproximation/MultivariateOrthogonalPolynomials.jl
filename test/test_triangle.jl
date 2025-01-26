@@ -135,8 +135,8 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
         P = JacobiTriangle()
         𝐱 = axes(P,1)
 
-        ∂ˣ = PartialDerivative{1}(𝐱)
-        ∂ʸ = PartialDerivative{2}(𝐱)
+        ∂ˣ = Derivative(𝐱, (1,0))
+        ∂ʸ = Derivative(𝐱, (0,1))
 
         @test eltype(∂ˣ) == eltype(∂ʸ) == Float64
 
@@ -467,8 +467,8 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
         P¹ = JacobiTriangle(1,1,1)
         𝐱 = axes(P,1)
         x,y = first.(𝐱),last.(𝐱)
-        ∂ˣ = PartialDerivative{1}(𝐱)
-        ∂ʸ = PartialDerivative{2}(𝐱)
+        ∂ˣ = Derivative(𝐱, (1,0))
+        ∂ʸ = Derivative(𝐱, (0,1))
         L1 = x .* ∂ʸ
         L2 = y .* ∂ˣ
         L = x .* ∂ʸ - y .* ∂ˣ
@@ -518,8 +518,8 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
                     P = Weighted(JacobiTriangle(a, b, c))
                     Pf = expand(P, f)
                     𝐱 = axes(P, 1)
-                    ∂ˣ = PartialDerivative{1}(𝐱)
-                    ∂ʸ = PartialDerivative{2}(𝐱)
+                    ∂ˣ = Derivative(𝐱, (1,0))
+                    ∂ʸ = Derivative(𝐱, (0,1))
                     Pfx = ∂ˣ * Pf
                     Pfy = ∂ʸ * Pf
 
@@ -579,8 +579,8 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
         P = JacobiTriangle()
         W = Weighted(JacobiTriangle(1,1,1))
         𝐱 = axes(W,1)
-        ∂_x = PartialDerivative{1}(𝐱)
-        ∂_y = PartialDerivative{2}(𝐱)
+        ∂_x = Derivative(𝐱, (1,0))
+        ∂_y = Derivative(𝐱, (0,1))
         Δ = -((∂_x*W)'*(∂_x*W) + (∂_y*W)'*(∂_y*W))
         M = W'W
         f = expand(P, splat((x,y) -> exp(x*cos(y))))

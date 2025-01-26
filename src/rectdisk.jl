@@ -41,8 +41,8 @@ const WeightedDunklXuDisk{T} = WeightedBasis{T,<:DunklXuDiskWeight,<:DunklXuDisk
 
 WeightedDunklXuDisk(β) = DunklXuDiskWeight(β) .* DunklXuDisk(β)
 
-@simplify function *(Dx::PartialDerivative{1}, P::DunklXuDisk)
-    β = P.β
+function diff(::DunklXuDisk, ::Val{(1,0)}; dims=1)
+    @assert dims == 1
     n = mortar(Fill.(oneto(∞),oneto(∞)))
     k = mortar(Base.OneTo.(oneto(∞)))
     dat = BlockBroadcastArray(hcat,
@@ -53,14 +53,15 @@ WeightedDunklXuDisk(β) = DunklXuDiskWeight(β) .* DunklXuDisk(β)
     DunklXuDisk(β+1) * _BandedBlockBandedMatrix(dat', axes(k,1), (-1,1), (0,2))
 end
 
-@simplify function *(Dy::PartialDerivative{2}, P::DunklXuDisk)
+function diff(::DunklXuDisk{T}, ::Val{(0,1)}; dims=1) where T
+    @assert dims == 1
     β = P.β
     k = mortar(Base.OneTo.(oneto(∞)))
-    T = promote_type(eltype(Dy), eltype(P)) # avoid bug in convert
     DunklXuDisk(β+1) * _BandedBlockBandedMatrix(((k .+ T(2β)) ./ 2)', axes(k,1), (-1,1), (-1,1))
 end
 
-@simplify function *(Dx::PartialDerivative{1}, w_P::WeightedDunklXuDisk)
+function diff(w_P::WeightedDunklXuDisk, ::Val{(1,0)}; dims=1)
+    @assert dims == 1
     wP, P = w_P.args
     @assert P.β == wP.β
     β = P.β
@@ -74,11 +75,11 @@ end
     WeightedDunklXuDisk(β-1) * _BandedBlockBandedMatrix(dat', axes(k,1), (1,-1), (2,0))
 end
 
-@simplify function *(Dy::PartialDerivative{2}, w_P::WeightedDunklXuDisk)
+function diff(w_P::WeightedDunklXuDisk{T}, ::Val{(0,1)}; dims=1) where T
+    @assert dims == 1
     wP, P = w_P.args
     @assert P.β == wP.β
     k = mortar(Base.OneTo.(oneto(∞)))
-    T = promote_type(eltype(Dy), eltype(P)) # avoid bug in convert
     WeightedDunklXuDisk(P.β-1) * _BandedBlockBandedMatrix((T(-2).*k)', axes(k,1), (1,-1), (1,-1))
 end
 

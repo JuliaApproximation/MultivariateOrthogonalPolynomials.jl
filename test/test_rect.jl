@@ -79,7 +79,7 @@ using Base: oneto
         U² = RectPolynomial(U, U)
         C² = RectPolynomial(C, C)
         𝐱 = axes(T²,1)
-        D_x,D_y = PartialDerivative{1}(𝐱),PartialDerivative{2}(𝐱)
+        D_x,D_y = Derivative(𝐱,(1,0)),Derivative(𝐱,(0,1))
         D_x*T²
         D_y*T²
         U²\D_x*T²
@@ -103,7 +103,7 @@ using Base: oneto
 
         @testset "strong form" begin
             𝐱 = axes(W²,1)
-            D_x,D_y = PartialDerivative{1}(𝐱),PartialDerivative{2}(𝐱)
+            D_x,D_y = Derivative(𝐱,(1,0)),Derivative{2}(𝐱,(0,1))
             Δ = Q²\(D_x^2 + D_y^2)*W²
 
             K = Block.(1:200); @time L = Δ[K,K]; @time qr(L);

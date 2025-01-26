@@ -262,16 +262,14 @@ plan_transform(Z::Zernike{T}, (N,)::Tuple{Block{1}}, dims=1) where T = ZernikeTr
 # Laplacian
 ###
 
-@simplify function *(Δ::Laplacian, WZ::Weighted{<:Any,<:Zernike})
+function laplacian(WZ::Weighted{T,<:Zernike}; dims...) where T
     @assert WZ.P.a == 0 && WZ.P.b == 1
-    T = eltype(eltype(WZ))
     WZ.P * ModalInterlace{T}(broadcast(k ->  Diagonal(-cumsum(k:8:∞)), 4:4:∞), (ℵ₀,ℵ₀), (0,0))
 end
 
-@simplify function *(Δ::Laplacian, Z::Zernike)
+function laplacian(Z::Zernike{T}; dims...) where T
     a,b = Z.a,Z.b
     @assert a == 0
-    T = promote_type(eltype(eltype(Δ)),eltype(Z)) # TODO: remove extra eltype
     D = Derivative(Inclusion(ChebyshevInterval{T}())) 
     Δs = BroadcastVector{AbstractMatrix{T}}((C,B,A) -> 4(HalfWeighted{:b}(C)\(D*HalfWeighted{:b}(B)))*(B\(D*A)), Normalized.(Jacobi.(b+2,a:∞)), Normalized.(Jacobi.(b+1,(a+1):∞)), Normalized.(Jacobi.(b,a:∞)))
     Δ = ModalInterlace(Δs, (ℵ₀,ℵ₀), (-2,2))

@@ -147,7 +147,8 @@ summary(io::IO, P::TriangleWeight) = print(io, "x^$(P.a)*y^$(P.b)*(1-x-y)^$(P.c)
 
 orthogonalityweight(P::JacobiTriangle) = TriangleWeight(P.a, P.b, P.c)
 
-@simplify function *(Dx::PartialDerivative{1}, P::JacobiTriangle)
+function diff(w_P::JacobiTriangle{T}, ::Val{(1,0)}; dims=1) where T
+    @assert dims == 1
     a,b,c = P.a,P.b,P.c
     n = mortar(Fill.(oneto(∞),oneto(∞)))
     k = mortar(Base.OneTo.(oneto(∞)))
@@ -158,15 +159,16 @@ orthogonalityweight(P::JacobiTriangle) = TriangleWeight(P.a, P.b, P.c)
     JacobiTriangle(a+1,b,c+1) * _BandedBlockBandedMatrix(dat', axes(k,1), (-1,1), (0,1))
 end
 
-@simplify function *(Dy::PartialDerivative{2}, P::JacobiTriangle)
+function diff(w_P::JacobiTriangle{T}, ::Val{(0,1)}; dims=1) where T
+    @assert dims == 1
     a,b,c = P.a,P.b,P.c
     k = mortar(Base.OneTo.(oneto(∞)))
-    T = promote_type(eltype(Dy), eltype(P)) # avoid bug in convert
     JacobiTriangle(a,b+1,c+1) * _BandedBlockBandedMatrix((k .+ convert(T, b+c))', axes(k,1), (-1,1), (-1,1))
 end
 
 # TODO: The derivatives below only hold for a, b, c > 0.
-@simplify function *(Dx::PartialDerivative{1}, P::WeightedTriangle)
+function diff(w_P::WeightedTriangle{T}, ::Val{(1,0)}; dims=1) where T
+    @assert dims == 1
     a, b, c = P.P.a, P.P.b, P.P.c
     n = mortar(Fill.(oneto(∞),oneto(∞)))
     k = mortar(Base.OneTo.(oneto(∞)))    
@@ -177,18 +179,12 @@ end
     WeightedTriangle(a-1, b, c-1) * _BandedBlockBandedMatrix(dat', axes(k, 1), (1, -1), (1, 0))
 end
 
-@simplify function *(Dy::PartialDerivative{2}, P::WeightedTriangle)
+function diff(w_P::WeightedTriangle{T}, ::Val{(0,1)}; dims=1) where T
+    @assert dims == 1
     a, b, c = P.P.a, P.P.b, P.P.c 
     k = mortar(Base.OneTo.(oneto(∞)))
-    T = promote_type(eltype(Dy), eltype(P)) # avoid bug in convert
     WeightedTriangle(a, b-1, c-1) * _BandedBlockBandedMatrix(-one(T) * k', axes(k, 1), (1, -1), (1, -1))
 end
-
-# @simplify function *(Δ::Laplacian, P)
-#     _lap_mul(P, eltype(axes(P,1)))
-# end
-
-
 
 function grammatrix(A::JacobiTriangle)
     @assert A == JacobiTriangle()

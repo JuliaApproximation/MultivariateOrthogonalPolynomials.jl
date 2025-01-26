@@ -39,8 +39,8 @@ import MultivariateOrthogonalPolynomials: dunklxu_raising, dunklxu_lowering, Ang
 
         @test (DunklXuDisk() \ WeightedDunklXuDisk(1.0))[Block.(1:N), Block.(1:N)] ≈ (WeightedDunklXuDisk(0.0) \ WeightedDunklXuDisk(1.0))[Block.(1:N), Block.(1:N)]
 
-        ∂x = PartialDerivative{1}(axes(P, 1))
-        ∂y = PartialDerivative{2}(axes(P, 1))
+        ∂x = Derivative(axes(P, 1), (1,0))
+        ∂y = Derivative(axes(P, 1), (0,1))
 
         Dx = Q \ (∂x * P)
         Dy = Q \ (∂y * P)
@@ -67,8 +67,8 @@ import MultivariateOrthogonalPolynomials: dunklxu_raising, dunklxu_lowering, Ang
         @test A[Block.(1:N), Block.(1:N)] ≈ C
         @test A2[Block.(1:N), Block.(1:N)] ≈ (A^2)[Block.(1:N), Block.(1:N)] ≈ A[Block.(1:N), Block.(1:N)]^2
 
-        ∂x = PartialDerivative{1}(axes(WQ, 1))
-        ∂y = PartialDerivative{2}(axes(WQ, 1))
+        ∂x = Derivative(axes(WQ, 1), (1,0))
+        ∂y = Derivative(axes(WQ, 1), (0,1))
 
         wDx = WP \ (∂x * WQ)
         wDy = WP \ (∂y * WQ)
