@@ -327,7 +327,7 @@ end
         WZ = Weighted(Zernike(1.))
         Δ = Laplacian(axes(WZ,1))
         Δ_Z = Zernike(1) \ (Δ * WZ)
-        Δfrac = AbsLaplacianPower(axes(WZ,1),1.)
+        Δfrac = AbsLaplacian(axes(WZ,1),1.)
         Δ_Zfrac = Zernike(1) \ (Δfrac * WZ)
         @test Δ_Z[1:100,1:100] ≈ -Δ_Zfrac[1:100,1:100]
     end
@@ -341,7 +341,7 @@ end
             xy = axes(WZ,1)
             x,y = first.(xy),last.(xy)
             # generate fractional Laplacian
-            Δfrac = AbsLaplacianPower(axes(WZ,1),β)
+            Δfrac = AbsLaplacian(axes(WZ,1),β)
             Δ_Zfrac = Z \ (Δfrac * WZ)
             # define function whose fractional Laplacian is known
             u = @. (1 - x^2 - y^2).^β
@@ -358,7 +358,7 @@ end
             xy = axes(WZ,1)
             x,y = first.(xy),last.(xy)
             # generate fractional Laplacian
-            Δfrac = AbsLaplacianPower(axes(WZ,1),β)
+            Δfrac = AbsLaplacian(axes(WZ,1),β)
             Δ_Zfrac = Z \ (Δfrac * WZ)
             # define function whose fractional Laplacian is known
             u = @. (1 - x^2 - y^2).^β
@@ -374,7 +374,7 @@ end
             xy = axes(WZ,1)
             x,y = first.(xy),last.(xy)
             # generate fractional Laplacian
-            Δfrac = AbsLaplacianPower(axes(WZ,1),β)
+            Δfrac = AbsLaplacian(axes(WZ,1),β)
             Δ_Zfrac = Z \ (Δfrac * WZ)
             # define function whose fractional Laplacian is known
             u = @. (1 - x^2 - y^2).^β
@@ -390,7 +390,7 @@ end
             xy = axes(WZ,1)
             x,y = first.(xy),last.(xy)
             # generate fractional Laplacian
-            Δfrac = AbsLaplacianPower(axes(WZ,1),β)
+            Δfrac = AbsLaplacian(axes(WZ,1),β)
             Δ_Zfrac = Z \ (Δfrac * WZ)
             # define function whose fractional Laplacian is known
             u = @. (1 - x^2 - y^2).^(β+1)
@@ -409,7 +409,7 @@ end
             xy = axes(WZ,1)
             x,y = first.(xy),last.(xy)
             # generate fractional Laplacian
-            Δfrac = AbsLaplacianPower(axes(WZ,1),β)
+            Δfrac = AbsLaplacian(axes(WZ,1),β)
             Δ_Zfrac = Z \ (Δfrac * WZ)
             # define function whose fractional Laplacian is known
             u = @. (1 - x^2 - y^2).^(β+1)
@@ -428,7 +428,7 @@ end
             xy = axes(WZ,1)
             x,y = first.(xy),last.(xy)
             # generate fractional Laplacian
-            Δfrac = AbsLaplacianPower(axes(WZ,1),β)
+            Δfrac = AbsLaplacian(axes(WZ,1),β)
             Δ_Zfrac = Z \ (Δfrac * WZ)
             # define function whose fractional Laplacian is known
             u = @. (1 - x^2 - y^2).^(β)*x
@@ -447,7 +447,7 @@ end
             xy = axes(WZ,1)
             x,y = first.(xy),last.(xy)
             # generate fractional Laplacian
-            Δfrac = AbsLaplacianPower(axes(WZ,1),β)
+            Δfrac = AbsLaplacian(axes(WZ,1),β)
             Δ_Zfrac = Z \ (Δfrac * WZ)
             # define function whose fractional Laplacian is known
             u = @. (1 - x^2 - y^2).^(β)*y
@@ -467,7 +467,7 @@ end
             xy = axes(WZ,1)
             x,y = first.(xy),last.(xy)
             # generate fractional Laplacian
-            Δfrac = AbsLaplacianPower(axes(WZ,1),β)
+            Δfrac = AbsLaplacian(axes(WZ,1),β)
             Δ_Zfrac = Z \ (Δfrac * WZ)
             # define function whose fractional Laplacian is known
             u = @. (1 - x^2 - y^2).^(β+1)*x
@@ -486,7 +486,7 @@ end
             xy = axes(WZ,1)
             x,y = first.(xy),last.(xy)
             # generate fractional Laplacian
-            Δfrac = AbsLaplacianPower(axes(WZ,1),β)
+            Δfrac = AbsLaplacian(axes(WZ,1),β)
             Δ_Zfrac = Z \ (Δfrac * WZ)
             # define function whose fractional Laplacian is known
             u = @. (1 - x^2 - y^2).^(β+1)*y
@@ -508,7 +508,7 @@ end
                 xy = axes(WZ,1)
                 x,y = first.(xy),last.(xy)
                 # generate fractional Laplacian
-                Δfrac = AbsLaplacianPower(axes(WZ,1),β)
+                Δfrac = AbsLaplacian(axes(WZ,1),β)
                 Δ_Zfrac = Z \ (Δfrac * WZ)
                 # define function whose fractional Laplacian is known
                 uexplicit = @. (1 - x^2 - y^2).^(β+1)
@@ -528,7 +528,7 @@ end
                 xy = axes(WZ,1)
                 x,y = first.(xy),last.(xy)
                 # generate fractional Laplacian
-                Δfrac = AbsLaplacianPower(axes(WZ,1),β)
+                Δfrac = AbsLaplacian(axes(WZ,1),β)
                 Δ_Zfrac = Z \ (Δfrac * WZ)
                 # define function whose fractional Laplacian is known
                 uexplicit = @. (1 - x^2 - y^2).^(β+1)*y
@@ -547,7 +547,7 @@ end
                 xy = axes(WZ,1)
                 x,y = first.(xy),last.(xy)
                 # generate fractional Laplacian
-                Δfrac = AbsLaplacianPower(axes(WZ,1),β)
+                Δfrac = AbsLaplacian(axes(WZ,1),β)
                 Δ_Zfrac = Z \ (Δfrac * WZ)
                 # define function whose fractional Laplacian is known
                 uexplicit = @. (1 - x^2 - y^2).^(β+1)*x

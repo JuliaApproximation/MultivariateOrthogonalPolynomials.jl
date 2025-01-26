@@ -280,9 +280,9 @@ end
 # Fractional Laplacian
 ###
 
-function *(L::AbsLaplacianPower, WZ::Weighted{<:Any,<:Zernike{<:Any}})
-    @assert axes(L,1) == axes(WZ,1) && WZ.P.a == 0 && WZ.P.b == L.α
-    WZ.P * Diagonal(WeightedZernikeFractionalLaplacianDiag{typeof(L.α)}(L.α))
+function abslaplacian(WZ::Weighted{<:Any,<:Zernike}, α; dims...)
+    @assert WZ.P.a == 0 && WZ.P.b == α
+    WZ.P * Diagonal(WeightedZernikeFractionalLaplacianDiag{typeof(α)}(α))
 end
 
 # gives the entries for the (negative!) fractional Laplacian (-Δ)^(α) times (1-r^2)^α * Zernike(α)
