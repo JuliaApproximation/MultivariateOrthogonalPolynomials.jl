@@ -103,11 +103,11 @@ using Base: oneto
 
         @testset "strong form" begin
             𝐱 = axes(W²,1)
-            D_x,D_y = Derivative(𝐱,(1,0)),Derivative{2}(𝐱,(0,1))
-            Δ = Q²\(D_x^2 + D_y^2)*W²
+            D_x,D_y = Derivative(𝐱,(1,0)),Derivative(𝐱,(0,1))
+            Δ = Q²\((D_x^2 + D_y^2)*W²)
 
             K = Block.(1:200); @time L = Δ[K,K]; @time qr(L);
-            \(qr(Δ), [1; zeros(∞)]; tolerance=1E-1)
+            @time \(qr(Δ), [1; zeros(∞)]; tolerance=1E-1)
         end
 
         @testset "weakform" begin
