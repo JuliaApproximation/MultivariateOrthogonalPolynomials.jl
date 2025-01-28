@@ -60,7 +60,7 @@ import MultivariateOrthogonalPolynomials: dunklxu_raising, dunklxu_lowering, Ang
 
         @test λ ≈ im*imag(λ)
 
-        ∂θ = AngularMomentum(axes(P, 1))
+        ∂θ = AngularMomentum(P)
         A = P \ (∂θ * P)
         A2 = P \ (∂θ^2 * P)
 

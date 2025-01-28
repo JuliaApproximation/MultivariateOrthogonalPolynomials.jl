@@ -147,7 +147,7 @@ summary(io::IO, P::TriangleWeight) = print(io, "x^$(P.a)*y^$(P.b)*(1-x-y)^$(P.c)
 
 orthogonalityweight(P::JacobiTriangle) = TriangleWeight(P.a, P.b, P.c)
 
-function diff(w_P::JacobiTriangle{T}, ::Val{(1,0)}; dims=1) where T
+function diff(P::JacobiTriangle{T}, ::Val{(1,0)}; dims=1) where T
     @assert dims == 1
     a,b,c = P.a,P.b,P.c
     n = mortar(Fill.(oneto(∞),oneto(∞)))
@@ -159,7 +159,7 @@ function diff(w_P::JacobiTriangle{T}, ::Val{(1,0)}; dims=1) where T
     JacobiTriangle(a+1,b,c+1) * _BandedBlockBandedMatrix(dat', axes(k,1), (-1,1), (0,1))
 end
 
-function diff(w_P::JacobiTriangle{T}, ::Val{(0,1)}; dims=1) where T
+function diff(P::JacobiTriangle{T}, ::Val{(0,1)}; dims=1) where T
     @assert dims == 1
     a,b,c = P.a,P.b,P.c
     k = mortar(Base.OneTo.(oneto(∞)))
@@ -169,7 +169,7 @@ end
 # TODO: The derivatives below only hold for a, b, c > 0.
 function diff(w_P::WeightedTriangle{T}, ::Val{(1,0)}; dims=1) where T
     @assert dims == 1
-    a, b, c = P.P.a, P.P.b, P.P.c
+    a, b, c = w_P.P.a, w_P.P.b, w_P.P.c
     n = mortar(Fill.(oneto(∞),oneto(∞)))
     k = mortar(Base.OneTo.(oneto(∞)))    
     scale = -(2k .+ (b + c - 1))
@@ -181,7 +181,7 @@ end
 
 function diff(w_P::WeightedTriangle{T}, ::Val{(0,1)}; dims=1) where T
     @assert dims == 1
-    a, b, c = P.P.a, P.P.b, P.P.c 
+    a, b, c = w_P.P.a, w_P.P.b, w_P.P.c 
     k = mortar(Base.OneTo.(oneto(∞)))
     WeightedTriangle(a, b-1, c-1) * _BandedBlockBandedMatrix(-one(T) * k', axes(k, 1), (1, -1), (1, -1))
 end

@@ -8,6 +8,7 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
         @test copy(P) ≡ P
         @test P ≡ JacobiTriangle{Float64}() ≡ JacobiTriangle{Float64}(0,0,0)
 
+        𝐱 = axes(P,1)
         x,y = coordinates(P)
         @test 𝐱[SVector(0.1,0.2)] == SVector(0.1,0.2)
         @test x[SVector(0.1,0.2)] == 0.1
@@ -132,7 +133,7 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
 
     @testset "operators" begin
         P = JacobiTriangle()
-        
+        𝐱 = axes(P,1)
 
         ∂ˣ = Derivative(𝐱, (1,0))
         ∂ʸ = Derivative(𝐱, (0,1))

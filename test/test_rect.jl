@@ -114,6 +114,15 @@ using Base: oneto
             f = expand(P², splat((x,y) -> -2*((1-y^2) + (1-x^2))))
             @test (Δ*c)[Block.(1:5)] ≈ (W²'f)[Block.(1:5)]
         end
+
+        @testset "laplacian" begin
+            Δ = Q² \ laplacian(W²)
+            c = transform(P², _ -> 1)
+            f = expand(P², splat((x,y) -> -2*((1-y^2) + (1-x^2))))
+            @test (Δ*c)[Block.(1:5)] ≈ (Q² \f)[Block.(1:5)]
+            @test laplacian(W² * c)[SVector(0.1,0.2)] ≈ -2*((1-0.2^2) + (1-0.1^2))
+            @test abslaplacian(W² * c)[SVector(0.1,0.2)] ≈ 2*((1-0.2^2) + (1-0.1^2))
+        end
     end
 
     @testset "Legendre" begin

@@ -41,8 +41,9 @@ const WeightedDunklXuDisk{T} = WeightedBasis{T,<:DunklXuDiskWeight,<:DunklXuDisk
 
 WeightedDunklXuDisk(β) = DunklXuDiskWeight(β) .* DunklXuDisk(β)
 
-function diff(::DunklXuDisk, ::Val{(1,0)}; dims=1)
+function diff(P::DunklXuDisk, ::Val{(1,0)}; dims=1)
     @assert dims == 1
+    β = P.β
     n = mortar(Fill.(oneto(∞),oneto(∞)))
     k = mortar(Base.OneTo.(oneto(∞)))
     dat = BlockBroadcastArray(hcat,
@@ -53,7 +54,7 @@ function diff(::DunklXuDisk, ::Val{(1,0)}; dims=1)
     DunklXuDisk(β+1) * _BandedBlockBandedMatrix(dat', axes(k,1), (-1,1), (0,2))
 end
 
-function diff(::DunklXuDisk{T}, ::Val{(0,1)}; dims=1) where T
+function diff(P::DunklXuDisk{T}, ::Val{(0,1)}; dims=1) where T
     @assert dims == 1
     β = P.β
     k = mortar(Base.OneTo.(oneto(∞)))
@@ -179,7 +180,7 @@ function jacobimatrix(::Val{2}, P::DunklXuDisk)
     _BandedBlockBandedMatrix(dat', axes(k,1), (1,1), (1,1))
 end
 
-@simplify function *(A::AngularMomentum, P::DunklXuDisk)
+function angularmomentum(P::DunklXuDisk)
     β = P.β
     n = mortar(Fill.(oneto(∞),oneto(∞)))
     k = mortar(Base.OneTo.(oneto(∞)))

@@ -11,7 +11,7 @@ import Base.Broadcast: Broadcasted, broadcasted, DefaultArrayStyle
 import DomainSets: boundary, EuclideanDomain
 
 import QuasiArrays: LazyQuasiMatrix, LazyQuasiArrayStyle, domain
-import ContinuumArrays: @simplify, Weight, weight, grid, plotgrid, TransformFactorization, ExpansionLayout, plotvalues, unweighted, plan_transform, checkpoints, transform_ldiv, AbstractBasisLayout, basis_axes, Inclusion, grammatrix, weaklaplacian, layout_broadcasted, laplacian, abslaplacian, laplacian_axis, abslaplacian_axis, diff_layout
+import ContinuumArrays: @simplify, Weight, weight, grid, plotgrid, TransformFactorization, ExpansionLayout, plotvalues, unweighted, plan_transform, checkpoints, transform_ldiv, AbstractBasisLayout, basis_axes, Inclusion, grammatrix, weaklaplacian, layout_broadcasted, laplacian, abslaplacian, laplacian_axis, abslaplacian_axis, diff_layout, operatororder, broadcastbasis
 
 import ArrayLayouts: MemoryLayout, sublayout, sub_materialize
 import BlockArrays: block, blockindex, BlockSlice, viewblock, blockcolsupport, AbstractBlockStyle, BlockStyle
@@ -23,7 +23,7 @@ import InfiniteArrays: InfiniteCardinal, OneToInf
 
 import ClassicalOrthogonalPolynomials: jacobimatrix, Weighted, orthogonalityweight, HalfWeighted, WeightedBasis, pad, recurrencecoefficients, clenshaw, weightedgrammatrix, Clenshaw
 import HarmonicOrthogonalPolynomials: BivariateOrthogonalPolynomial, MultivariateOrthogonalPolynomial, Plan,
-                                          AngularMomentum, BlockOneTo, BlockRange1, interlace,
+                                          AngularMomentum, angularmomentum, BlockOneTo, BlockRange1, interlace,
                                           MultivariateOPLayout, AbstractMultivariateOPLayout, MAX_PLOT_BLOCKS
 
 export MultivariateOrthogonalPolynomial, BivariateOrthogonalPolynomial,
@@ -33,7 +33,7 @@ export MultivariateOrthogonalPolynomial, BivariateOrthogonalPolynomial,
        Zernike, ZernikeWeight, zerniker, zernikez,
        AngularMomentum,
        RadialCoordinate, Weighted, Block, jacobimatrix, KronPolynomial, RectPolynomial,
-       grammatrix, oneto, coordinates, Laplacian, AbsLaplacian
+       grammatrix, oneto, coordinates, Laplacian, AbsLaplacian, laplacian, abslaplacian, angularmomentum, weaklaplacian
 
 
 laplacian_axis(::Inclusion{<:SVector{2}}, A; dims...) = diff(A, (2,0); dims...) + diff(A, (0, 2); dims...)

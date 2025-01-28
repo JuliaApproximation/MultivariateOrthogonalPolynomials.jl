@@ -181,3 +181,6 @@ function layout_broadcasted(::Tuple{ExpansionLayout{KronOPLayout{2}},KronOPLayou
         
     P * ClenshawKron(C, (recurrencecoefficients(A), recurrencecoefficients(B)), (jacobimatrix(T), jacobimatrix(U)))
 end
+
+
+broadcastbasis(::typeof(+), A::KronPolynomial, B::KronPolynomial) =  KronPolynomial(broadcastbasis.(+, A.args, B.args)...)
