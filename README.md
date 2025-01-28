@@ -12,7 +12,7 @@ julia> using MultivariateOrthogonalPolynomials, StaticArrays, LinearAlgebra
 julia> P = JacobiTriangle()
 JacobiTriangle(0, 0, 0)
 
-julia> x,y = first.(axes(P,1)), last.(axes(P,1));
+julia> x,y = coordinates(P);
 
 julia> u = P * (P \ (exp.(x) .* cos.(y))) # Expand in Triangle OPs
 JacobiTriangle(0, 0, 0) * [1.3365085377830084, 0.5687967596428205, -0.22812040274224554, 0.07733064070637755, 0.016169744493985644, -0.08714886622738759, 0.00338435674992512, 0.01220019521126353, -0.016867598915573725, 0.003930461395801074  …  ]

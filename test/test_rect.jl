@@ -26,8 +26,7 @@ using Base: oneto
         T,U = ChebyshevT(),ChebyshevU()
         T² = RectPolynomial(Fill(T, 2))
         T²ₙ = T²[:,Block.(Base.OneTo(5))]
-        𝐱 = axes(T²ₙ,1)
-        x,y = first.(𝐱),last.(𝐱)
+        x,y = coordinates(T²ₙ)
         @test T²ₙ \ one.(x) == [1; zeros(14)]
         @test (T² \ x)[1:5] ≈[0;1;zeros(3)]
 
@@ -50,8 +49,7 @@ using Base: oneto
         TU = RectPolynomial(T, U)
         X = jacobimatrix(Val{1}(), TU)
         Y = jacobimatrix(Val{2}(), TU)
-        𝐱 = axes(TU, 1)
-        x, y = first.(𝐱), last.(𝐱)
+        x, y = coordinates(TU)
         N = 10
         KR = Block.(1:N)
         @test (TU \ (x .* TU))[KR,KR] == X[KR,KR]
@@ -159,8 +157,7 @@ using Base: oneto
     @testset "variable coefficients" begin
         T,U = ChebyshevT(), ChebyshevU()
         P = RectPolynomial(T, U)
-        𝐱 = axes(P,1)
-        x,y = first.(𝐱), last.(𝐱)
+        x,y = coordinates(P)
         X = P\(x .* P)
         Y = P\(y .* P)
 

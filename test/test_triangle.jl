@@ -8,8 +8,7 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
         @test copy(P) ≡ P
         @test P ≡ JacobiTriangle{Float64}() ≡ JacobiTriangle{Float64}(0,0,0)
 
-        𝐱 = axes(P,1)
-        x,y = first.(𝐱),last.(𝐱)
+        x,y = coordinates(P)
         @test 𝐱[SVector(0.1,0.2)] == SVector(0.1,0.2)
         @test x[SVector(0.1,0.2)] == 0.1
         @test y[SVector(0.1,0.2)] == 0.2
@@ -112,8 +111,8 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
 
         @testset "expansions" begin
             P = JacobiTriangle()
-            𝐱 = axes(P,1)
-            x,y = first.(𝐱),last.(𝐱)
+            
+            x,y = coordinates(P)
             N = 20
             P_N = P[:,Block.(Base.OneTo(N))]
             u = P_N * (P_N \ (exp.(x) .* cos.(y)))
@@ -133,7 +132,7 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
 
     @testset "operators" begin
         P = JacobiTriangle()
-        𝐱 = axes(P,1)
+        
 
         ∂ˣ = Derivative(𝐱, (1,0))
         ∂ʸ = Derivative(𝐱, (0,1))
@@ -203,8 +202,8 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
 
         @testset "jacobi" begin
             P = JacobiTriangle()
-            𝐱 = axes(P,1)
-            x,y = first.(𝐱),last.(𝐱)
+            
+            x,y = coordinates(P)
             X = P \ (x .* P)
             Y = P \ (y .* P)
 
@@ -370,8 +369,8 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
 
             @testset "other parameters" begin
                 P = JacobiTriangle(1,0,0)
-                𝐱 = axes(P,1)
-                x,y = first.(𝐱),last.(𝐱)
+                
+                x,y = coordinates(P)
                 X = P \ (x .* P)
                 Y = P \ (y .* P)
 
@@ -465,10 +464,9 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
     @testset "AngularMomentum" begin
         P = JacobiTriangle()
         P¹ = JacobiTriangle(1,1,1)
-        𝐱 = axes(P,1)
-        x,y = first.(𝐱),last.(𝐱)
-        ∂ˣ = Derivative(𝐱, (1,0))
-        ∂ʸ = Derivative(𝐱, (0,1))
+        x,y = coordinates(P)
+        ∂ˣ = Derivative(P, (1,0))
+        ∂ʸ = Derivative(P, (0,1))
         L1 = x .* ∂ʸ
         L2 = y .* ∂ˣ
         L = x .* ∂ʸ - y .* ∂ˣ
@@ -517,9 +515,9 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
                     end
                     P = Weighted(JacobiTriangle(a, b, c))
                     Pf = expand(P, f)
-                    𝐱 = axes(P, 1)
-                    ∂ˣ = Derivative(𝐱, (1,0))
-                    ∂ʸ = Derivative(𝐱, (0,1))
+                    
+                    ∂ˣ = Derivative(P, (1,0))
+                    ∂ʸ = Derivative(P, (0,1))
                     Pfx = ∂ˣ * Pf
                     Pfy = ∂ʸ * Pf
 
@@ -550,8 +548,7 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
 
 
 
-        𝐱 = axes(P,1)
-        x,y = first.(𝐱),last.(𝐱)
+        x,y = coordinates(P)
         for k = 1:5
             @test sum(x .* y .* (1 .- x .- y) .* Q[:,k].^2) ≈ D[k,k]
         end
@@ -578,9 +575,8 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
     @testset "Weak formulation" begin
         P = JacobiTriangle()
         W = Weighted(JacobiTriangle(1,1,1))
-        𝐱 = axes(W,1)
-        ∂_x = Derivative(𝐱, (1,0))
-        ∂_y = Derivative(𝐱, (0,1))
+        ∂_x = Derivative(W, (1,0))
+        ∂_y = Derivative(W, (0,1))
         Δ = -((∂_x*W)'*(∂_x*W) + (∂_y*W)'*(∂_y*W))
         M = W'W
         f = expand(P, splat((x,y) -> exp(x*cos(y))))

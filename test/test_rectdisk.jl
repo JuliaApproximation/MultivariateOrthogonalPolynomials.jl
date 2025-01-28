@@ -9,7 +9,7 @@ import MultivariateOrthogonalPolynomials: dunklxu_raising, dunklxu_lowering, Ang
         @test P ≠ DunklXuDisk(0.123)
 
         xy = axes(P,1)
-        x,y = first.(xy),last.(xy)
+        x,y = coordinates(P)
         @test xy[SVector(0.1,0.2)] == SVector(0.1,0.2)
         @test x[SVector(0.1,0.2)] == 0.1
         @test y[SVector(0.1,0.2)] == 0.2
@@ -27,7 +27,7 @@ import MultivariateOrthogonalPolynomials: dunklxu_raising, dunklxu_lowering, Ang
         @test WP ≠ WQ
         @test WP == WP
 
-        x, y = first.(axes(P, 1)), last.(axes(P, 1))
+        x, y = coordinates(P)
 
         L = WP \ WQ
         R = Q \ P
@@ -39,8 +39,8 @@ import MultivariateOrthogonalPolynomials: dunklxu_raising, dunklxu_lowering, Ang
 
         @test (DunklXuDisk() \ WeightedDunklXuDisk(1.0))[Block.(1:N), Block.(1:N)] ≈ (WeightedDunklXuDisk(0.0) \ WeightedDunklXuDisk(1.0))[Block.(1:N), Block.(1:N)]
 
-        ∂x = Derivative(axes(P, 1), (1,0))
-        ∂y = Derivative(axes(P, 1), (0,1))
+        ∂x = Derivative(P, (1,0))
+        ∂y = Derivative(P, (0,1))
 
         Dx = Q \ (∂x * P)
         Dy = Q \ (∂y * P)
