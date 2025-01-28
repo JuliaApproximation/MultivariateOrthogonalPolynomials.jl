@@ -44,7 +44,7 @@ function diff_layout(::AbstractBasisLayout, a, (k,j)::NTuple{2,Int}; dims...)
     (k < 0 || j < 0) && throw(ArgumentError("order must be non-negative"))
     k == j == 0 && return a
     ((k,j) == (1,0) || (k,j) == (0,1)) && return diff(a, Val((k,j)); dims...)
-    k ≥ j && diff(diff(a, (1,0)), (k-1,j))
+    k ≥ j && return diff(diff(a, (1,0)), (k-1,j))
     diff(diff(a, (0,1)), (k,j-1))
 end
 

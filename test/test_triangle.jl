@@ -194,8 +194,8 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
 
         ∂ˣ² = (∂ˣ)^2
         ∂ʸ² = (∂ʸ)^2
-        @test ∂ˣ² isa ApplyQuasiMatrix{<:Any,typeof(^)}
-        @test ∂ʸ² isa ApplyQuasiMatrix{<:Any,typeof(^)}
+        @test ∂ˣ² isa Derivative
+        @test ∂ʸ² isa Derivative
 
         Dˣ² = JacobiTriangle(2,0,2) \ (∂ˣ² * P)
         Dˣ² = JacobiTriangle(2,0,2) \ (∂ˣ * (∂ˣ * P))
