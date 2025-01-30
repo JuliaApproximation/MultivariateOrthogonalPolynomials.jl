@@ -201,6 +201,18 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
         Dˣ² = JacobiTriangle(2,0,2) \ (∂ˣ * (∂ˣ * P))
         Dʸ² = JacobiTriangle(0,2,2) \ (∂ʸ * (∂ʸ * P))
 
+        @testset "mixed diff" begin
+            P = JacobiTriangle()
+            f = expand(P, splat((x,y) -> cos(x*exp(y))))
+            let (x,y) = (0.1,0.2)
+                @test diff(f, (1,0))[SVector(x,y)] ≈ -exp(y)*sin(x*exp(y))
+                @test diff(f, (0,1))[SVector(x,y)] ≈ -x*exp(y)*sin(x*exp(y))
+                @test diff(f, (2,0))[SVector(x,y)] ≈ -exp(2y)*cos(x*exp(y))
+                @test diff(f, (1,1))[SVector(x,y)] ≈ -exp(y)*sin(x*exp(y)) - x*exp(2y)*cos(x*exp(y))
+                @test diff(f, (0,2))[SVector(x,y)] ≈ -x*exp(y)*sin(x*exp(y)) - x^2*exp(2y)*cos(x*exp(y))
+            end
+        end
+
         @testset "jacobi" begin
             P = JacobiTriangle()
             
