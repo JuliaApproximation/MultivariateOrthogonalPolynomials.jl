@@ -52,18 +52,11 @@ function jacobimatrix(::Val{2}, P::RectPolynomial)
     Y = jacobimatrix(B)
     KronTrav(Y, Eye{eltype(Y)}(∞))
 end
-@simplify function *(Dx::PartialDerivative{1}, P::RectPolynomial)
-    A,B = P.args
-    U,M = (Derivative(axes(A,1))*A).args
-    # We want I ⊗ D² as A ⊗ B means B * X * A'
-    RectPolynomial(U,B) * KronTrav(Eye{eltype(M)}(∞), M)
+function diff(P::KronPolynomial{N}, order::NTuple{N,Int}; dims...) where N
+    diffs = diff.(P.args, order)
+    RectPolynomial(basis.(diffs)...) * KronTrav(coefficients.(diffs)...)
 end
 
-@simplify function *(Dx::PartialDerivative{2}, P::RectPolynomial)
-    A,B = P.args
-    U,M = (Derivative(axes(B,1))*B).args
-    RectPolynomial(A,U) * KronTrav(M, Eye{eltype(M)}(∞))
-end
 
 function weaklaplacian(P::RectPolynomial)
     A,B = P.args
@@ -188,3 +181,6 @@ function layout_broadcasted(::Tuple{ExpansionLayout{KronOPLayout{2}},KronOPLayou
         
     P * ClenshawKron(C, (recurrencecoefficients(A), recurrencecoefficients(B)), (jacobimatrix(T), jacobimatrix(U)))
 end
+
+
+broadcastbasis(::typeof(+), A::KronPolynomial, B::KronPolynomial) =  KronPolynomial(broadcastbasis.(+, A.args, B.args)...)

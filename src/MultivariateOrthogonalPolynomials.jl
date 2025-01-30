@@ -6,12 +6,12 @@ using ClassicalOrthogonalPolynomials, FastTransforms, BlockBandedMatrices, Block
       LazyArrays, SpecialFunctions, LinearAlgebra, BandedMatrices, LazyBandedMatrices, ArrayLayouts,
       HarmonicOrthogonalPolynomials, RecurrenceRelationships
 
-import Base: axes, in, ==, +, -, /, *, ^, \, copy, copyto!, OneTo, getindex, size, oneto, all, resize!, BroadcastStyle, similar, fill!, setindex!, convert, show, summary
+import Base: axes, in, ==, +, -, /, *, ^, \, copy, copyto!, OneTo, getindex, size, oneto, all, resize!, BroadcastStyle, similar, fill!, setindex!, convert, show, summary, diff
 import Base.Broadcast: Broadcasted, broadcasted, DefaultArrayStyle
 import DomainSets: boundary, EuclideanDomain
 
 import QuasiArrays: LazyQuasiMatrix, LazyQuasiArrayStyle, domain
-import ContinuumArrays: @simplify, Weight, weight, grid, plotgrid, TransformFactorization, ExpansionLayout, plotvalues, unweighted, plan_transform, checkpoints, transform_ldiv, AbstractBasisLayout, basis_axes, Inclusion, grammatrix, weaklaplacian, layout_broadcasted
+import ContinuumArrays: @simplify, Weight, weight, grid, plotgrid, TransformFactorization, ExpansionLayout, plotvalues, unweighted, plan_transform, checkpoints, transform_ldiv, AbstractBasisLayout, basis_axes, Inclusion, grammatrix, weaklaplacian, layout_broadcasted, laplacian, abslaplacian, laplacian_axis, abslaplacian_axis, diff_layout, operatororder, broadcastbasis
 
 import ArrayLayouts: MemoryLayout, sublayout, sub_materialize
 import BlockArrays: block, blockindex, BlockSlice, viewblock, blockcolsupport, AbstractBlockStyle, BlockStyle
@@ -23,7 +23,7 @@ import InfiniteArrays: InfiniteCardinal, OneToInf
 
 import ClassicalOrthogonalPolynomials: jacobimatrix, Weighted, orthogonalityweight, HalfWeighted, WeightedBasis, pad, recurrencecoefficients, clenshaw, weightedgrammatrix, Clenshaw
 import HarmonicOrthogonalPolynomials: BivariateOrthogonalPolynomial, MultivariateOrthogonalPolynomial, Plan,
-                                          PartialDerivative, AngularMomentum, BlockOneTo, BlockRange1, interlace,
+                                          AngularMomentum, angularmomentum, BlockOneTo, BlockRange1, interlace,
                                           MultivariateOPLayout, AbstractMultivariateOPLayout, MAX_PLOT_BLOCKS
 
 export MultivariateOrthogonalPolynomial, BivariateOrthogonalPolynomial,
@@ -31,9 +31,23 @@ export MultivariateOrthogonalPolynomial, BivariateOrthogonalPolynomial,
        JacobiTriangle, TriangleWeight, WeightedTriangle,
        DunklXuDisk, DunklXuDiskWeight, WeightedDunklXuDisk,
        Zernike, ZernikeWeight, zerniker, zernikez,
-       PartialDerivative, Laplacian, AbsLaplacianPower, AngularMomentum,
+       AngularMomentum,
        RadialCoordinate, Weighted, Block, jacobimatrix, KronPolynomial, RectPolynomial,
-       grammatrix, oneto
+       grammatrix, oneto, coordinates, Laplacian, AbsLaplacian, laplacian, abslaplacian, angularmomentum, weaklaplacian
+
+
+laplacian_axis(::Inclusion{<:SVector{2}}, A; dims...) = diff(A, (2,0); dims...) + diff(A, (0, 2); dims...)
+abslaplacian_axis(::Inclusion{<:SVector{2}}, A; dims...) = -(diff(A, (2,0); dims...) + diff(A, (0, 2); dims...))
+coordinates(P) = (first.(axes(P,1)), last.(axes(P,1)))
+
+function diff_layout(::AbstractBasisLayout, a, (k,j)::NTuple{2,Int}; dims...)
+    (k < 0 || j < 0) && throw(ArgumentError("order must be non-negative"))
+    k == j == 0 && return a
+    ((k,j) == (1,0) || (k,j) == (0,1)) && return diff(a, Val((k,j)); dims...)
+    k ≥ j && return diff(diff(a, (1,0)), (k-1,j))
+    diff(diff(a, (0,1)), (k,j-1))
+end
+
 
 include("ModalInterlace.jl")
 include("clenshawkron.jl")

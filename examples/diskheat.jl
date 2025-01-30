@@ -3,8 +3,7 @@ pyplot() # pyplot supports disks
 
 Z = Zernike(1)
 W = Weighted(Z)
-xy = axes(W,1)
-x,y = first.(xy),last.(xy)
+x,y = coordinates(W)
 Δ = Z \ Laplacian(xy) * W
 S = Z \ W
 

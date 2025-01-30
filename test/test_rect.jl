@@ -26,8 +26,7 @@ using Base: oneto
         T,U = ChebyshevT(),ChebyshevU()
         T² = RectPolynomial(Fill(T, 2))
         T²ₙ = T²[:,Block.(Base.OneTo(5))]
-        𝐱 = axes(T²ₙ,1)
-        x,y = first.(𝐱),last.(𝐱)
+        x,y = coordinates(T²ₙ)
         @test T²ₙ \ one.(x) == [1; zeros(14)]
         @test (T² \ x)[1:5] ≈[0;1;zeros(3)]
 
@@ -50,8 +49,7 @@ using Base: oneto
         TU = RectPolynomial(T, U)
         X = jacobimatrix(Val{1}(), TU)
         Y = jacobimatrix(Val{2}(), TU)
-        𝐱 = axes(TU, 1)
-        x, y = first.(𝐱), last.(𝐱)
+        x, y = coordinates(TU)
         N = 10
         KR = Block.(1:N)
         @test (TU \ (x .* TU))[KR,KR] == X[KR,KR]
@@ -79,7 +77,7 @@ using Base: oneto
         U² = RectPolynomial(U, U)
         C² = RectPolynomial(C, C)
         𝐱 = axes(T²,1)
-        D_x,D_y = PartialDerivative{1}(𝐱),PartialDerivative{2}(𝐱)
+        D_x,D_y = Derivative(𝐱,(1,0)),Derivative(𝐱,(0,1))
         D_x*T²
         D_y*T²
         U²\D_x*T²
@@ -103,11 +101,11 @@ using Base: oneto
 
         @testset "strong form" begin
             𝐱 = axes(W²,1)
-            D_x,D_y = PartialDerivative{1}(𝐱),PartialDerivative{2}(𝐱)
-            Δ = Q²\(D_x^2 + D_y^2)*W²
+            D_x,D_y = Derivative(𝐱,(1,0)),Derivative(𝐱,(0,1))
+            Δ = Q²\((D_x^2 + D_y^2)*W²)
 
             K = Block.(1:200); @time L = Δ[K,K]; @time qr(L);
-            \(qr(Δ), [1; zeros(∞)]; tolerance=1E-1)
+            @time \(qr(Δ), [1; zeros(∞)]; tolerance=1E-1)
         end
 
         @testset "weakform" begin
@@ -115,6 +113,15 @@ using Base: oneto
             c = transform(P², _ -> 1)
             f = expand(P², splat((x,y) -> -2*((1-y^2) + (1-x^2))))
             @test (Δ*c)[Block.(1:5)] ≈ (W²'f)[Block.(1:5)]
+        end
+
+        @testset "laplacian" begin
+            Δ = Q² \ laplacian(W²)
+            c = transform(P², _ -> 1)
+            f = expand(P², splat((x,y) -> -2*((1-y^2) + (1-x^2))))
+            @test (Δ*c)[Block.(1:5)] ≈ (Q² \f)[Block.(1:5)]
+            @test laplacian(W² * c)[SVector(0.1,0.2)] ≈ -2*((1-0.2^2) + (1-0.1^2))
+            @test abslaplacian(W² * c)[SVector(0.1,0.2)] ≈ 2*((1-0.2^2) + (1-0.1^2))
         end
     end
 
@@ -159,8 +166,7 @@ using Base: oneto
     @testset "variable coefficients" begin
         T,U = ChebyshevT(), ChebyshevU()
         P = RectPolynomial(T, U)
-        𝐱 = axes(P,1)
-        x,y = first.(𝐱), last.(𝐱)
+        x,y = coordinates(P)
         X = P\(x .* P)
         Y = P\(y .* P)
 

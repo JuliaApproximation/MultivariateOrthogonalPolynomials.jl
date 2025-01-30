@@ -9,7 +9,7 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
         @test P ≡ JacobiTriangle{Float64}() ≡ JacobiTriangle{Float64}(0,0,0)
 
         𝐱 = axes(P,1)
-        x,y = first.(𝐱),last.(𝐱)
+        x,y = coordinates(P)
         @test 𝐱[SVector(0.1,0.2)] == SVector(0.1,0.2)
         @test x[SVector(0.1,0.2)] == 0.1
         @test y[SVector(0.1,0.2)] == 0.2
@@ -112,8 +112,8 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
 
         @testset "expansions" begin
             P = JacobiTriangle()
-            𝐱 = axes(P,1)
-            x,y = first.(𝐱),last.(𝐱)
+            
+            x,y = coordinates(P)
             N = 20
             P_N = P[:,Block.(Base.OneTo(N))]
             u = P_N * (P_N \ (exp.(x) .* cos.(y)))
@@ -135,8 +135,8 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
         P = JacobiTriangle()
         𝐱 = axes(P,1)
 
-        ∂ˣ = PartialDerivative{1}(𝐱)
-        ∂ʸ = PartialDerivative{2}(𝐱)
+        ∂ˣ = Derivative(𝐱, (1,0))
+        ∂ʸ = Derivative(𝐱, (0,1))
 
         @test eltype(∂ˣ) == eltype(∂ʸ) == Float64
 
@@ -194,17 +194,29 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
 
         ∂ˣ² = (∂ˣ)^2
         ∂ʸ² = (∂ʸ)^2
-        @test ∂ˣ² isa ApplyQuasiMatrix{<:Any,typeof(^)}
-        @test ∂ʸ² isa ApplyQuasiMatrix{<:Any,typeof(^)}
+        @test ∂ˣ² isa Derivative
+        @test ∂ʸ² isa Derivative
 
         Dˣ² = JacobiTriangle(2,0,2) \ (∂ˣ² * P)
         Dˣ² = JacobiTriangle(2,0,2) \ (∂ˣ * (∂ˣ * P))
         Dʸ² = JacobiTriangle(0,2,2) \ (∂ʸ * (∂ʸ * P))
 
+        @testset "mixed diff" begin
+            P = JacobiTriangle()
+            f = expand(P, splat((x,y) -> cos(x*exp(y))))
+            let (x,y) = (0.1,0.2)
+                @test diff(f, (1,0))[SVector(x,y)] ≈ -exp(y)*sin(x*exp(y))
+                @test diff(f, (0,1))[SVector(x,y)] ≈ -x*exp(y)*sin(x*exp(y))
+                @test diff(f, (2,0))[SVector(x,y)] ≈ -exp(2y)*cos(x*exp(y))
+                @test diff(f, (1,1))[SVector(x,y)] ≈ -exp(y)*sin(x*exp(y)) - x*exp(2y)*cos(x*exp(y))
+                @test diff(f, (0,2))[SVector(x,y)] ≈ -x*exp(y)*sin(x*exp(y)) - x^2*exp(2y)*cos(x*exp(y))
+            end
+        end
+
         @testset "jacobi" begin
             P = JacobiTriangle()
-            𝐱 = axes(P,1)
-            x,y = first.(𝐱),last.(𝐱)
+            
+            x,y = coordinates(P)
             X = P \ (x .* P)
             Y = P \ (y .* P)
 
@@ -370,8 +382,8 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
 
             @testset "other parameters" begin
                 P = JacobiTriangle(1,0,0)
-                𝐱 = axes(P,1)
-                x,y = first.(𝐱),last.(𝐱)
+                
+                x,y = coordinates(P)
                 X = P \ (x .* P)
                 Y = P \ (y .* P)
 
@@ -465,10 +477,9 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
     @testset "AngularMomentum" begin
         P = JacobiTriangle()
         P¹ = JacobiTriangle(1,1,1)
-        𝐱 = axes(P,1)
-        x,y = first.(𝐱),last.(𝐱)
-        ∂ˣ = PartialDerivative{1}(𝐱)
-        ∂ʸ = PartialDerivative{2}(𝐱)
+        x,y = coordinates(P)
+        ∂ˣ = Derivative(P, (1,0))
+        ∂ʸ = Derivative(P, (0,1))
         L1 = x .* ∂ʸ
         L2 = y .* ∂ˣ
         L = x .* ∂ʸ - y .* ∂ˣ
@@ -517,9 +528,9 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
                     end
                     P = Weighted(JacobiTriangle(a, b, c))
                     Pf = expand(P, f)
-                    𝐱 = axes(P, 1)
-                    ∂ˣ = PartialDerivative{1}(𝐱)
-                    ∂ʸ = PartialDerivative{2}(𝐱)
+                    
+                    ∂ˣ = Derivative(P, (1,0))
+                    ∂ʸ = Derivative(P, (0,1))
                     Pfx = ∂ˣ * Pf
                     Pfy = ∂ʸ * Pf
 
@@ -550,8 +561,7 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
 
 
 
-        𝐱 = axes(P,1)
-        x,y = first.(𝐱),last.(𝐱)
+        x,y = coordinates(P)
         for k = 1:5
             @test sum(x .* y .* (1 .- x .- y) .* Q[:,k].^2) ≈ D[k,k]
         end
@@ -578,9 +588,8 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
     @testset "Weak formulation" begin
         P = JacobiTriangle()
         W = Weighted(JacobiTriangle(1,1,1))
-        𝐱 = axes(W,1)
-        ∂_x = PartialDerivative{1}(𝐱)
-        ∂_y = PartialDerivative{2}(𝐱)
+        ∂_x = Derivative(W, (1,0))
+        ∂_y = Derivative(W, (0,1))
         Δ = -((∂_x*W)'*(∂_x*W) + (∂_y*W)'*(∂_y*W))
         M = W'W
         f = expand(P, splat((x,y) -> exp(x*cos(y))))

@@ -14,9 +14,8 @@ pyplot()
 
 Z = Zernike(1)
 W = Weighted(Z) # w*Z
-xy = axes(Z, 1);
-x, y = first.(xy), last.(xy);
-Δ = Z \ (Laplacian(xy) * W)
+x, y = coordinates(W)
+Δ = Z \ laplacian(W)
 S = Z \ W # identity
 
 

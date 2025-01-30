@@ -69,12 +69,11 @@ import ForwardDiff: hessian
         end
     end
 
-       @testset "Jacobi matrices" begin
+    @testset "Jacobi matrices" begin
         # Setup
         α = 10 * rand()
         Z = Zernike(α)
-        xy = axes(Z, 1)
-        x, y = first.(xy), last.(xy)
+        x, y = coordinates(Z)
         n = 150
 
         # X tests
@@ -95,7 +94,7 @@ import ForwardDiff: hessian
         # Y tests
         JY = zeros(n,n)
         for j = 1:n
-        JY[1:n,j] = (Z \ (y .* Z[:,j]))[1:n]
+            JY[1:n,j] = (Z \ (y .* Z[:,j]))[1:n]
         end 
         Y = Z \ (y .* Z)
         # The Zernike Jacobi matrices are symmetric for this normalization
@@ -112,8 +111,8 @@ import ForwardDiff: hessian
         @test (X*Y)[Block.(1:6),Block.(1:6)] ≈ (X[Block.(1:10),Block.(1:10)]*Y[Block.(1:10),Block.(1:10)])[Block.(1:6),Block.(1:6)]
 
         # Addition of Jacobi matrices
-        @test (X+Y)[Block.(1:6),Block.(1:6)] ≈ (X[Block.(1:6),Block.(1:6)]+Y[Block.(1:6),Block.(1:6)])
-        @test (Y+Y)[Block.(1:6),Block.(1:6)] ≈ (Y[Block.(1:6),Block.(1:6)]+Y[Block.(1:6),Block.(1:6)])
+        @test (X+Y)[Block.(1:6),Block.(1:6)] ≈ X[Block.(1:6),Block.(1:6)]+Y[Block.(1:6),Block.(1:6)]
+        @test (Y+Y)[Block.(1:6),Block.(1:6)] ≈ Y[Block.(1:6),Block.(1:6)]+Y[Block.(1:6),Block.(1:6)]
             
         # for now, reject non-zero first parameter options
         @test_throws ErrorException("Implement for non-zero first basis parameter.") jacobimatrix(Val(1),Zernike(1,1))  
@@ -128,7 +127,7 @@ import ForwardDiff: hessian
             end
 
             Z = Zernike(a,b);
-            xy = axes(Z,1); x,y = first.(xy),last.(xy);
+            x,y = coordinates(Z)
             u = Z * (Z \ exp.(x .* cos.(y)))
             @test u[SVector(0.1,0.2)] ≈ exp(0.1cos(0.2))
         end
@@ -172,7 +171,7 @@ import ForwardDiff: hessian
         ur = r -> r^m*f(r^2)
         @test ur(r) ≈ (1-r^2) * zerniker(ℓ, m, b, r)
 
-        D = Derivative(axes(Chebyshev(),1))
+        D = Derivative(Chebyshev())
         D1 = Normalized(Jacobi(0, m+1)) \ (D * (HalfWeighted{:a}(Normalized(Jacobi(1, m)))))
         D2 = HalfWeighted{:b}(Normalized(Jacobi(1, m))) \ (D * (HalfWeighted{:b}(Normalized(Jacobi(0, m+1)))))
 
@@ -219,12 +218,11 @@ import ForwardDiff: hessian
         # @test lap(u, xy...) ≈ Zernike(1)[xy,15] * (-4) * 5 * 1
 
         WZ = Weighted(Zernike(1)) # Zernike(1) weighted by (1-r^2)
-        Δ = Laplacian(axes(WZ,1))
+        Δ = Laplacian(WZ)
         Δ_Z = Zernike(1) \ (Δ * WZ)
         @test exp.(Δ_Z)[1:10,1:10] == exp.(Δ_Z[1:10,1:10])
 
-        xy = axes(WZ,1)
-        x,y = first.(xy),last.(xy)
+        x,y = coordinates(WZ)
         u = @. (1 - x^2 - y^2) * exp(x*cos(y))
         Δu = @. (-exp(x*cos(y)) * (4 - x*(-5 + x^2 + y^2)cos(y) + (-1 + x^2 + y^2)cos(y)^2 - 4x*y*sin(y) + x^2*(x^2 + y^2-1)*sin(y)^2))
         @test (WZ * (WZ \ u))[SVector(0.1,0.2)] ≈ u[SVector(0.1,0.2)]
@@ -233,12 +231,12 @@ import ForwardDiff: hessian
         @testset "Unweighted" begin
             c = [randn(100); zeros(∞)]
             Z = Zernike()
-            Δ = Zernike(2) \ (Laplacian(axes(Z,1)) * Z)
+            Δ = Zernike(2) \ (Laplacian(Z) * Z)
             @test tr(hessian(xy -> (Zernike{eltype(xy)}()*c)[xy], SVector(0.1,0.2))) ≈ (Zernike(2)*(Δ*c))[SVector(0.1,0.2)]
 
             b = 0.2
             Z = Zernike(b)
-            Δ = Zernike(b+2) \ (Laplacian(axes(Z,1)) * Z)
+            Δ = Zernike(b+2) \ (Laplacian(Z) * Z)
             @test tr(hessian(xy -> (Zernike{eltype(xy)}(b)*c)[xy], SVector(0.1,0.2))) ≈ (Zernike(b+2)*(Δ*c))[SVector(0.1,0.2)]
         end
     end
@@ -325,9 +323,9 @@ end
 @testset "Fractional Laplacian on Unit Disk" begin
     @testset "Fractional Laplacian on Disk: (-Δ)^(β) == -Δ when β=1" begin
         WZ = Weighted(Zernike(1.))
-        Δ = Laplacian(axes(WZ,1))
+        Δ = Laplacian(WZ)
         Δ_Z = Zernike(1) \ (Δ * WZ)
-        Δfrac = AbsLaplacianPower(axes(WZ,1),1.)
+        Δfrac = AbsLaplacian(WZ,1.)
         Δ_Zfrac = Zernike(1) \ (Δfrac * WZ)
         @test Δ_Z[1:100,1:100] ≈ -Δ_Zfrac[1:100,1:100]
     end
@@ -338,10 +336,9 @@ end
             β = 1.34
             Z = Zernike(β)
             WZ = Weighted(Z)
-            xy = axes(WZ,1)
-            x,y = first.(xy),last.(xy)
+            x,y = coordinates(WZ)
             # generate fractional Laplacian
-            Δfrac = AbsLaplacianPower(axes(WZ,1),β)
+            Δfrac = AbsLaplacian(WZ,β)
             Δ_Zfrac = Z \ (Δfrac * WZ)
             # define function whose fractional Laplacian is known
             u = @. (1 - x^2 - y^2).^β
@@ -355,10 +352,9 @@ end
             β = 2.11
             Z = Zernike(β)
             WZ = Weighted(Z)
-            xy = axes(WZ,1)
-            x,y = first.(xy),last.(xy)
+            x,y = coordinates(WZ)
             # generate fractional Laplacian
-            Δfrac = AbsLaplacianPower(axes(WZ,1),β)
+            Δfrac = AbsLaplacian(WZ,β)
             Δ_Zfrac = Z \ (Δfrac * WZ)
             # define function whose fractional Laplacian is known
             u = @. (1 - x^2 - y^2).^β
@@ -371,10 +367,9 @@ end
             β = 3.14159
             Z = Zernike(β)
             WZ = Weighted(Z)
-            xy = axes(WZ,1)
-            x,y = first.(xy),last.(xy)
+            x,y = coordinates(WZ)
             # generate fractional Laplacian
-            Δfrac = AbsLaplacianPower(axes(WZ,1),β)
+            Δfrac = AbsLaplacian(WZ,β)
             Δ_Zfrac = Z \ (Δfrac * WZ)
             # define function whose fractional Laplacian is known
             u = @. (1 - x^2 - y^2).^β
@@ -387,10 +382,9 @@ end
             β = 1.1
             Z = Zernike(β)
             WZ = Weighted(Z)
-            xy = axes(WZ,1)
-            x,y = first.(xy),last.(xy)
+            x,y = coordinates(WZ)
             # generate fractional Laplacian
-            Δfrac = AbsLaplacianPower(axes(WZ,1),β)
+            Δfrac = AbsLaplacian(WZ,β)
             Δ_Zfrac = Z \ (Δfrac * WZ)
             # define function whose fractional Laplacian is known
             u = @. (1 - x^2 - y^2).^(β+1)
@@ -406,10 +400,9 @@ end
             β = 2.71999
             Z = Zernike(β)
             WZ = Weighted(Z)
-            xy = axes(WZ,1)
-            x,y = first.(xy),last.(xy)
+            x,y = coordinates(WZ)
             # generate fractional Laplacian
-            Δfrac = AbsLaplacianPower(axes(WZ,1),β)
+            Δfrac = AbsLaplacian(WZ,β)
             Δ_Zfrac = Z \ (Δfrac * WZ)
             # define function whose fractional Laplacian is known
             u = @. (1 - x^2 - y^2).^(β+1)
@@ -425,10 +418,9 @@ end
             β = 2.71999
             Z = Zernike(β)
             WZ = Weighted(Z)
-            xy = axes(WZ,1)
-            x,y = first.(xy),last.(xy)
+            x,y = coordinates(WZ)
             # generate fractional Laplacian
-            Δfrac = AbsLaplacianPower(axes(WZ,1),β)
+            Δfrac = AbsLaplacian(WZ,β)
             Δ_Zfrac = Z \ (Δfrac * WZ)
             # define function whose fractional Laplacian is known
             u = @. (1 - x^2 - y^2).^(β)*x
@@ -444,10 +436,9 @@ end
             β = 1.91239
             Z = Zernike(β)
             WZ = Weighted(Z)
-            xy = axes(WZ,1)
-            x,y = first.(xy),last.(xy)
+            x,y = coordinates(WZ)
             # generate fractional Laplacian
-            Δfrac = AbsLaplacianPower(axes(WZ,1),β)
+            Δfrac = AbsLaplacian(WZ,β)
             Δ_Zfrac = Z \ (Δfrac * WZ)
             # define function whose fractional Laplacian is known
             u = @. (1 - x^2 - y^2).^(β)*y
@@ -464,10 +455,9 @@ end
             β = 1.21999
             Z = Zernike(β)
             WZ = Weighted(Z)
-            xy = axes(WZ,1)
-            x,y = first.(xy),last.(xy)
+            x,y = coordinates(WZ)
             # generate fractional Laplacian
-            Δfrac = AbsLaplacianPower(axes(WZ,1),β)
+            Δfrac = AbsLaplacian(WZ,β)
             Δ_Zfrac = Z \ (Δfrac * WZ)
             # define function whose fractional Laplacian is known
             u = @. (1 - x^2 - y^2).^(β+1)*x
@@ -483,10 +473,9 @@ end
             β = 0.141
             Z = Zernike(β)
             WZ = Weighted(Z)
-            xy = axes(WZ,1)
-            x,y = first.(xy),last.(xy)
+            x,y = coordinates(WZ)
             # generate fractional Laplacian
-            Δfrac = AbsLaplacianPower(axes(WZ,1),β)
+            Δfrac = AbsLaplacian(WZ,β)
             Δ_Zfrac = Z \ (Δfrac * WZ)
             # define function whose fractional Laplacian is known
             u = @. (1 - x^2 - y^2).^(β+1)*y
@@ -506,9 +495,9 @@ end
                 Z = Zernike(β)
                 WZ = Weighted(Z)
                 xy = axes(WZ,1)
-                x,y = first.(xy),last.(xy)
+                x,y = coordinates(WZ)
                 # generate fractional Laplacian
-                Δfrac = AbsLaplacianPower(axes(WZ,1),β)
+                Δfrac = AbsLaplacian(WZ,β)
                 Δ_Zfrac = Z \ (Δfrac * WZ)
                 # define function whose fractional Laplacian is known
                 uexplicit = @. (1 - x^2 - y^2).^(β+1)
@@ -526,9 +515,9 @@ end
                 Z = Zernike(β)
                 WZ = Weighted(Z)
                 xy = axes(WZ,1)
-                x,y = first.(xy),last.(xy)
+                x,y = coordinates(WZ)
                 # generate fractional Laplacian
-                Δfrac = AbsLaplacianPower(axes(WZ,1),β)
+                Δfrac = AbsLaplacian(WZ,β)
                 Δ_Zfrac = Z \ (Δfrac * WZ)
                 # define function whose fractional Laplacian is known
                 uexplicit = @. (1 - x^2 - y^2).^(β+1)*y
@@ -545,9 +534,9 @@ end
                 Z = Zernike(β)
                 WZ = Weighted(Z)
                 xy = axes(WZ,1)
-                x,y = first.(xy),last.(xy)
+                x,y = coordinates(WZ)
                 # generate fractional Laplacian
-                Δfrac = AbsLaplacianPower(axes(WZ,1),β)
+                Δfrac = AbsLaplacian(WZ,β)
                 Δ_Zfrac = Z \ (Δfrac * WZ)
                 # define function whose fractional Laplacian is known
                 uexplicit = @. (1 - x^2 - y^2).^(β+1)*x
