@@ -77,6 +77,8 @@ end
     KronTrav(PA'QA, PB'QB)
 end
 
+grammatrix(P::KronPolynomial) = KronTrav(grammatrix.(P.args)...)
+    
 
 struct ApplyPlan{T, F, Pl}
     f::F
