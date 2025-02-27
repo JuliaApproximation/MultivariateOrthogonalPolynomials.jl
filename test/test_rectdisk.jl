@@ -109,4 +109,17 @@ using ForwardDiff
         @test stringmime("text/plain", DunklXuDisk()) == "DunklXuDisk(0)"
         @test stringmime("text/plain", DunklXuDiskWeight(0)) == "(1-x^2-y^2)^0 on the unit disk"
     end
+
+    @testset "ladder operators" begin
+        x,y = 𝐱 = SVector(0.1,0.2)
+        ρ = sqrt(1-x^2)
+        ρ′ = -x/ρ
+        n,k = 3,1
+        P = DunklXuDisk()
+        K = Block(n+1)[k+1]
+        @test Jacobi(k+1/2,k+1/2)[x,n-k+1] * ρ^k * diff(Legendre())[y/ρ,k+1] ≈ ρ * diff(P,(0,1))[ 𝐱 ,K]
+        @test diff(Jacobi(k+1/2,k+1/2))[x,n-k+1] * ρ^(k+1) * Legendre()[y/ρ,k+1] ≈ -k*ρ′*P[𝐱,K] + y*ρ′*diff(P,(0,1))[𝐱,K] + ρ * diff(P,(1,0))[𝐱,K]
+
+        
+    end
 end
