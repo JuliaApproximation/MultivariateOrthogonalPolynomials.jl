@@ -1,6 +1,7 @@
 using MultivariateOrthogonalPolynomials, StaticArrays, BlockArrays, BlockBandedMatrices, ArrayLayouts, Base64,
         QuasiArrays, Test, ClassicalOrthogonalPolynomials, BandedMatrices, FastTransforms, LinearAlgebra
 import MultivariateOrthogonalPolynomials: dunklxu_raising, dunklxu_lowering, AngularMomentum
+using ForwardDiff
 
 @testset "Dunkl-Xu disk" begin
     @testset "basics" begin
@@ -13,6 +14,11 @@ import MultivariateOrthogonalPolynomials: dunklxu_raising, dunklxu_lowering, Ang
         @test xy[SVector(0.1,0.2)] == SVector(0.1,0.2)
         @test x[SVector(0.1,0.2)] == 0.1
         @test y[SVector(0.1,0.2)] == 0.2
+
+        ρ = sqrt(1-0.1^2)
+        @test P[SVector(0.1,0.2),1] ≈ 1
+        @test P[SVector(0.1,0.2),Block(2)] ≈ [0.15,0.2]
+        @test P[SVector(0.1,0.2),Block(3)] ≈ [jacobip(2,1/2,1/2,0.1),jacobip(1,3/2,3/2,0.1)*ρ*legendrep(1,0.2/ρ),ρ^2*legendrep(2,0.2/ρ)]
     end
 
     @testset "operators" begin
@@ -29,26 +35,39 @@ import MultivariateOrthogonalPolynomials: dunklxu_raising, dunklxu_lowering, Ang
 
         x, y = coordinates(P)
 
-        L = WP \ WQ
-        R = Q \ P
+        @testset "lowering/raising" begin
+            L = WP \ WQ
+            @test WP[SVector(0.1,0.2),Block.(1:6)]'L[Block.(1:6),Block.(1:4)] ≈ WQ[SVector(0.1,0.2),Block.(1:4)]'
+            R = Q \ P
+            @test Q[SVector(0.1,0.2),Block.(1:4)]'R[Block.(1:4),Block.(1:4)] ≈ P[SVector(0.1,0.2),Block.(1:4)]'
 
-        X = P \ (x .* P)
-        Y = P \ (y .* P)
+            @test (DunklXuDisk() \ WeightedDunklXuDisk(1.0))[Block.(1:N), Block.(1:N)] ≈ (WeightedDunklXuDisk(0.0) \ WeightedDunklXuDisk(1.0))[Block.(1:N), Block.(1:N)]
+        end
 
-        @test (L * R)[Block.(1:N), Block.(1:N)] ≈ (I - X^2 - Y^2)[Block.(1:N), Block.(1:N)]
 
-        @test (DunklXuDisk() \ WeightedDunklXuDisk(1.0))[Block.(1:N), Block.(1:N)] ≈ (WeightedDunklXuDisk(0.0) \ WeightedDunklXuDisk(1.0))[Block.(1:N), Block.(1:N)]
+        @testset "jacobi" begin
+            X = P \ (x .* P)
+            Y = P \ (y .* P)
 
-        ∂x = Derivative(P, (1,0))
-        ∂y = Derivative(P, (0,1))
+            @test (L * R)[Block.(1:N), Block.(1:N)] ≈ (I - X^2 - Y^2)[Block.(1:N), Block.(1:N)]
+            @test P[SVector(0.1,0.2),Block.(1:5)]'X[Block.(1:5),Block.(1:4)] ≈ 0.1P[SVector(0.1,0.2),Block.(1:4)]'
+            @test P[SVector(0.1,0.2),Block.(1:5)]'Y[Block.(1:5),Block.(1:4)] ≈ 0.2P[SVector(0.1,0.2),Block.(1:4)]'
+        end
 
-        Dx = Q \ (∂x * P)
-        Dy = Q \ (∂y * P)
+        @testset "derivatives" begin
+            ∂x = Derivative(P, (1,0))
+            ∂y = Derivative(P, (0,1))
 
-        Mx = Q \ (x .* Q)
-        My = Q \ (y .* Q)
+            Dx = Q \ (∂x * P)
+            Dy = Q \ (∂y * P)
 
-        A = (Mx * Dy - My * Dx)[Block.(1:N), Block.(1:N)]
+            @test Q[SVector(0.1,0.2),Block.(1:3)]'Dx[Block.(1:3),Block.(1:4)] ≈ [ForwardDiff.gradient(𝐱 -> DunklXuDisk{eltype(𝐱)}(P.β)[𝐱,k], SVector(0.1,0.2))[1] for k=1:10]'
+            Mx = Q \ (x .* Q)
+            My = Q \ (y .* Q)
+    
+            A = (Mx * Dy - My * Dx)[Block.(1:N), Block.(1:N)]
+        end
+
 
         B = (Q \ P)[Block.(1:N), Block.(1:N)]
 
