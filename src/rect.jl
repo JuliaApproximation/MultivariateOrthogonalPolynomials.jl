@@ -1,3 +1,13 @@
+"""
+    KronPolynomial(A, B, C...)
+
+represents the kronecker product of `A`, `B`, …. In particular, if `K = KronPolynomial(A,B)` and `U` is an infinite
+matrix of coefficients we have
+``
+K[SVector(x,y),:]'DiagTrav(U) == A[x,:]'U*B[y,:]
+``
+"""
+
 struct KronPolynomial{d, T, PP} <: MultivariateOrthogonalPolynomial{d, T}
     args::PP
 end
