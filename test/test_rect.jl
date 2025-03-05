@@ -61,6 +61,16 @@ using Base: oneto
         @test (Y * (TU \ f))[KR] ≈ (TU \ h)[KR]
     end
 
+    @testset "gram matrix" begin
+        P = Legendre()
+        Q = Ultraspherical(3/2)
+        PQ = RectPolynomial(P, Q)
+        M = grammatrix(PQ)
+        f = expand(PQ, splat((x,y) -> exp(x*cos(y + 1))))
+        g = expand(PQ, splat((x,y) -> sin(x*cos(y + 1)+2)))
+        @test coefficients(g)[1:100]'M[1:100,1:100] * coefficients(f)[1:100] ≈ sum(expand(T², 𝐱 -> f[𝐱]g[𝐱]))
+    end
+
     @testset "Conversion" begin
         T = ChebyshevT()
         U = ChebyshevU()
