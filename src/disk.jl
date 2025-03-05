@@ -68,7 +68,7 @@ summary(io::IO, P::Zernike) = print(io, "Zernike($(P.a), $(P.b))")
 
 orthogonalityweight(Z::Zernike) = ZernikeWeight(Z.a, Z.b)
 
-zerniker(ℓ, m, a, b, r::T) where T = sqrt(convert(T,2)^(m+a+b+2-iszero(m))/π) * r^m * normalizedjacobip((ℓ-m) ÷ 2, b, m+a, 2r^2-1)
+zerniker(ℓ, m, a, b, r::T) where T = sqrt(convert(T,2)^(m+a+b+2-iszero(m))/π) * r^m * normalizedjacobip(ℓ, b, m+a, 2r^2-1)
 zerniker(ℓ, m, b, r) = zerniker(ℓ, m, zero(b), b, r)
 zerniker(ℓ, m, r) = zerniker(ℓ, m, zero(r), r)
 
@@ -86,7 +86,7 @@ function getindex(Z::Zernike{T}, rθ::RadialCoordinate, B::BlockIndex{1}) where 
     ℓ = Int(block(B))-1
     k = blockindex(B)
     m = iseven(ℓ) ? k-isodd(k) : k-iseven(k)
-    zernikez(ℓ, (isodd(k+ℓ) ? 1 : -1) * m, Z.a, Z.b, rθ)
+    zernikez((ℓ-m) ÷ 2, (isodd(k+ℓ) ? 1 : -1) * m, Z.a, Z.b, rθ)
 end
 
 
@@ -94,6 +94,7 @@ getindex(Z::Zernike, xy::StaticVector{2}, B::BlockIndex{1}) = Z[RadialCoordinate
 getindex(Z::Zernike, xy::StaticVector{2}, B::Block{1}) = [Z[xy, B[j]] for j=1:Int(B)]
 getindex(Z::Zernike, xy::StaticVector{2}, JR::BlockOneTo) = mortar([Z[xy,Block(J)] for J = 1:Int(JR[end])])
 
+basis_axes(::Inclusion{<:Any,<:UnitDisk}, v) = Zernike()
 
 ###
 # Jacobi matrices
@@ -191,6 +192,11 @@ end
 ###
 # Transforms
 ###
+
+function grammatrix(Z::Zernike{T}) where T
+    @assert Z.a == Z.b == 0
+    SquareEye{T}((axes(Z,2),))
+end
 
 function grid(S::Zernike{T}, B::Block{1}) where T
     N = Int(B) ÷ 2 + 1 # matrix rows

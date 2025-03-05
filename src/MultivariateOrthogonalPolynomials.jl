@@ -4,7 +4,7 @@ using QuasiArrays: AbstractVector
 using ClassicalOrthogonalPolynomials, FastTransforms, BlockBandedMatrices, BlockArrays, DomainSets,
       QuasiArrays, StaticArrays, ContinuumArrays, InfiniteArrays, InfiniteLinearAlgebra,
       LazyArrays, SpecialFunctions, LinearAlgebra, BandedMatrices, LazyBandedMatrices, ArrayLayouts,
-      HarmonicOrthogonalPolynomials, RecurrenceRelationships
+      HarmonicOrthogonalPolynomials, RecurrenceRelationships, FillArrays
 
 import Base: axes, in, ==, +, -, /, *, ^, \, copy, copyto!, OneTo, getindex, size, oneto, all, resize!, BroadcastStyle, similar, fill!, setindex!, convert, show, summary, diff
 import Base.Broadcast: Broadcasted, broadcasted, DefaultArrayStyle
@@ -14,6 +14,7 @@ import QuasiArrays: LazyQuasiMatrix, LazyQuasiArrayStyle, domain
 import ContinuumArrays: @simplify, Weight, weight, grid, plotgrid, TransformFactorization, ExpansionLayout, plotvalues, unweighted, plan_transform, checkpoints, transform_ldiv, AbstractBasisLayout, basis_axes, Inclusion, grammatrix, weaklaplacian, layout_broadcasted, laplacian, abslaplacian, laplacian_axis, abslaplacian_axis, diff_layout, operatororder, broadcastbasis
 
 import ArrayLayouts: MemoryLayout, sublayout, sub_materialize
+import FillArrays: SquareEye
 import BlockArrays: block, blockindex, BlockSlice, viewblock, blockcolsupport, AbstractBlockStyle, BlockStyle
 import BlockBandedMatrices: _BandedBlockBandedMatrix, AbstractBandedBlockBandedMatrix, _BandedMatrix, blockbandwidths, subblockbandwidths
 import LinearAlgebra: factorize
