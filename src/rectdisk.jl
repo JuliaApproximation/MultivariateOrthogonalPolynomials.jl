@@ -150,32 +150,32 @@ end
     (DunklXuDiskWeight(0) .* w_A) \ w_B
 
 # Actually Jxᵀ
-function jacobimatrix(::Val{1}, P::DunklXuDisk)
+function jacobimatrix(::Val{1}, P::DunklXuDisk{T}) where T
     β = P.β
     n = mortar(Fill.(oneto(∞),oneto(∞)))
     k = mortar(Base.OneTo.(oneto(∞)))
     dat = BlockHcat(
         ((2n .+ (2β - 1)) ./ (4n .+ 4β)), # n-1, k
-        Zeros((axes(n,1),)), # n, k
+        Zeros{T}((axes(n,1),)), # n, k
         ((n .- k .+ 1) .* (n .+ k .+ 2β) ./ ((n .+ β) .* (2n .+ (2β + 1)))), # n+1, k
         )
     _BandedBlockBandedMatrix(dat', axes(k,1), (1,1), (0,0))
 end
 
 # Actually Jyᵀ
-function jacobimatrix(::Val{2}, P::DunklXuDisk)
+function jacobimatrix(::Val{2}, P::DunklXuDisk{T}) where T
     β = P.β
     n = mortar(Fill.(oneto(∞),oneto(∞)))
     k = mortar(Base.OneTo.(oneto(∞)))
     dat = BlockHcat(
         BlockBroadcastArray(hcat,
             ((k .+ (β - 1)) .* (2n .+ (2β - 1)) ./ ((2k .+ (2β - 1)) .* (2n .+ 2β))), # n-1, k-1
-            Zeros((axes(n,1),)), # n-1, k
+            Zeros{T}((axes(n,1),)), # n-1, k
             (-k .* (k .+ 2β) .* (2n .+ (2β - 1)) ./ ((2k .+ (2β - 1)) .* (2k .+ 2β) .* (4n .+ 4β)))), # n-1, k+1
-        Zeros((axes(n,1),Base.OneTo(3))),
+        Zeros{T}((axes(n,1),Base.OneTo(3))),
         BlockBroadcastArray(hcat,
             (-(2k .+ (2β - 2)) .* (n .- k .+ 1) .* (n .- k .+ 2) ./ ((2k .+ (2β - 1)) .* (n .+ β) .* (2n .+ (2β + 1)))), # n+1, k-1
-            Zeros((axes(n,1),)), # n+1, k
+            Zeros{T}((axes(n,1),)), # n+1, k
             (k .* (k .+ 2β) .* (n .+ k .+ 2β) .* (n .+ k .+ (2β + 1)) ./ ((2k .+ (2β - 1)) .* (2k .+ 2β) .* (n .+ β) .* (2n .+ (2β + 1)))))) # n+1, k+1
     _BandedBlockBandedMatrix(dat', axes(k,1), (1,1), (1,1))
 end
@@ -188,6 +188,6 @@ function angularmomentum(P::DunklXuDisk)
         (2 .* (k .+ (β - 1)) .* (n .- k .+ 1) ./ (2k .+ (2β - 1))), # n, k-1
         Zeros((axes(n,1),)), # n, k
         (-k .* (k .+ 2β) .* (n .+ k .+ 2β) ./ ((2k .+ (2β - 1)) .* (2k .+ 2β)))) # n, k+1
-        
+
     DunklXuDisk(β) * _BandedBlockBandedMatrix(dat', axes(k,1), (0,0), (1,1))
 end
