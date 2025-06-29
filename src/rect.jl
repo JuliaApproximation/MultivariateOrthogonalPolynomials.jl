@@ -62,21 +62,23 @@ function weaklaplacian(P::RectPolynomial)
     A,B = P.args
     Δ_A,Δ_B = weaklaplacian(A), weaklaplacian(B)
     M_A,M_B = grammatrix(A), grammatrix(B)
-    KronTrav(Δ_A,M_B) + KronTrav(M_A,Δ_B)
+    KronTrav(M_B,Δ_A) + KronTrav(Δ_B,M_A)
 end
 
 function \(P::RectPolynomial, Q::RectPolynomial)
     PA,PB = P.args
     QA,QB = Q.args
-    krontrav(PA\QA, PB\QB)
+    krontrav(PB\QB, PA\QA)
 end
 
 @simplify function *(Ac::QuasiAdjoint{<:Any,<:RectPolynomial}, B::RectPolynomial)
     PA,PB = Ac'.args
     QA,QB = B.args
-    KronTrav(PA'QA, PB'QB)
+    KronTrav(PB'QB, PA'QA)
 end
 
+grammatrix(P::KronPolynomial) = KronTrav(reverse(grammatrix.(P.args))...)
+    
 
 struct ApplyPlan{T, F, Pl}
     f::F
@@ -102,10 +104,8 @@ function *(A::TensorPlan, B::AbstractArray)
     B
 end
 
-function checkpoints(P::RectPolynomial)
-    x,y = checkpoints.(P.args)
-    SVector.(x, y')
-end
+checkpoints(P::ProductDomain) = tensorgrid(checkpoints.(components(P))...)
+tensorgrid(x,y) = SVector.(x, y')
 
 function plan_transform(P::KronPolynomial{d,<:Any,<:Fill}, B::Tuple{Block{1}}, dims=1:1) where d
     @assert dims == 1
