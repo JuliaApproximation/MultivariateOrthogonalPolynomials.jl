@@ -27,6 +27,8 @@ const RectPolynomial{T, PP} = KronPolynomial{2, T, PP}
 
 
 axes(P::KronPolynomial) = (Inclusion(×(map(domain, axes.(P.args, 1))...)), _krontrav_axes(axes.(P.args, 2)...))
+
+
 function getindex(P::RectPolynomial{T}, xy::StaticVector{2}, Jj::BlockIndex{1})::T where T
     a,b = P.args
     J,j = Int(block(Jj)),blockindex(Jj)
@@ -164,9 +166,9 @@ end
 
 ## sum
 
-function Base._sum(P::RectPolynomial, dims)
+function Base._sum(P::RectPolynomial, dims::Int)
     @assert dims == 1
-    KronTrav(sum.(P.args; dims=1)...)
+    KronTrav(reverse(sum.(P.args; dims=1))...)
 end
 
 ## multiplication
@@ -184,3 +186,14 @@ end
 
 
 broadcastbasis(::typeof(+), A::KronPolynomial, B::KronPolynomial) =  KronPolynomial(broadcastbasis.(+, A.args, B.args)...)
+
+
+
+####
+# vec
+####
+
+function vec_layout(::ExpansionLayout{KronOPLayout{2}}, f)
+    A,B = basis(f).args
+    A*invdiagtrav(coefficients(f))*B'
+end

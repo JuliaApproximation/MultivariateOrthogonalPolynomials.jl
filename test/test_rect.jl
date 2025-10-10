@@ -148,11 +148,12 @@ using Base: oneto
     end
 
     @testset "sum" begin
-        P = RectPolynomial(Legendre(),Legendre())
-        p₀ = expand(P, 𝐱 -> 1)
-        @test sum(p₀) ≈ 4.0
-        f = expand(P, splat((x,y) -> exp(cos(x^2*y))))
-        @test sum(f) ≈ 10.546408460894801 # empirical
+        for P in (RectPolynomial(Legendre(),Legendre()), RectPolynomial(Legendre(),Chebyshev()))
+            p₀ = expand(P, 𝐱 -> 1)
+            @test sum(p₀) ≈ 4.0
+            f = expand(P, splat((x,y) -> exp(cos(x^2*y))))
+            @test sum(f) ≈ 10.546408460894801 # empirical
+        end
     end
 
     @testset "KronTrav bug" begin
@@ -203,5 +204,11 @@ using Base: oneto
         @test (𝐛 .* 𝐚)[SVector(0.1,0.2)] ≈ 𝐚[SVector(0.1,0.2)]𝐛[SVector(0.1,0.2)]
 
         𝐜 = expand(RectPolynomial(Legendre(),Jacobi(1,0)),splat((x,y) -> cos(x*sin(y))))
+    end
+
+    @testset "vec" begin
+        P = RectPolynomial(Legendre(),Chebyshev())        
+        f = expand(P, splat((x,y) -> cos((x-0.1)*exp(y))))
+        @test vec(f)[0.1,0.2] ≈ f[SVector(0.1,0.2)]
     end
 end

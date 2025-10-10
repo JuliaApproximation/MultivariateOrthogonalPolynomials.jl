@@ -10,7 +10,7 @@ import Base: axes, in, ==, +, -, /, *, ^, \, copy, copyto!, OneTo, getindex, siz
 import Base.Broadcast: Broadcasted, broadcasted, DefaultArrayStyle
 import DomainSets: boundary, EuclideanDomain
 
-import QuasiArrays: LazyQuasiMatrix, LazyQuasiArrayStyle, domain
+import QuasiArrays: LazyQuasiMatrix, LazyQuasiArrayStyle, domain, vec_layout
 import ContinuumArrays: @simplify, Weight, weight, grid, plotgrid, TransformFactorization, ExpansionLayout, plotvalues, unweighted, plan_transform, checkpoints, transform_ldiv, AbstractBasisLayout, basis_axes, Inclusion, grammatrix, weaklaplacian, layout_broadcasted, laplacian, abslaplacian, laplacian_axis, abslaplacian_axis, diff_layout, operatororder, broadcastbasis
 
 import ArrayLayouts: MemoryLayout, sublayout, sub_materialize
