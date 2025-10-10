@@ -155,6 +155,21 @@ using Base: oneto
         @test sum(f) ≈ 10.546408460894801 # empirical
     end
 
+    @testset "diff" begin
+        P = RectPolynomial(Legendre(),Legendre())
+        f = expand(P, splat((x,y) -> 1))
+        @test diff(f,(1,0))[SVector(0.1,0.2)] == diff(f,(0,1))[SVector(0.1,0.2)] == 0.0
+        f = expand(P, splat((x,y) -> x))
+        @test diff(f,(1,0))[SVector(0.1,0.2)] == 1.0
+        @test diff(f,(0,1))[SVector(0.1,0.2)] == 0.0
+        f = expand(P, splat((x,y) -> cos(x*exp(y))))
+        @test diff(f,(1,0))[SVector(0.1,0.2)] ≈ -sin(0.1*exp(0.2))*exp(0.2)
+        @test diff(f,(0,1))[SVector(0.1,0.2)] ≈ -0.1*sin(0.1*exp(0.2))*exp(0.2)
+        @test diff(f,(2,0))[SVector(0.1,0.2)] ≈ -cos(0.1*exp(0.2))*exp(0.4)
+        @test diff(f,(1,1))[SVector(0.1,0.2)] ≈ -sin(0.1*exp(0.2))*exp(0.2) - 0.1*cos(0.1*exp(0.2))*exp(0.4)
+        @test diff(f,(0,2))[SVector(0.1,0.2)] ≈ -0.1*sin(0.1*exp(0.2))*exp(0.2) - 0.1^2*cos(0.1*exp(0.2))*exp(0.4)
+    end
+
     @testset "KronTrav bug" begin
         W = Weighted(Ultraspherical(3/2))
         D² = diff(W)'diff(W)

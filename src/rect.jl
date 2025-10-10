@@ -53,8 +53,8 @@ function jacobimatrix(::Val{2}, P::RectPolynomial)
     KronTrav(Y, Eye{eltype(Y)}(∞))
 end
 function diff(P::KronPolynomial{N}, order::NTuple{N,Int}; dims...) where N
-    diffs = diff.(P.args, order)
-    RectPolynomial(basis.(diffs)...) * KronTrav(coefficients.(diffs)...)
+    diffs = map(diff, P.args, order)
+    RectPolynomial(map(basis, diffs)...) * KronTrav(reverse(map(coefficients, diffs))...)
 end
 
 
@@ -164,7 +164,7 @@ end
 
 ## sum
 
-function Base._sum(P::RectPolynomial, dims)
+function Base._sum(P::RectPolynomial, dims::Int)
     @assert dims == 1
     KronTrav(sum.(P.args; dims=1)...)
 end
