@@ -1,4 +1,4 @@
-using MultivariateOrthogonalPolynomials, ClassicalOrthogonalPolynomials, StaticArrays, LinearAlgebra, BlockArrays, FillArrays, Base64, LazyBandedMatrices, Test
+using MultivariateOrthogonalPolynomials, ClassicalOrthogonalPolynomials, StaticArrays, LinearAlgebra, BlockArrays, FillArrays, Base64, LazyBandedMatrices, ArrayLayouts, Test
 using ClassicalOrthogonalPolynomials: expand, coefficients, recurrencecoefficients
 using MultivariateOrthogonalPolynomials: weaklaplacian, ClenshawKron
 using ContinuumArrays: plotgridvalues, ExpansionLayout
