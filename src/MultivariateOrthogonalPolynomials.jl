@@ -10,8 +10,8 @@ import Base: axes, in, ==, +, -, /, *, ^, \, copy, copyto!, OneTo, getindex, siz
 import Base.Broadcast: Broadcasted, broadcasted, DefaultArrayStyle
 import DomainSets: boundary, EuclideanDomain
 
-import QuasiArrays: LazyQuasiMatrix, LazyQuasiArrayStyle, domain, vec_layout
-import ContinuumArrays: @simplify, Weight, weight, grid, plotgrid, TransformFactorization, ExpansionLayout, plotvalues, unweighted, plan_transform, checkpoints, transform_ldiv, AbstractBasisLayout, basis_axes, Inclusion, grammatrix, weaklaplacian, layout_broadcasted, laplacian, abslaplacian, laplacian_axis, abslaplacian_axis, diff_layout, operatororder, broadcastbasis
+import QuasiArrays: LazyQuasiMatrix, LazyQuasiArrayStyle, domain, vec_layout, reshape_layout
+import ContinuumArrays: @simplify, Weight, weight, grid, plotgrid, TransformFactorization, ExpansionLayout, plotvalues, unweighted, plan_transform, checkpoints, transform_ldiv, AbstractBasisLayout, basis_axes, Inclusion, grammatrix, weaklaplacian, layout_broadcasted, laplacian, abslaplacian, laplacian_axis, abslaplacian_axis, diff_layout, operatororder, broadcastbasis, KronExpansionLayout
 
 import ArrayLayouts: MemoryLayout, sublayout, sub_materialize
 import BlockArrays: block, blockindex, BlockSlice, viewblock, blockcolsupport, AbstractBlockStyle, BlockStyle
@@ -21,7 +21,7 @@ import LazyArrays: arguments, paddeddata, LazyArrayStyle, LazyLayout, PaddedLayo
 import LazyBandedMatrices: LazyBandedBlockBandedLayout, AbstractBandedBlockBandedLayout, AbstractLazyBandedBlockBandedLayout, _krontrav_axes, DiagTravLayout, invdiagtrav, ApplyBandedBlockBandedLayout, krontrav
 import InfiniteArrays: InfiniteCardinal, OneToInf
 
-import ClassicalOrthogonalPolynomials: jacobimatrix, Weighted, orthogonalityweight, HalfWeighted, WeightedBasis, pad, recurrencecoefficients, clenshaw, weightedgrammatrix, Clenshaw
+import ClassicalOrthogonalPolynomials: jacobimatrix, Weighted, orthogonalityweight, HalfWeighted, WeightedBasis, pad, recurrencecoefficients, clenshaw, weightedgrammatrix, Clenshaw, OPLayout
 import HarmonicOrthogonalPolynomials: BivariateOrthogonalPolynomial, MultivariateOrthogonalPolynomial, Plan,
                                           AngularMomentum, angularmomentum, BlockOneTo, BlockRange1, interlace,
                                           MultivariateOPLayout, AbstractMultivariateOPLayout, MAX_PLOT_BLOCKS

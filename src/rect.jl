@@ -190,10 +190,16 @@ broadcastbasis(::typeof(+), A::KronPolynomial, B::KronPolynomial) =  KronPolynom
 
 
 ####
-# vec
+# reshape/vec
 ####
 
-function vec_layout(::ExpansionLayout{KronOPLayout{2}}, f)
+function reshape_layout(::ExpansionLayout{KronOPLayout{2}}, f)
     A,B = basis(f).args
     A*invdiagtrav(coefficients(f))*B'
+end
+
+# TODO: generalise
+function vec_layout(::KronExpansionLayout{OPLayout, OPLayout}, f)
+    A,C,Bc = arguments(f)
+    RectPolynomial(A, Bc') * DiagTrav(C)
 end
