@@ -1,7 +1,7 @@
-using MultivariateOrthogonalPolynomials, ClassicalOrthogonalPolynomials, StaticArrays, LinearAlgebra, BlockArrays, FillArrays, Base64, LazyBandedMatrices, Test
+using MultivariateOrthogonalPolynomials, ClassicalOrthogonalPolynomials, StaticArrays, LinearAlgebra, BlockArrays, FillArrays, Base64, LazyBandedMatrices, ArrayLayouts, Test
 using ClassicalOrthogonalPolynomials: expand, coefficients, recurrencecoefficients
 using MultivariateOrthogonalPolynomials: weaklaplacian, ClenshawKron
-using ContinuumArrays: plotgridvalues
+using ContinuumArrays: plotgridvalues, ExpansionLayout
 using Base: oneto
 
 @testset "RectPolynomial" begin
@@ -148,11 +148,12 @@ using Base: oneto
     end
 
     @testset "sum" begin
-        P = RectPolynomial(Legendre(),Legendre())
-        p₀ = expand(P, 𝐱 -> 1)
-        @test sum(p₀) ≈ 4.0
-        f = expand(P, splat((x,y) -> exp(cos(x^2*y))))
-        @test sum(f) ≈ 10.546408460894801 # empirical
+        for P in (RectPolynomial(Legendre(),Legendre()), RectPolynomial(Legendre(),Chebyshev()))
+            p₀ = expand(P, 𝐱 -> 1)
+            @test sum(p₀) ≈ 4.0
+            f = expand(P, splat((x,y) -> exp(cos(x^2*y))))
+            @test sum(f) ≈ 10.546408460894801 # empirical
+        end
     end
 
     @testset "diff" begin
@@ -218,5 +219,33 @@ using Base: oneto
         @test (𝐛 .* 𝐚)[SVector(0.1,0.2)] ≈ 𝐚[SVector(0.1,0.2)]𝐛[SVector(0.1,0.2)]
 
         𝐜 = expand(RectPolynomial(Legendre(),Jacobi(1,0)),splat((x,y) -> cos(x*sin(y))))
+    end
+
+    @testset "reshape/vec" begin
+        P = RectPolynomial(Legendre(),Chebyshev())
+        f = expand(P, splat((x,y) -> cos((x-0.1)*exp(y))))
+        F = reshape(f)
+        @test F[0.1,0.2] ≈ f[SVector(0.1,0.2)]
+        @test vec(F)[SVector(0.1,0.2)] ≈ f[SVector(0.1,0.2)]
+
+        g = F[:,0.2]
+        h = F[0.1,:]
+        @test MemoryLayout(g) isa ExpansionLayout
+        @test MemoryLayout(h) isa ExpansionLayout
+        @test g[0.1] ≈ f[SVector(0.1,0.2)]
+        @test h[0.2] ≈ f[SVector(0.1,0.2)]
+
+        @test sum(F; dims=1)[1,0.2] ≈ exp(-0.2)*(sin(0.9exp(0.2)) + sin(1.1exp(0.2)))
+        # TODO: should be matrix but isn't because of InfiniteArrays/src/reshapedarray.jl:77
+        @test_broken sum(F; dims=2)[0.1,1] ≈ 2
+        @test sum(F; dims=2)[0.1] ≈ 2
+    end
+
+    @testset "sample" begin
+        P = RectPolynomial(Legendre(),Legendre())
+        f = expand(P, splat((x,y) -> exp(x*cos(y-0.1))))
+        F = reshape(f)
+        @test sum(F; dims=1)[1,0.2] ≈ 2.346737615950585
+        @test sum(F; dims=2)[0.1,1] ≈ 2.1748993079723618
     end
 end
