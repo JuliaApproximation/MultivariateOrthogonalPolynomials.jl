@@ -203,3 +203,13 @@ function vec_layout(::KronExpansionLayout{OPLayout, OPLayout}, f)
     A,C,Bc = arguments(f)
     RectPolynomial(A, Bc') * DiagTrav(C)
 end
+
+function sample_layout(::ExpansionLayout{MultivariateOrthogonalPolynomials.KronOPLayout{2}}, f::AbstractQuasiVector, n)
+    F = reshape(f)
+    x = sample(sum(F; dims=2), n)
+    # x = sample(F[:,y]) # TODO: this should work
+    y = [sample(F[x,:]) for x in x]
+    map(SVector, x, y)
+end
+
+sample_layout(lay::ExpansionLayout{MultivariateOrthogonalPolynomials.KronOPLayout{2}}, f::AbstractQuasiVector) = only(sample_layout(lay, f, 1))
