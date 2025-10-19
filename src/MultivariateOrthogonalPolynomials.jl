@@ -21,7 +21,7 @@ import LazyArrays: arguments, paddeddata, LazyArrayStyle, LazyLayout, PaddedLayo
 import LazyBandedMatrices: LazyBandedBlockBandedLayout, AbstractBandedBlockBandedLayout, AbstractLazyBandedBlockBandedLayout, _krontrav_axes, DiagTravLayout, invdiagtrav, ApplyBandedBlockBandedLayout, krontrav
 import InfiniteArrays: InfiniteCardinal, OneToInf
 
-import ClassicalOrthogonalPolynomials: jacobimatrix, Weighted, orthogonalityweight, HalfWeighted, WeightedBasis, pad, recurrencecoefficients, clenshaw, weightedgrammatrix, Clenshaw, OPLayout, sample, sample_layout
+import ClassicalOrthogonalPolynomials: jacobimatrix, Weighted, orthogonalityweight, HalfWeighted, WeightedBasis, pad, recurrencecoefficients, clenshaw, weightedgrammatrix, Clenshaw, OPLayout
 import HarmonicOrthogonalPolynomials: BivariateOrthogonalPolynomial, MultivariateOrthogonalPolynomial, Plan,
                                           AngularMomentum, angularmomentum, BlockOneTo, BlockRange1, interlace,
                                           MultivariateOPLayout, AbstractMultivariateOPLayout, MAX_PLOT_BLOCKS

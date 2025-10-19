@@ -22,7 +22,12 @@ QuasiArrays = "c4ea9172-b204-11e9-377d-29865faadc5c"
 RecurrenceRelationships = "807425ed-42ea-44d6-a357-6771516d7b2c"
 SpecialFunctions = "276daf66-3868-5448-9aa4-cd146d93841b"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
-Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[weakdeps]
+StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
+
+[extensions]
+MultivariateOrthogonalPolynomialsStatsBaseExt = "StatsBase"
 
 [compat]
 ArrayLayouts = "1.11"
@@ -30,7 +35,7 @@ BandedMatrices = "1"
 BlockArrays = "1.0"
 BlockBandedMatrices = "0.13"
 ClassicalOrthogonalPolynomials = "0.15.8"
-ContinuumArrays = "0.19.6"
+ContinuumArrays = "0.20"
 DomainSets = "0.7"
 FastTransforms = "0.17"
 FillArrays = "1.0"
@@ -39,11 +44,12 @@ InfiniteArrays = "0.15"
 InfiniteLinearAlgebra = "0.9, 0.10"
 LazyArrays = "2.3.1"
 LazyBandedMatrices = "0.11.3"
-QuasiArrays = "0.12.2"
+QuasiArrays = "0.13"
 Random = "1.11.0"
 RecurrenceRelationships = "0.2"
 SpecialFunctions = "1, 2"
 StaticArrays = "1"
+StatsBase = "0.34"
 julia = "1.10"
 
 [extras]
@@ -51,7 +57,8 @@ Base64 = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
 ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 RecipesBase = "3cdcf5f2-1ef4-517c-9805-6587b60abb01"
+StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Base64", "ForwardDiff", "Random", "RecipesBase", "Test"]
+test = ["Base64", "ForwardDiff", "Random", "RecipesBase", "StatsBase", "Test"]

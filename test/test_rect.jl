@@ -1,5 +1,5 @@
-using MultivariateOrthogonalPolynomials, ClassicalOrthogonalPolynomials, StaticArrays, LinearAlgebra, BlockArrays, FillArrays, Base64, LazyBandedMatrices, ArrayLayouts, Random, Test
-using ClassicalOrthogonalPolynomials: expand, coefficients, recurrencecoefficients, sample
+using MultivariateOrthogonalPolynomials, ClassicalOrthogonalPolynomials, StaticArrays, LinearAlgebra, BlockArrays, FillArrays, Base64, LazyBandedMatrices, ArrayLayouts, Random, StatsBase, Test
+using ClassicalOrthogonalPolynomials: expand, coefficients, recurrencecoefficients
 using MultivariateOrthogonalPolynomials: weaklaplacian, ClenshawKron
 using ContinuumArrays: plotgridvalues, ExpansionLayout
 using Base: oneto
@@ -251,6 +251,7 @@ Random.seed!(3242)
         @test sum(F; dims=2)[0.1,1] ≈ 2.1748993079723618
         
         x,y = coordinates(P)
+        @test sample(f) isa SVector
         @test sum(sample(f, 100_000))/100_000 ≈ [sum(x .* f)/sum(f),sum(y .* f)/sum(f)] rtol=1E-1
     end
 end
