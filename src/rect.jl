@@ -92,6 +92,7 @@ ApplyPlan(f, P) = ApplyPlan{eltype(P), typeof(f), typeof(P)}(f, P)
 *(A::ApplyPlan, B::AbstractArray) = A.f(A.plan*B)
 
 basis_axes(d::Inclusion{<:Any,<:ProductDomain}, v) = KronPolynomial(map(d -> basis(Inclusion(d)),components(d.domain))...)
+basis_axes(d::Inclusion{<:Any,<:DomainSets.FixedIntervalProduct{N,T,D}}, v) where {N,T,D} = KronPolynomial(Fill(basis(Inclusion(D())), N))
 
 struct TensorPlan{T, Plans}
     plans::Plans
@@ -167,9 +168,9 @@ end
 
 ## Special Legendre case
 
-function transform_ldiv(K::KronPolynomial{d,V,<:Fill{<:Legendre}}, f::Union{AbstractQuasiVector,AbstractQuasiMatrix}) where {d,V}
+function transform_ldiv(K::KronPolynomial{d,V,<:Fill{<:Legendre}}, f::AbstractQuasiVector) where {d,V}
     T = KronPolynomial{d}(Fill(ChebyshevT{V}(), size(K.args)...))
-    dat = (T \ f).array
+    dat = invdiagtrav(T \ f)
     DiagTrav(pad(FastTransforms.th_cheb2leg(paddeddata(dat)), axes(dat)...))
 end
 

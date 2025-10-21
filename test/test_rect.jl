@@ -1,5 +1,5 @@
 using MultivariateOrthogonalPolynomials, ClassicalOrthogonalPolynomials, StaticArrays, LinearAlgebra, BlockArrays, FillArrays, Base64, LazyBandedMatrices, ArrayLayouts, Random, StatsBase, Test
-using ClassicalOrthogonalPolynomials: expand, coefficients, recurrencecoefficients
+using ClassicalOrthogonalPolynomials: expand, coefficients, recurrencecoefficients, normalized
 using MultivariateOrthogonalPolynomials: weaklaplacian, ClenshawKron
 using ContinuumArrays: plotgridvalues, ExpansionLayout, basis, grid
 using Base: oneto
@@ -285,11 +285,8 @@ Random.seed!(3242)
         @test A[SVector(0.1,0.2),1:3] ≈ A[SVector(0.1,0.2),:] ≈ [1,0.1,0.2]
 
         P = basis(x)
-        P\A
-
-
-        B[0.1,:]
-
-        P \ A
+        @test P\A ≈ [I(3); Zeros(∞,3)]
+        normalized(P) \ A
+        qr(A)
     end
 end
