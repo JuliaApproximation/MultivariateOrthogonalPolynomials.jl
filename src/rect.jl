@@ -29,6 +29,8 @@ const RectPolynomial{T, PP} = KronPolynomial{2, T, PP}
 axes(P::KronPolynomial) = (Inclusion(×(map(domain, axes.(P.args, 1))...)), _krontrav_axes(axes.(P.args, 2)...))
 
 
+normalized(P::KronPolynomial) = KronPolynomial(map(normalized, P.args))
+
 function getindex(P::RectPolynomial{T}, xy::StaticVector{2}, Jj::BlockIndex{1})::T where T
     a,b = P.args
     J,j = Int(block(Jj)),blockindex(Jj)
@@ -109,12 +111,20 @@ function checkpoints(P::RectPolynomial)
     SVector.(x, y')
 end
 
-function plan_transform(P::KronPolynomial{d,<:Any,<:Fill}, B::Tuple{Block{1}}, dims=1:1) where d
-    @assert dims == 1
+function plan_transform(P::KronPolynomial{d,<:Any,<:Fill}, (B,)::Tuple{Block{1}}, dims=1:1) where d
+    @assert only(dims) == 1
 
     T = first(P.args)
     @assert d == 2
-    ApplyPlan(DiagTrav, plan_transform(T, tuple(Fill(Int(B[1]),d)...)))
+    ApplyPlan(diagtrav, plan_transform(T, tuple(Fill(Int(B),d)...)))
+end
+
+function plan_transform(P::KronPolynomial{d,<:Any,<:Fill}, (B,n)::Tuple{Block{1},Int}, dims=1:1) where d
+    @assert only(dims) == 1
+
+    T = first(P.args)
+    @assert d == 2
+    ApplyPlan(A -> diagtrav(A; dims=1:d), plan_transform(T, tuple(Fill(Int(B),d)...,n), 1:d))
 end
 
 function grid(P::RectPolynomial, B::Block{1})
@@ -133,7 +143,7 @@ function plan_transform(P::KronPolynomial{d}, B::Tuple{Block{1}}, dims=1:1) wher
     @assert d == 2
     N = Int(B[1])
     Fx,Fy = plan_transform(P.args[1], (N,N), 1),plan_transform(P.args[2], (N,N), 2)
-    ApplyPlan(DiagTrav, TensorPlan(Fx,Fy))
+    ApplyPlan(diagtrav, TensorPlan(Fx,Fy))
 end
 
 applylayout(::Type{typeof(*)}, ::Lay, ::DiagTravLayout) where Lay <: AbstractBasisLayout = ExpansionLayout{Lay}()

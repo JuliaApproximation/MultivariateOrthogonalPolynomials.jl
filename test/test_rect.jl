@@ -1,7 +1,7 @@
 using MultivariateOrthogonalPolynomials, ClassicalOrthogonalPolynomials, StaticArrays, LinearAlgebra, BlockArrays, FillArrays, Base64, LazyBandedMatrices, ArrayLayouts, Random, StatsBase, Test
 using ClassicalOrthogonalPolynomials: expand, coefficients, recurrencecoefficients
 using MultivariateOrthogonalPolynomials: weaklaplacian, ClenshawKron
-using ContinuumArrays: plotgridvalues, ExpansionLayout
+using ContinuumArrays: plotgridvalues, ExpansionLayout, basis, grid
 using Base: oneto
 
 Random.seed!(3242)
@@ -32,17 +32,39 @@ Random.seed!(3242)
         @test T²ₙ \ one.(x) == [1; zeros(14)]
         @test (T² \ x)[1:5] ≈[0;1;zeros(3)]
 
-        f = expand(T², splat((x,y) -> exp(x*cos(y-0.1))))
-        @test f[SVector(0.1,0.2)] ≈ exp(0.1*cos(0.1))
+        f = splat((x,y) -> exp(x*cos(y-0.1)))
+        𝐟 = expand(T², f)
+        @test 𝐟[SVector(0.1,0.2)] ≈ f(SVector(0.1,0.2))
 
         U² = RectPolynomial(Fill(U, 2))
-
-        @test f[SVector(0.1,0.2)] ≈ exp(0.1cos(0.1))
+        𝐟 = expand(U², f)
+        @test 𝐟[SVector(0.1,0.2)] ≈ f(SVector(0.1,0.2))
 
         TU = RectPolynomial(T,U)
-        x,F = ClassicalOrthogonalPolynomials.plan_grid_transform(TU, Block(5))
-        f = expand(TU, splat((x,y) -> exp(x*cos(y-0.1))))
-        @test f[SVector(0.1,0.2)] ≈ exp(0.1*cos(0.1))
+        𝐟 = expand(TU, f)
+        @test 𝐟[SVector(0.1,0.2)] ≈ f(SVector(0.1,0.2))
+        
+        @testset "matrix" begin
+            N = 10
+            𝐱 = grid(T², Block(N))
+            
+            @test T²[𝐱,1] == ones(N,N)
+            @test T²[𝐱,2] == first.(𝐱)
+            @test T²[𝐱,1:3] == T²[𝐱,Block.(Base.OneTo(2))] == T²[𝐱,[Block(1),Block(2)]] == [ones(N,N) ;;; first.(𝐱) ;;; last.(𝐱)]
+            @test T²[𝐱,Block(1)] == [ones(N,N) ;;;]
+            @test T²[𝐱,[1 2; 3 4]] ≈ [T²[𝐱,[1,3]] ;;;; T²[𝐱,[2,4]]]
+            
+            
+            F = plan_transform(T², Block(N))
+            @test F * f.(𝐱) ≈ transform(T², f)[Block.(1:N)] atol=1E-6
+            
+            x,y = coordinates(ChebyshevInterval()^2)
+            A = [one(x) x y]
+            F = plan_transform(T², (Block(N), 3), 1)
+            @test F * A[𝐱,:] ≈ [I(3); zeros(52,3)]
+
+            @test T² \ A ≈ [I(3); Zeros(∞,3)]
+        end
     end
 
     @testset "Jacobi matrices" begin
@@ -253,5 +275,21 @@ Random.seed!(3242)
         x,y = coordinates(P)
         @test sample(f) isa SVector
         @test sum(sample(f, 100_000))/100_000 ≈ [sum(x .* f)/sum(f),sum(y .* f)/sum(f)] rtol=1E-1
+    end
+
+    @testset "qr" begin
+        x,y = coordinates(ChebyshevInterval()^2)
+        A = [one(x) x y]
+
+        @test A[SVector(0.1,0.2),1] ≈ 1
+        @test A[SVector(0.1,0.2),1:3] ≈ A[SVector(0.1,0.2),:] ≈ [1,0.1,0.2]
+
+        P = basis(x)
+        P\A
+
+
+        B[0.1,:]
+
+        P \ A
     end
 end
