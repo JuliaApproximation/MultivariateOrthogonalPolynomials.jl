@@ -1,8 +1,10 @@
-using MultivariateOrthogonalPolynomials, ClassicalOrthogonalPolynomials, StaticArrays, LinearAlgebra, BlockArrays, FillArrays, Base64, LazyBandedMatrices, ArrayLayouts, Test
+using MultivariateOrthogonalPolynomials, ClassicalOrthogonalPolynomials, StaticArrays, LinearAlgebra, BlockArrays, FillArrays, Base64, LazyBandedMatrices, ArrayLayouts, Random, StatsBase, Test
 using ClassicalOrthogonalPolynomials: expand, coefficients, recurrencecoefficients
 using MultivariateOrthogonalPolynomials: weaklaplacian, ClenshawKron
 using ContinuumArrays: plotgridvalues, ExpansionLayout
 using Base: oneto
+
+Random.seed!(3242)
 
 @testset "RectPolynomial" begin
     @testset "Evaluation" begin
@@ -161,7 +163,7 @@ using Base: oneto
         f = expand(P, splat((x,y) -> 1))
         @test diff(f,(1,0))[SVector(0.1,0.2)] == diff(f,(0,1))[SVector(0.1,0.2)] == 0.0
         f = expand(P, splat((x,y) -> x))
-        @test diff(f,(1,0))[SVector(0.1,0.2)] == 1.0
+        @test diff(f,(1,0))[SVector(0.1,0.2)] ≈ 1.0
         @test diff(f,(0,1))[SVector(0.1,0.2)] == 0.0
         f = expand(P, splat((x,y) -> cos(x*exp(y))))
         @test diff(f,(1,0))[SVector(0.1,0.2)] ≈ -sin(0.1*exp(0.2))*exp(0.2)
@@ -247,5 +249,9 @@ using Base: oneto
         F = reshape(f)
         @test sum(F; dims=1)[1,0.2] ≈ 2.346737615950585
         @test sum(F; dims=2)[0.1,1] ≈ 2.1748993079723618
+        
+        x,y = coordinates(P)
+        @test sample(f) isa SVector
+        @test sum(sample(f, 100_000))/100_000 ≈ [sum(x .* f)/sum(f),sum(y .* f)/sum(f)] rtol=1E-1
     end
 end
