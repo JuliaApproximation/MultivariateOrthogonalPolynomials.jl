@@ -154,6 +154,11 @@ pad(C::DiagTrav, ::BlockedOneTo{Int,RangeCumsum{Int,OneToInf{Int}}}) = DiagTrav(
 
 QuasiArrays.mul(A::BivariateOrthogonalPolynomial, b::DiagTrav) = ApplyQuasiArray(*, A, b)
 
+
+#########
+# evaluation
+########
+
 function Base.unsafe_getindex(f::Mul{KronOPLayout{2},<:DiagTravLayout{<:PaddedLayout}}, 𝐱::SVector)
     P,c = f.A, f.B
     A,B = P.args

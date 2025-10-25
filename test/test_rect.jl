@@ -64,6 +64,14 @@ Random.seed!(3242)
             @test F * A[𝐱,:] ≈ [I(3); zeros(52,3)]
 
             @test T² \ A ≈ [I(3); Zeros(∞,3)]
+
+            P² = RectPolynomial(Fill(Legendre(),2))
+            F = plan_transform(P², (Block(N),3), 1)
+            𝐱 = grid(P², Block(N))
+            @test F * A[𝐱,:] ≈ P²[:,Block.(Base.OneTo(N))] \ A ≈ [I(3); Zeros(52,3)]
+
+            F = plan_transform(normalized(P²), (Block(N),3), 1)
+            @test F * A[𝐱,:] ≈ normalized(P²)[:,Block.(Base.OneTo(N))] \ A ≈ [Diagonal([2, 2/sqrt(3), 2/sqrt(3)]); Zeros(52,3)]
         end
     end
 
@@ -279,14 +287,14 @@ Random.seed!(3242)
 
     @testset "qr" begin
         x,y = coordinates(ChebyshevInterval()^2)
-        A = [one(x) x y]
+        A = [one(x) cos.(x) cos.(y)]
 
         @test A[SVector(0.1,0.2),1] ≈ 1
-        @test A[SVector(0.1,0.2),1:3] ≈ A[SVector(0.1,0.2),:] ≈ [1,0.1,0.2]
+        @test A[SVector(0.1,0.2),1:3] ≈ A[SVector(0.1,0.2),:] ≈ [1,cos(0.1),cos(0.2)]
 
-        P = basis(x)
-        @test P\A ≈ [I(3); Zeros(∞,3)]
-        normalized(P) \ A
-        qr(A)
+        Q,R = qr(A)
+        @test Q[SVector(0.1,0.2),1] ≈ 1/2
+        @test Q[SVector(0.1,0.2),2] ≈ (cos(0.1) - sin(1))/sqrt(2cos(2) + sin(2))
+        @test Q[SVector(0.1,0.2),3] ≈ (cos(0.2) - sin(1))/sqrt(2cos(2) + sin(2))
     end
 end
