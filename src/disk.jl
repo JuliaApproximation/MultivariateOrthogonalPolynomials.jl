@@ -57,7 +57,7 @@ is a quasi-matrix orthogonal `(1-r^2)^b`
 Zernike(b) = Zernike(zero(b), b)
 Zernike() = Zernike{Float64}()
 
-axes(P::Zernike{T}) where T = (Inclusion(UnitDisk{T}()),blockedrange(oneto(∞)))
+axes(P::Zernike{T}) where T = (Inclusion(UnitDisk{real(T)}()),blockedrange(oneto(∞)))
 
 ==(w::Zernike, v::Zernike) = w.a == v.a && w.b == v.b
 
@@ -192,7 +192,8 @@ end
 # Transforms
 ###
 
-function grid(S::Zernike{T}, B::Block{1}) where T
+function grid(S::Zernike, B::Block{1})
+    T = real(eltype(S))
     N = Int(B) ÷ 2 + 1 # matrix rows
     M = 4N-3 # matrix columns
 
@@ -253,10 +254,11 @@ function ZernikeITransform{T}(N::Int, a::Number, b::Number) where T<:Real
 end
 
 *(P::ZernikeTransform{T}, f::AbstractArray) where T = P * convert(Matrix{T}, f)
+*(P::ZernikeTransform{T}, f::Matrix{Complex{T}}) where T = ModalTrav((P.disk2cxf \ (P.analysis * real(f))) + im * (P.disk2cxf \ (P.analysis * imag(f))))
 *(P::ZernikeTransform{T}, f::Matrix{T}) where T = ModalTrav(P.disk2cxf \ (P.analysis * f))
 *(P::ZernikeITransform, f::AbstractVector) = P.synthesis * (P.disk2cxf * ModalTrav(f).matrix)
 
-plan_transform(Z::Zernike{T}, (N,)::Tuple{Block{1}}, dims=1) where T = ZernikeTransform{T}(Int(N), Z.a, Z.b)
+plan_transform(Z::Zernike{T}, (N,)::Tuple{Block{1}}, dims=1) where T = ZernikeTransform{real(T)}(Int(N), Z.a, Z.b)
 
 ##
 # Laplacian
