@@ -68,6 +68,10 @@ import ForwardDiff: hessian
             end
         end
     end
+    
+    @testset "expand" begin
+        @test expand(Zernike(), splat((x,y) -> exp(x*cos(y))))[SVector(0.1,0.2)] ≈ expand(Zernike{ComplexF64}(), splat((x,y) -> exp(x*cos(y))))[SVector(0.1,0.2)] ≈ exp(0.1cos(0.2))
+    end
 
     @testset "Jacobi matrices" begin
         # Setup
