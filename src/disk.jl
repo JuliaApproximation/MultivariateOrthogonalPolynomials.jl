@@ -254,6 +254,7 @@ function ZernikeITransform{T}(N::Int, a::Number, b::Number) where T<:Real
 end
 
 *(P::ZernikeTransform{T}, f::AbstractArray) where T = P * convert(Matrix{T}, f)
+*(P::ZernikeTransform{T}, f::Matrix{Complex{T}}) where T = ModalTrav((P.disk2cxf \ (P.analysis * real(f))) + im * (P.disk2cxf \ (P.analysis * imag(f))))
 *(P::ZernikeTransform{T}, f::Matrix{T}) where T = ModalTrav(P.disk2cxf \ (P.analysis * f))
 *(P::ZernikeITransform, f::AbstractVector) = P.synthesis * (P.disk2cxf * ModalTrav(f).matrix)
 
