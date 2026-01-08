@@ -11,7 +11,10 @@ import ForwardDiff: hessian
         Ti = ZernikeITransform{Float64}(N, 0, 0)
 
         v = BlockedArray(randn(sum(1:N)),1:N)
-        @test T * (Ti * v) ≈ v
+        V = (Ti * v)
+        @test T * V ≈ T * Matrix{Any}(V) ≈ v
+
+        @test T * (V + im*V) ≈ T * Matrix{Any}(V + im*V) ≈ (T*V) * (1+im)
 
 
         @test_throws MethodError T * randn(15)
