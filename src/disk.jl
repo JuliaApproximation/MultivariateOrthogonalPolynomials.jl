@@ -49,6 +49,9 @@ Zernike(a::T, b::V) where {T,V} = Zernike{float(promote_type(T,V))}(a, b)
 Zernike{T}(b) where T = Zernike{T}(zero(b), b)
 Zernike{T}() where T = Zernike{T}(zero(T))
 
+AbstractQuasiArray{T}(::Zernike) where T = Zernike{T}()
+AbstractQuasiMatrix{T}(::Zernike) where T = Zernike{T}()
+
 """
     Zernike(b)
 

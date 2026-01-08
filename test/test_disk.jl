@@ -1,4 +1,4 @@
-using MultivariateOrthogonalPolynomials, ClassicalOrthogonalPolynomials, StaticArrays, BlockArrays, BandedMatrices, FastTransforms, LinearAlgebra, Test, SpecialFunctions, LazyArrays, InfiniteArrays, Base64
+using MultivariateOrthogonalPolynomials, ClassicalOrthogonalPolynomials, StaticArrays, BlockArrays, BandedMatrices, FastTransforms, LinearAlgebra, Test, SpecialFunctions, LazyArrays, InfiniteArrays, Base64, QuasiArrays
 using RecipesBase
 import MultivariateOrthogonalPolynomials: ModalTrav, grid, ZernikeTransform, ZernikeITransform, *, ModalInterlace
 import ClassicalOrthogonalPolynomials: HalfWeighted, expand
@@ -32,6 +32,8 @@ import ForwardDiff: hessian
                 ZernikeWeight{Float64}(0) == ZernikeWeight{Float64}(0, 0)
         @test ZernikeWeight(1) ≠ ZernikeWeight()
         @test ZernikeWeight() ≡ copy(ZernikeWeight())
+
+        @test AbstractQuasiArray{ComplexF64}(Zernike()) ≡ AbstractQuasiMatrix{ComplexF64}(Zernike()) ≡ Zernike{ComplexF64}()
     end
 
     @testset "Evaluation" begin
@@ -74,7 +76,7 @@ import ForwardDiff: hessian
     
     @testset "expand" begin
         @test expand(Zernike(), splat((x,y) -> exp(x*cos(y))))[SVector(0.1,0.2)] ≈ expand(Zernike{ComplexF64}(), splat((x,y) -> exp(x*cos(y))))[SVector(0.1,0.2)] ≈ exp(0.1cos(0.2))
-        @test expand(Zernike{ComplexF64}(), splat((x,y) -> exp(x*cos(y)+im*y)))[SVector(0.1,0.2)] ≈ exp(0.1cos(0.2)+im*0.2)
+        @test expand(Zernike{ComplexF64}(), splat((x,y) -> exp(x*cos(y)+im*y)))[SVector(0.1,0.2)] ≈ expand(Zernike(), splat((x,y) -> exp(x*cos(y)+im*y)))[SVector(0.1,0.2)] ≈ exp(0.1cos(0.2)+im*0.2)
     end
 
     @testset "Jacobi matrices" begin
