@@ -108,9 +108,10 @@ function *(A::TensorPlan, B::AbstractArray)
 end
 
 function checkpoints(P::RectPolynomial)
-    x,y = checkpoints.(P.args)
+    x,y = map(checkpoints,P.args)
     SVector.(x, y')
 end
+
 
 function plan_transform(P::KronPolynomial{d,<:Any,<:Fill}, (B,)::Tuple{Block{1}}, dims=1:1) where d
     @assert only(dims) == 1
