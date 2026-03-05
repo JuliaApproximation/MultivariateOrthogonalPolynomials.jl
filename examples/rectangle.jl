@@ -61,16 +61,20 @@ C = Pl * F # coefficient 3-array in tensor basis
 
 
 c = DiagTrav(C) # arrange by total degree
-ret = 0.0
-for n=1:N
-    iter=1
-    for i=reverse(1:n)
-        k=0
-        for j=reverse(1:(n-i+1)) 
-            k+=1
-            ret += c[Block(n)[iter]] * P[0.1,i] * P[0.2,j] * P[0.3,k]
-            iter+=1
+
+function check_DiagTrav3D(c,P)
+    ret = 0.0
+    for n=1:N
+        iter=1
+        for i=reverse(1:n)
+            k=0
+            for j=reverse(1:(n-i+1)) 
+                k+=1
+                ret += c[Block(n)[iter]] * P[0.1,i] * P[0.2,j] * P[0.3,k]
+                iter+=1
+            end
         end
     end
+    ret
 end
-@test ret ≈ f(0.1,0.2,0.3)
+@test check_DiagTrav3D(c,P) ≈ f(0.1,0.2,0.3)
