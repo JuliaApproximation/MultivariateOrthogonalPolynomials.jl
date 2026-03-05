@@ -70,7 +70,6 @@ for n=1:N
                 k+=1
                 ret += c[Block(n)[iter]] * P[0.1,i] * P[0.2,j] * P[0.3,k]
                 iter+=1
-                
             end
         end
 end
