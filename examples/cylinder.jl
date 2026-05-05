@@ -1,31 +1,31 @@
 using MultivariateOrthogonalPolynomials, GLMakie
 
-# --- Parameters ---
-r = 1.0   # cylinder radius
-h = 2.0   # cylinder half-height
-n = 100   # grid resolution per axis
 
-# --- 3D grid ---
-xs = LinRange(-r, r, n)
-ys = LinRange(-r, r, n)
-zs = LinRange(-h, h, n)
 
-# --- Scalar field: f(x, y, z) = sin(3z) * exp(-(x²+y²)) ---
-# Masked to NaN outside the cylinder
+x = LinRange(-1.1, 1.1, 500)
+y = x
+z = LinRange(-1, 1, 500)
 vol = [
-    (x^2 + y^2 <= r^2) ? sin(3z) * exp(-(x^2 + y^2)) : NaN
-    #sin(3z) * exp(-(x^2 + y^2)) 
-    for x in xs, y in ys, z in zs
+    (x^2 + y^2 <= 1) ? sin(3z+10x) * exp(-(x^2 + y^2)) : NaN
+    # sin(3z) * exp(-(x^2 + y^2)) 
+    for x in x, y in y, z in z
 ]
 
-# --- Plot ---
-fig = Figure(size = (800, 700))
-ax  = Axis3(fig[1, 1],
-    title   = "f(x,y,z) = sin(3z)⋅exp(-(x²+y²)) inside a Cylinder",
-    xlabel  = "X", ylabel = "Y", zlabel = "Z",
-    azimuth = π / 5
+fig = Figure(;size=(1000,1000))
+ax = LScene(fig[1, 1], show_axis=false)
+
+plt = volumeslices!(ax, x, y, z, vol; colorrange = (-1.0, 1.0))
+
+# Typical interactive pattern with sliders
+sgrid = SliderGrid(
+    fig[2, 1],
+    (label = "YZ slice (x)", range = 1:length(x)),
+    (label = "XZ slice (y)", range = 1:length(y)),
+    (label = "XY slice (z)", range = 1:length(z)),
 )
 
-# Volume rendering inside the cylinder
-plt = volumeslices!(ax,xs,ys,zs, vol)
-display(fig)
+sl_yz, sl_xz, sl_xy = sgrid.sliders
+
+on(sl_yz.value) do v; plt[:update_yz][](v) end
+on(sl_xz.value) do v; plt[:update_xz][](v) end
+on(sl_xy.value) do v; plt[:update_xy][](v) end
