@@ -211,7 +211,7 @@ _angle(rθ::RadialCoordinate) = rθ.θ
 
 function plotgrid(S::Zernike{T}, B::Block{1}) where T
     N = Int(B) ÷ 2 + 1 # polynomial degree
-    g = grid(S, Block(min(2N, MAX_PLOT_BLOCKS))) # double sampling
+    g = grid(S, Block(max(100, min(2N, MAX_PLOT_BLOCKS)))) # double sampling
     θ = [map(_angle,g[1,:]); 0]
     [permutedims(RadialCoordinate.(1,θ));
      g g[:,1];
