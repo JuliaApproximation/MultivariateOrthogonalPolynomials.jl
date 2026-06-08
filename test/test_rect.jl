@@ -305,4 +305,10 @@ Random.seed!(3242)
         @test sum(exp(x*cos(y)) for (x,y) in (0..1) × (1/3..1/2)) ≈ 0.27240475761608607
         @test sum(exp(x*cos(y)) for (x,y) in Inclusion((0..1) × (0..1))) ≈ sum(exp(x*cos(y)) for x in 0..1, y in 0..1) ≈ 1.5744082630525795 
     end
+
+    @testset "conversion bug" begin
+        P = KronPolynomial(Ultraspherical(1/2), Ultraspherical(1/2))
+        Q = KronPolynomial(Ultraspherical(1/2), Ultraspherical(3/2))
+        @test (Q \ (P*[1:10; zeros(∞)]))[1:10] ≈ (Q \ P)[1:10,1:10]*(1:10) ≈ ((Q \ P)*[1:10; zeros(∞)])[1:10]
+    end
 end
