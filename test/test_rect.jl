@@ -310,5 +310,13 @@ Random.seed!(3242)
         P = KronPolynomial(Ultraspherical(1/2), Ultraspherical(1/2))
         Q = KronPolynomial(Ultraspherical(1/2), Ultraspherical(3/2))
         @test (Q \ (P*[1:10; zeros(∞)]))[1:10] ≈ (Q \ P)[1:10,1:10]*(1:10) ≈ ((Q \ P)*[1:10; zeros(∞)])[1:10]
+
+        CP = KronPolynomial(Ultraspherical(-1/2), Legendre())
+        c = transform(CP, splat((x,y) -> cos((x + 1)sin(y - 1))))
+        f = CP*c
+        M = CP'CP
+        N = 30
+        @test (M*c)[Block.(1:N)] ≈ M[Block.(1:N),Block.(1:N)] * c[Block.(1:N)] ≈ sparse(M[Block.(1:N),Block.(1:N)]) * c[Block.(1:N)]
+        @test c'M*c ≈ f'f
     end
 end
