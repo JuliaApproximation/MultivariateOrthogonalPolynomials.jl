@@ -8,7 +8,7 @@ using ClassicalOrthogonalPolynomials, FastTransforms, BlockBandedMatrices, Block
 
 import Base: axes, in, ==, +, -, /, *, ^, \, copy, copyto!, OneTo, getindex, size, oneto, all, resize!, BroadcastStyle, similar, fill!, setindex!, convert, show, summary, diff
 import Base.Broadcast: Broadcasted, broadcasted, DefaultArrayStyle
-import DomainSets: boundary, EuclideanDomain
+import DomainSets: boundary, EuclideanDomain, ×
 
 import QuasiArrays: LazyQuasiMatrix, LazyQuasiArrayStyle, domain, vec_layout, reshape_layout
 import ContinuumArrays: @simplify, Weight, weight, grid, plotgrid, TransformFactorization, ExpansionLayout, plotvalues, unweighted, plan_transform, checkpoints, transform_ldiv, AbstractBasisLayout, basis_axes, Inclusion, grammatrix, weaklaplacian, layout_broadcasted, laplacian, abslaplacian, laplacian_axis, abslaplacian_axis, diff_layout, operatororder, broadcastbasis, KronExpansionLayout

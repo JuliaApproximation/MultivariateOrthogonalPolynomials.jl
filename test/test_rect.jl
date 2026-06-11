@@ -3,6 +3,7 @@ using ClassicalOrthogonalPolynomials: expand, coefficients, recurrencecoefficien
 using MultivariateOrthogonalPolynomials: weaklaplacian, ClenshawKron
 using ContinuumArrays: plotgridvalues, ExpansionLayout, basis, grid
 using Base: oneto
+using DomainSets: ×
 
 Random.seed!(3242)
 
