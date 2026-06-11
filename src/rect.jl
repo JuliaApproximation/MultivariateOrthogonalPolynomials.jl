@@ -26,7 +26,7 @@ const RectPolynomial{T, PP} = KronPolynomial{2, T, PP}
 
 
 
-axes(P::KronPolynomial) = (Inclusion(×(map(domain, axes.(P.args, 1))...)), _krontrav_axes(axes.(P.args, 2)...))
+axes(P::KronPolynomial) = (Inclusion(cartesianproduct(map(domain, axes.(P.args, 1))...)), _krontrav_axes(axes.(P.args, 2)...))
 
 
 normalized(P::KronPolynomial) = KronPolynomial(map(normalized, P.args))
