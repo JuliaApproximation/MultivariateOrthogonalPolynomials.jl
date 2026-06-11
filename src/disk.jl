@@ -1,4 +1,5 @@
 ClassicalOrthogonalPolynomials.checkpoints(d::UnitDisk{T}) where T = [SVector{2,T}(0.1,0.2), SVector{2,T}(0.2,0.3)]
+pointchoice(d::UnitDisk{T}) where T = SVector{2,T}(0,0)
 
 """
     ZernikeWeight(a, b)
