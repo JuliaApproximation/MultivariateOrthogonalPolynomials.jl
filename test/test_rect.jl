@@ -3,7 +3,6 @@ using ClassicalOrthogonalPolynomials: expand, coefficients, recurrencecoefficien
 using MultivariateOrthogonalPolynomials: weaklaplacian, ClenshawKron
 using ContinuumArrays: plotgridvalues, ExpansionLayout, basis, grid
 using Base: oneto
-using DomainSets: ×
 
 Random.seed!(3242)
 
@@ -303,8 +302,8 @@ Random.seed!(3242)
         @test expand(exp(x*cos(y)) for (x,y) in ChebyshevInterval()^2)[SVector(0.1,0.2)] ≈ exp(0.1*cos(0.2))
 
         @test sum(exp(x*cos(y)) for (x,y) in ChebyshevInterval()^2) ≈ 4.504564632388105
-        @test sum(exp(x*cos(y)) for (x,y) in (0..1) × (1/3..1/2)) ≈ 0.27240475761608607
-        @test sum(exp(x*cos(y)) for (x,y) in Inclusion((0..1) × (0..1))) ≈ sum(exp(x*cos(y)) for x in 0..1, y in 0..1) ≈ 1.5744082630525795 
+        @test sum(exp(x*cos(y)) for (x,y) in cartesianproduct(0..1, 1/3..1/2)) ≈ 0.27240475761608607
+        @test sum(exp(x*cos(y)) for (x,y) in Inclusion(cartesianproduct(0..1, 0..1))) ≈ sum(exp(x*cos(y)) for x in 0..1, y in 0..1) ≈ 1.5744082630525795 
     end
 
     @testset "conversion bug" begin
