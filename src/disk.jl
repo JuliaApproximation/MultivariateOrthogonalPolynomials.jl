@@ -71,6 +71,8 @@ summary(io::IO, P::Zernike) = print(io, "Zernike($(P.a), $(P.b))")
 
 orthogonalityweight(Z::Zernike) = ZernikeWeight(Z.a, Z.b)
 
+basis_axes(::Inclusion{<:Any,<:UnitDisk}, v) = Zernike()
+
 zerniker(ℓ, m, a, b, r::T) where T = sqrt(convert(T,2)^(m+a+b+2-iszero(m))/π) * r^m * normalizedjacobip((ℓ-m) ÷ 2, b, m+a, 2r^2-1)
 zerniker(ℓ, m, b, r) = zerniker(ℓ, m, zero(b), b, r)
 zerniker(ℓ, m, r) = zerniker(ℓ, m, zero(r), r)
