@@ -66,19 +66,19 @@ function weaklaplacian(P::RectPolynomial)
     A,B = P.args
     Δ_A,Δ_B = weaklaplacian(A), weaklaplacian(B)
     M_A,M_B = grammatrix(A), grammatrix(B)
-    KronTrav(Δ_A,M_B) + KronTrav(M_A,Δ_B)
+    KronTrav(M_B,Δ_A) + KronTrav(Δ_B,M_A)
 end
 
 function \(P::RectPolynomial, Q::RectPolynomial)
     PA,PB = P.args
     QA,QB = Q.args
-    krontrav(PA\QA, PB\QB)
+    krontrav(PB\QB, PA\QA)
 end
 
 @simplify function *(Ac::QuasiAdjoint{<:Any,<:RectPolynomial}, B::RectPolynomial)
     PA,PB = Ac'.args
     QA,QB = B.args
-    KronTrav(PA'QA, PB'QB)
+    KronTrav(PB'QB, PA'QA)
 end
 
 
