@@ -109,10 +109,6 @@ function *(A::TensorPlan, B::AbstractArray)
     B
 end
 
-checkpoints(P::ProductDomain) = tensorgrid(map(checkpoints, components(P))...)
-tensorgrid(x,y) = SVector.(x, y')
-
-
 function plan_transform(P::KronPolynomial{d,<:Any,<:Fill}, (B,)::Tuple{Block{1}}, dims=1:1) where d
     @assert only(dims) == 1
 
