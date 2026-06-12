@@ -328,6 +328,18 @@ import ForwardDiff: hessian
         g = MultivariateOrthogonalPolynomials.plotgrid(W[:,1:3])
         @test all(rep[1].args .≈ (first.(g),last.(g),u[g]))
     end
+
+    @testset "sum" begin
+        P = Zernike()
+        x,y = coordinates(P)
+        @test sum(expand(P, 𝐱 -> 1)) ≈ π
+        @test sum(expand(P, 𝐱 -> ((x,y) = 𝐱; exp(x*cos(y))))) ≈ sum(exp.(x.*cos.(y))) ≈ sum(exp.(x.*cos.(y)) for (x,y) in UnitDisk()) ≈ 3.4898933353782744
+        @test [sum(P[:,k] .* P[:,j]) for k=1:10, j=1:10] ≈ I
+    end
+
+    @testset "Show" begin
+        @test stringmime("text/plain", Zernike()) == "Zernike(0.0, 0.0)"
+    end
 end
 
 @testset "Fractional Laplacian on Unit Disk" begin
@@ -559,17 +571,5 @@ end
                 @test uexplicitcfs[1:100] ≈ ucomputed[1:100]
             end
         end
-    end
-
-    @testset "sum" begin
-        P = Zernike()
-        x,y = coordinates(P)
-        @test sum(expand(P, 𝐱 -> 1)) ≈ π
-        @test sum(expand(P, 𝐱 -> ((x,y) = 𝐱; exp(x*cos(y))))) ≈ sum(exp.(x.*cos.(y))) ≈ sum(((x,y) = 𝐱; exp.(x.*cos.(y))) for 𝐱 in UnitDisk()) ≈ 3.4898933353782744
-        @test [sum(P[:,k] .* P[:,j]) for k=1:10, j=1:10] ≈ I
-    end
-
-    @testset "Show" begin
-        @test stringmime("text/plain", Zernike()) == "Zernike(0.0, 0.0)"
     end
 end
