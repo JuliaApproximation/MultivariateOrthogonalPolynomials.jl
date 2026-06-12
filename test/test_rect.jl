@@ -1,8 +1,10 @@
-using MultivariateOrthogonalPolynomials, ClassicalOrthogonalPolynomials, StaticArrays, LinearAlgebra, BlockArrays, FillArrays, Base64, LazyBandedMatrices, Test
-using ClassicalOrthogonalPolynomials: expand, coefficients, recurrencecoefficients
+using MultivariateOrthogonalPolynomials, ClassicalOrthogonalPolynomials, StaticArrays, LinearAlgebra, BlockArrays, FillArrays, Base64, LazyBandedMatrices, ArrayLayouts, Random, StatsBase, SparseArrays, DomainSets, Test
+using ClassicalOrthogonalPolynomials: expand, coefficients, recurrencecoefficients, normalized
 using MultivariateOrthogonalPolynomials: weaklaplacian, ClenshawKron
-using ContinuumArrays: plotgridvalues
+using ContinuumArrays: plotgridvalues, ExpansionLayout, basis, grid
 using Base: oneto
+
+Random.seed!(3242)
 
 @testset "RectPolynomial" begin
     @testset "Evaluation" begin
@@ -30,17 +32,47 @@ using Base: oneto
         @test T²ₙ \ one.(x) == [1; zeros(14)]
         @test (T² \ x)[1:5] ≈[0;1;zeros(3)]
 
-        f = expand(T², splat((x,y) -> exp(x*cos(y-0.1))))
-        @test f[SVector(0.1,0.2)] ≈ exp(0.1*cos(0.1))
+        f = splat((x,y) -> exp(x*cos(y-0.1)))
+        𝐟 = expand(T², f)
+        @test 𝐟[SVector(0.1,0.2)] ≈ f(SVector(0.1,0.2))
 
         U² = RectPolynomial(Fill(U, 2))
-
-        @test f[SVector(0.1,0.2)] ≈ exp(0.1cos(0.1))
+        𝐟 = expand(U², f)
+        @test 𝐟[SVector(0.1,0.2)] ≈ f(SVector(0.1,0.2))
 
         TU = RectPolynomial(T,U)
-        x,F = ClassicalOrthogonalPolynomials.plan_grid_transform(TU, Block(5))
-        f = expand(TU, splat((x,y) -> exp(x*cos(y-0.1))))
-        @test f[SVector(0.1,0.2)] ≈ exp(0.1*cos(0.1))
+        𝐟 = expand(TU, f)
+        @test 𝐟[SVector(0.1,0.2)] ≈ f(SVector(0.1,0.2))
+        
+        @testset "matrix" begin
+            N = 10
+            𝐱 = grid(T², Block(N))
+            
+            @test T²[𝐱,1] == ones(N,N)
+            @test T²[𝐱,2] == first.(𝐱)
+            @test T²[𝐱,1:3] == T²[𝐱,Block.(Base.OneTo(2))] == T²[𝐱,[Block(1),Block(2)]] == [ones(N,N) ;;; first.(𝐱) ;;; last.(𝐱)]
+            @test T²[𝐱,Block(1)] == [ones(N,N) ;;;]
+            @test T²[𝐱,[1 2; 3 4]] ≈ [T²[𝐱,[1,3]] ;;;; T²[𝐱,[2,4]]]
+            
+            
+            F = plan_transform(T², Block(N))
+            @test F * f.(𝐱) ≈ transform(T², f)[Block.(1:N)] atol=1E-6
+            
+            x,y = coordinates(ChebyshevInterval()^2)
+            A = [one(x) x y]
+            F = plan_transform(T², (Block(N), 3), 1)
+            @test F * A[𝐱,:] ≈ [I(3); zeros(52,3)]
+
+            @test T² \ A ≈ [I(3); Zeros(∞,3)]
+
+            P² = RectPolynomial(Fill(Legendre(),2))
+            F = plan_transform(P², (Block(N),3), 1)
+            𝐱 = grid(P², Block(N))
+            @test F * A[𝐱,:] ≈ P²[:,Block.(Base.OneTo(N))] \ A ≈ [I(3); Zeros(52,3)]
+
+            F = plan_transform(normalized(P²), (Block(N),3), 1)
+            @test F * A[𝐱,:] ≈ normalized(P²)[:,Block.(Base.OneTo(N))] \ A ≈ [Diagonal([2, 2/sqrt(3), 2/sqrt(3)]); Zeros(52,3)]
+        end
     end
 
     @testset "Jacobi matrices" begin
@@ -158,11 +190,27 @@ using Base: oneto
     end
 
     @testset "sum" begin
+        for P in (RectPolynomial(Legendre(),Legendre()), RectPolynomial(Legendre(),Chebyshev()))
+            p₀ = expand(P, 𝐱 -> 1)
+            @test sum(p₀) ≈ 4.0
+            f = expand(P, splat((x,y) -> exp(cos(x^2*y))))
+            @test sum(f) ≈ 10.546408460894801 # empirical
+        end
+    end
+
+    @testset "diff" begin
         P = RectPolynomial(Legendre(),Legendre())
-        p₀ = expand(P, 𝐱 -> 1)
-        @test sum(p₀) ≈ 4.0
-        f = expand(P, splat((x,y) -> exp(cos(x^2*y))))
-        @test sum(f) ≈ 10.546408460894801 # empirical
+        f = expand(P, splat((x,y) -> 1))
+        @test diff(f,(1,0))[SVector(0.1,0.2)] == diff(f,(0,1))[SVector(0.1,0.2)] == 0.0
+        f = expand(P, splat((x,y) -> x))
+        @test diff(f,(1,0))[SVector(0.1,0.2)] ≈ 1.0
+        @test diff(f,(0,1))[SVector(0.1,0.2)] == 0.0
+        f = expand(P, splat((x,y) -> cos(x*exp(y))))
+        @test diff(f,(1,0))[SVector(0.1,0.2)] ≈ -sin(0.1*exp(0.2))*exp(0.2)
+        @test diff(f,(0,1))[SVector(0.1,0.2)] ≈ -0.1*sin(0.1*exp(0.2))*exp(0.2)
+        @test diff(f,(2,0))[SVector(0.1,0.2)] ≈ -cos(0.1*exp(0.2))*exp(0.4)
+        @test diff(f,(1,1))[SVector(0.1,0.2)] ≈ -sin(0.1*exp(0.2))*exp(0.2) - 0.1*cos(0.1*exp(0.2))*exp(0.4)
+        @test diff(f,(0,2))[SVector(0.1,0.2)] ≈ -0.1*sin(0.1*exp(0.2))*exp(0.2) - 0.1^2*cos(0.1*exp(0.2))*exp(0.4)
     end
 
     @testset "KronTrav bug" begin
@@ -213,5 +261,72 @@ using Base: oneto
         @test (𝐛 .* 𝐚)[SVector(0.1,0.2)] ≈ 𝐚[SVector(0.1,0.2)]𝐛[SVector(0.1,0.2)]
 
         𝐜 = expand(RectPolynomial(Legendre(),Jacobi(1,0)),splat((x,y) -> cos(x*sin(y))))
+    end
+
+    @testset "reshape/vec" begin
+        P = RectPolynomial(Legendre(),Chebyshev())
+        f = expand(P, splat((x,y) -> cos((x-0.1)*exp(y))))
+        F = reshape(f)
+        @test F[0.1,0.2] ≈ f[SVector(0.1,0.2)]
+        @test vec(F)[SVector(0.1,0.2)] ≈ f[SVector(0.1,0.2)]
+
+        g = F[:,0.2]
+        h = F[0.1,:]
+        @test MemoryLayout(g) isa ExpansionLayout
+        @test MemoryLayout(h) isa ExpansionLayout
+        @test g[0.1] ≈ f[SVector(0.1,0.2)]
+        @test h[0.2] ≈ f[SVector(0.1,0.2)]
+
+        @test sum(F; dims=1)[1,0.2] ≈ exp(-0.2)*(sin(0.9exp(0.2)) + sin(1.1exp(0.2)))
+        # TODO: should be matrix but isn't because of InfiniteArrays/src/reshapedarray.jl:77
+        @test_broken sum(F; dims=2)[0.1,1] ≈ 2
+        @test sum(F; dims=2)[0.1] ≈ 2
+    end
+
+    @testset "sample" begin
+        P = RectPolynomial(Legendre(),Legendre())
+        f = expand(P, splat((x,y) -> exp(x*cos(y-0.1))))
+        F = reshape(f)
+        @test sum(F; dims=1)[1,0.2] ≈ 2.346737615950585
+        @test sum(F; dims=2)[0.1,1] ≈ 2.1748993079723618
+        
+        x,y = coordinates(P)
+        @test sample(f) isa SVector
+        @test sum(sample(f, 100_000))/100_000 ≈ [sum(x .* f)/sum(f),sum(y .* f)/sum(f)] rtol=1E-1
+    end
+
+    @testset "qr" begin
+        x,y = coordinates(ChebyshevInterval()^2)
+        A = [one(x) cos.(x) cos.(y)]
+
+        @test A[SVector(0.1,0.2),1] ≈ 1
+        @test A[SVector(0.1,0.2),1:3] ≈ A[SVector(0.1,0.2),:] ≈ [1,cos(0.1),cos(0.2)]
+
+        Q,R = qr(A)
+        @test Q[SVector(0.1,0.2),1] ≈ 1/2
+        @test Q[SVector(0.1,0.2),2] ≈ (cos(0.1) - sin(1))/sqrt(2cos(2) + sin(2))
+        @test Q[SVector(0.1,0.2),3] ≈ (cos(0.2) - sin(1))/sqrt(2cos(2) + sin(2))
+    end
+
+    @testset "sum/expand on rectangles" begin
+        @test expand(exp(x*cos(y)) for (x,y) in ChebyshevInterval()^2)[SVector(0.1,0.2)] ≈ exp(0.1*cos(0.2))
+
+        @test sum(exp(x*cos(y)) for (x,y) in ChebyshevInterval()^2) ≈ 4.504564632388105
+        @test sum(exp(x*cos(y)) for (x,y) in cartesianproduct(0..1, 1/3..1/2)) ≈ 0.27240475761608607
+        @test sum(exp(x*cos(y)) for (x,y) in Inclusion(cartesianproduct(0..1, 0..1))) ≈ sum(exp(x*cos(y)) for x in 0..1, y in 0..1) ≈ 1.5744082630525795 
+    end
+
+    @testset "conversion bug" begin
+        P = KronPolynomial(Ultraspherical(1/2), Ultraspherical(1/2))
+        Q = KronPolynomial(Ultraspherical(1/2), Ultraspherical(3/2))
+        @test (Q \ (P*[1:10; zeros(∞)]))[1:10] ≈ (Q \ P)[1:10,1:10]*(1:10) ≈ ((Q \ P)*[1:10; zeros(∞)])[1:10]
+
+        CP = KronPolynomial(Ultraspherical(-1/2), Legendre())
+        c = transform(CP, splat((x,y) -> cos((x + 1)sin(y - 1))))
+        f = CP*c
+        M = CP'CP
+        N = 30
+        @test (M*c)[Block.(1:N)] ≈ M[Block.(1:N),Block.(1:N)] * c[Block.(1:N)] ≈ sparse(M[Block.(1:N),Block.(1:N)]) * c[Block.(1:N)]
+        @test c'M*c ≈ f'f
     end
 end

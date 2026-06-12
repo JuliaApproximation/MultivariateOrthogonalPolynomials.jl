@@ -598,4 +598,26 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
         c = \(A, W'f; tolerance=1E-4)
         @test (W*c)[SVector(0.1,0.2)] ≈ -0.005927539175184257 # empirical
     end
+
+    @testset "ladder" begin
+        p = (n,k,a,b,c,d,x,y) -> jacobip(n-k,2k+b+c+d+1,a,2x-1) * (1-x)^k * jacobip(k,c,b,2y/(1-x)-1)
+
+        a,b,c,d = 0.1,0.2,0.3,0
+        P = JacobiTriangle(a,b,c)
+        x,y = 𝐱 = SVector(0.1,0.2)
+        z = 1 - x - y
+        n,k = 3,2
+        Pₙₖ = P[𝐱, Block(n+1)[k+1]]
+        Pₙₖ_x = diff(P, (1,0))[𝐱,Block(n+1)[k+1]]
+        Pₙₖ_y = diff(P, (0,1))[𝐱,Block(n+1)[k+1]]
+        Pᵇᶜ = JacobiTriangle(a,b+1,c+1)
+        Pₙ₋₁ₖ₋₁_y = Pᵇᶜ[𝐱, Block(n)[k]]
+        Pₙₖᶜᵈ⁻ = p(n,k,a,b,c+1,d-1,x,y)
+        Pₙₖᵇᵈ⁻ = p(n,k,a,b+1,c,d-1,x,y)
+
+
+        @test Pₙₖ_y ≈ (k+b+c+1)*Pₙ₋₁ₖ₋₁_y #M₀₁
+        @test (k+b+c+1)*Pₙₖ + y*Pₙₖ_y ≈ (k+b+c+1)*Pₙₖᶜᵈ⁻ #M₀₂
+        @test (k+b+c+1)*Pₙₖ - z*Pₙₖ_y ≈ (k+b+c+1)*Pₙₖᵇᵈ⁻ #M₀₂
+    end
 end
