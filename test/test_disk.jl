@@ -333,7 +333,7 @@ import ForwardDiff: hessian
         P = Zernike()
         x,y = coordinates(P)
         @test sum(expand(P, 𝐱 -> 1)) ≈ π
-        @test sum(expand(P, 𝐱 -> ((x,y) = 𝐱; exp(x*cos(y))))) ≈ sum(exp.(x.*cos.(y))) ≈ sum(exp.(x.*cos.(y)) for (x,y) in UnitDisk()) ≈ 3.4898933353782744
+        @test sum(expand(P, 𝐱 -> let (x,y) = 𝐱; exp(x*cos(y)) end)) ≈ sum(exp.(x.*cos.(y))) ≈ sum(exp.(x.*cos.(y)) for (x,y) in UnitDisk()) ≈ 3.4898933353782744
         @test [sum(P[:,k] .* P[:,j]) for k=1:10, j=1:10] ≈ I
     end
 
