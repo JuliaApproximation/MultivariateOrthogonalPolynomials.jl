@@ -81,6 +81,8 @@ end
     KronTrav(PB'QB, PA'QA)
 end
 
+grammatrix(P::KronPolynomial) = KronTrav(reverse(grammatrix.(P.args))...)
+    
 
 struct ApplyPlan{T, F, Pl}
     f::F
@@ -106,12 +108,6 @@ function *(A::TensorPlan, B::AbstractArray)
     end
     B
 end
-
-function checkpoints(P::RectPolynomial)
-    x,y = map(checkpoints,P.args)
-    SVector.(x, y')
-end
-
 
 function plan_transform(P::KronPolynomial{d,<:Any,<:Fill}, (B,)::Tuple{Block{1}}, dims=1:1) where d
     @assert only(dims) == 1

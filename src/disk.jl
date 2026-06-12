@@ -1,4 +1,5 @@
 ClassicalOrthogonalPolynomials.checkpoints(d::UnitDisk{T}) where T = [SVector{2,T}(0.1,0.2), SVector{2,T}(0.2,0.3)]
+pointchoice(d::UnitDisk{T}) where T = SVector{2,T}(0,0)
 
 """
     ZernikeWeight(a, b)
@@ -70,6 +71,8 @@ show(io::IO, P::Zernike) = summary(io, P)
 summary(io::IO, P::Zernike) = print(io, "Zernike($(P.a), $(P.b))")
 
 orthogonalityweight(Z::Zernike) = ZernikeWeight(Z.a, Z.b)
+
+basis_axes(::Inclusion{<:Any,<:UnitDisk}, v) = Zernike()
 
 zerniker(ℓ, m, a, b, r::T) where T = sqrt(convert(T,2)^(m+a+b+2-iszero(m))/π) * r^m * normalizedjacobip((ℓ-m) ÷ 2, b, m+a, 2r^2-1)
 zerniker(ℓ, m, b, r) = zerniker(ℓ, m, zero(b), b, r)
