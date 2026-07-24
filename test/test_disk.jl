@@ -16,6 +16,8 @@ import ForwardDiff: hessian
 
         @test T * (V + im*V) ≈ T * Matrix{Any}(V + im*V) ≈ (T*V) * (1+im)
 
+        @test inv(T) * (T * V) ≈ V
+
 
         @test_throws MethodError T * randn(15)
     end
