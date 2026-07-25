@@ -228,7 +228,7 @@ function size(A::Conjugate)
     (sz,sz)
 end
 
-@inline arguments(A::Conjugate) = (A.Q', A.A, A.Q)
+@inline arguments(::Union{ApplyLayout{typeof(*)},ApplyBandedBlockBandedLayout{typeof(*)}}, A::Conjugate) = (A.Q', A.A, A.Q)
 @inline ApplyMatrix(A::Conjugate{T}) where T = ApplyMatrix{T}(*, arguments(A)...)
 blockbandwidths(A::Conjugate) = blockbandwidths(ApplyMatrix(A))
 subblockbandwidths(A::Conjugate) = subblockbandwidths(ApplyMatrix(A))
