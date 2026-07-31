@@ -7,8 +7,10 @@ struct DunklXuDisk{T, V} <: BivariateOrthogonalPolynomial{T}
     β::V
 end
 
+DunklXuDisk{T}(β) where T = DunklXuDisk{T, typeof(β)}(β)
 DunklXuDisk(β::T) where T = DunklXuDisk{float(T), T}(β)
 DunklXuDisk() = DunklXuDisk(0)
+DunklXuDisk{T}() where T = DunklXuDisk{T}(0)
 
 ==(D1::DunklXuDisk, D2::DunklXuDisk) = D1.β == D2.β
 
@@ -18,6 +20,17 @@ copy(A::DunklXuDisk) = A
 show(io::IO, P::DunklXuDisk) = summary(io, P)
 summary(io::IO, P::DunklXuDisk) = print(io, "DunklXuDisk($(P.β))")
 
+function getindex(P::DunklXuDisk{T}, 𝐱::StaticVector{2}, JR::BlockOneTo) where T
+    x,y = 𝐱
+    n = Int(last(JR))
+    ret = zeros(T, n, n)
+    β = P.β
+    ρ = sqrt(1-x^2)
+    for j = 1:n
+        ret[1:n-j+1,j] = Jacobi{T}(j+β-1/2, j+β-1/2)[x,1:n-j+1] * ρ^(j-1) * Jacobi{T}(β, β)[y/ρ,j]
+    end
+    DiagTrav(ret)
+end
 
 """
     DunklXuDiskWeight(β)
@@ -36,6 +49,11 @@ axes(P::DunklXuDiskWeight{T}) where T = (Inclusion(UnitDisk{T}()),)
 
 show(io::IO, P::DunklXuDiskWeight) = summary(io, P)
 summary(io::IO, P::DunklXuDiskWeight) = print(io, "(1-x^2-y^2)^$(P.β) on the unit disk")
+
+function getindex(P::DunklXuDiskWeight, 𝐱::StaticVector{2})
+    r = norm(𝐱)
+    (1-r^2)^P.β
+end
 
 const WeightedDunklXuDisk{T} = WeightedBasis{T,<:DunklXuDiskWeight,<:DunklXuDisk}
 
