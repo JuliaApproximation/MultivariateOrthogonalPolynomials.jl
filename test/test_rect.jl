@@ -301,7 +301,9 @@ Random.seed!(3242)
         x,y = coordinates(ChebyshevInterval()^2)
         A = [one(x) cos.(x) cos.(y)]
 
-        @test A[SVector(0.1,0.2),1] ≈ 1
+        @test A[SVector(0.1,0.2),1] == 1
+        @test A[SVector(0.1,0.2),2] == cos(0.1)
+        @test A[SVector(0.1,0.2),3] == cos(0.2)
         @test A[SVector(0.1,0.2),1:3] ≈ A[SVector(0.1,0.2),:] ≈ [1,cos(0.1),cos(0.2)]
 
         Q,R = qr(A)
