@@ -1,6 +1,6 @@
 name = "MultivariateOrthogonalPolynomials"
 uuid = "4f6956fd-4f93-5457-9149-7bfc4b2ce06d"
-version = "0.9.10"
+version = "0.9.11"
 
 [deps]
 ArrayLayouts = "4c555306-a7a7-4459-81d9-ec55ddd5c99a"
@@ -35,7 +35,7 @@ BandedMatrices = "1"
 BlockArrays = "1.7.3"
 BlockBandedMatrices = "0.13"
 ClassicalOrthogonalPolynomials = "0.15.8"
-ContinuumArrays = "0.20.4"
+ContinuumArrays = "0.20.4, 0.21"
 DomainSets = "0.7, 0.8"
 FastTransforms = "0.17"
 FillArrays = "1.0"

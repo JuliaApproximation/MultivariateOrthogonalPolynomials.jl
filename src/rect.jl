@@ -84,15 +84,6 @@ end
 grammatrix(P::KronPolynomial) = KronTrav(reverse(grammatrix.(P.args))...)
     
 
-struct ApplyPlan{T, F, Pl}
-    f::F
-    plan::Pl
-end
-
-ApplyPlan(f, P) = ApplyPlan{eltype(P), typeof(f), typeof(P)}(f, P)
-
-*(A::ApplyPlan, B::AbstractArray) = A.f(A.plan*B)
-
 basis_axes(d::Inclusion{<:Any,<:ProductDomain}, v) = KronPolynomial(map(d -> basis(Inclusion(d)),components(d.domain))...)
 basis_axes(d::Inclusion{<:Any,<:DomainSets.FixedIntervalProduct{N,T,D}}, v) where {N,T,D} = KronPolynomial(Fill(basis(Inclusion(D())), N))
 
