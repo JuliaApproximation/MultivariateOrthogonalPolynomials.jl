@@ -41,14 +41,6 @@ abslaplacian_axis(::Inclusion{<:SVector{2}}, A; dims...) = -(diff(A, (2,0); dims
 coordinates(P::AbstractQuasiArray) = (first.(axes(P,1)), last.(axes(P,1)))
 coordinates(P::Domain) = coordinates(Inclusion(P))
 
-function diff_layout(::AbstractBasisLayout, a, (k,j)::NTuple{2,Int}; dims...)
-    (k < 0 || j < 0) && throw(ArgumentError("order must be non-negative"))
-    k == j == 0 && return a
-    ((k,j) == (1,0) || (k,j) == (0,1)) && return diff(a, Val((k,j)); dims...)
-    k ≥ j && return diff(diff(a, (1,0)), (k-1,j))
-    diff(diff(a, (0,1)), (k,j-1))
-end
-
 
 include("ModalInterlace.jl")
 include("clenshawkron.jl")
