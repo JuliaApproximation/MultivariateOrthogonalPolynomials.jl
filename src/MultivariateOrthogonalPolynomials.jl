@@ -13,11 +13,11 @@ import DomainSets: boundary, EuclideanDomain
 import QuasiArrays: LazyQuasiMatrix, LazyQuasiArrayStyle, domain, vec_layout, reshape_layout, pointchoice
 import ContinuumArrays: @simplify, Weight, weight, grid, plotgrid, TransformFactorization, ExpansionLayout, plotvalues, unweighted, plan_transform, checkpoints, transform_ldiv, AbstractBasisLayout, basis_axes, Inclusion, grammatrix, weaklaplacian, layout_broadcasted, laplacian, abslaplacian, laplacian_axis, abslaplacian_axis, diff_layout, operatororder, broadcastbasis, KronExpansionLayout, ApplyPlan
 
-import ArrayLayouts: MemoryLayout, sublayout, sub_materialize
+import ArrayLayouts: MemoryLayout, sublayout, sub_materialize, mul
 import BlockArrays: block, blockindex, BlockSlice, viewblock, blockcolsupport, AbstractBlockStyle, BlockStyle
 import BlockBandedMatrices: _BandedBlockBandedMatrix, AbstractBandedBlockBandedMatrix, _BandedMatrix, blockbandwidths, subblockbandwidths
 import LinearAlgebra: factorize
-import LazyArrays: arguments, paddeddata, LazyArrayStyle, LazyLayout, PaddedLayout, applylayout, LazyMatrix, ApplyMatrix, ApplyLayout
+import LazyArrays: arguments, paddeddata, LazyArrayStyle, LazyLayout, PaddedLayout, applylayout, LazyMatrix, ApplyMatrix, ApplyLayout, simplifiable
 import LazyBandedMatrices: LazyBandedBlockBandedLayout, AbstractBandedBlockBandedLayout, AbstractLazyBandedBlockBandedLayout, _krontrav_axes, DiagTravLayout, diagtrav, invdiagtrav, ApplyBandedBlockBandedLayout, krontrav
 import InfiniteArrays: InfiniteCardinal, OneToInf
 

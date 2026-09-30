@@ -2,9 +2,12 @@ struct KronPolynomial{d, T, PP} <: MultivariateOrthogonalPolynomial{d, T}
     args::PP
 end
 
-KronPolynomial{d,T}(a::Vararg{Any,d}) where {d,T} = KronPolynomial{d,T,typeof(a)}(a)
-KronPolynomial{d}(a::Vararg{Any,d}) where d = KronPolynomial{d,mapreduce(eltype, promote_type, a)}(a...)
-KronPolynomial(a::Vararg{Any,d}) where d = KronPolynomial{d}(a...)
+KronPolynomial{d,T}(a::NTuple{d,Any}) where {d,T} = KronPolynomial{d,T,typeof(a)}(a)
+KronPolynomial{d}(a::NTuple{d,Any}) where d = KronPolynomial{d,mapreduce(eltype, promote_type, a)}(a)
+KronPolynomial(a::NTuple{d,Any}) where d = KronPolynomial{d}(a)
+KronPolynomial{d,T}(a::Vararg{Any,d}) where {d,T} = KronPolynomial{d,T}(a)
+KronPolynomial{d}(a::Vararg{Any,d}) where d = KronPolynomial{d}(a)
+KronPolynomial(a::Vararg{Any,d}) where d = KronPolynomial{d}(a)
 KronPolynomial{d,T}(a::AbstractVector) where {d,T} = KronPolynomial{d,T,typeof(a)}(a)
 KronPolynomial{d}(a::AbstractVector) where d = KronPolynomial{d,eltype(eltype(a))}(a)
 KronPolynomial(a::AbstractVector) = KronPolynomial{length(a)}(a)
@@ -80,6 +83,16 @@ end
     QA,QB = B.args
     KronTrav(PB'QB, PA'QA)
 end
+
+simplifiable(::typeof(*), ::QuasiAdjoint{T,<:KronPolynomial{d}}, ::AbstractQuasiVector) where {d,T} = Val(true)
+simplifiable(::typeof(*), ::QuasiAdjoint{T,<:AbstractQuasiVector}, ::KronPolynomial{d}) where {d,T} = Val(true)
+function mul(Ac::QuasiAdjoint{T,<:KronPolynomial{d}}, B::AbstractQuasiVector) where {d,T}
+    P = KronPolynomial{d, T}(map(_ -> Legendre{eltype(Ac)}(), parent(Ac).args))
+    (Ac * P) * (P \ B)
+end
+
+mul(B::QuasiAdjoint{T,<:AbstractQuasiVector}, A::KronPolynomial{d}) where {d,T} = (A'B')'
+
 
 grammatrix(P::KronPolynomial) = KronTrav(reverse(grammatrix.(P.args))...)
     

@@ -39,7 +39,7 @@ A = [M₁ Z₁ D₁';
      Z₁ M₂ D₂';
      D₁ D₂ Z₂]
 
-f = expand(P², splat((x,y) -> 2*(-1+x^2)*cos((1+x)sin(1-y))+2*(-1+y^2)cos((1+x)sin(1-y))-(-1+x)*(1+x)^3*(-1+y^2)*cos(1-y)^2*cos((1+x)*sin(1-y))-(-1+x^2)*(-1+y^2)*cos((1+x)*sin(1-y))sin(1-y)^2+4*(-1+x)*(1+x)^2*y*cos(1-y)sin((1+x)sin(1-y))-4x*(-1+y^2)*sin(1-y)sin((1+x)sin(1-y))+(-1+x)*(1+x)^2*(-1+y^2)*sin(1-y)*sin((1+x)sin(1-y))))
+f = [2*(-1+x^2)*cos((1+x)sin(1-y))+2*(-1+y^2)cos((1+x)sin(1-y))-(-1+x)*(1+x)^3*(-1+y^2)*cos(1-y)^2*cos((1+x)*sin(1-y))-(-1+x^2)*(-1+y^2)*cos((1+x)*sin(1-y))sin(1-y)^2+4*(-1+x)*(1+x)^2*y*cos(1-y)sin((1+x)sin(1-y))-4x*(-1+y^2)*sin(1-y)sin((1+x)sin(1-y))+(-1+x)*(1+x)^2*(-1+y^2)*sin(1-y)*sin((1+x)sin(1-y)) for (x,y) in axes(P²,1)]
 
 𝐳 = Zeros(axes(M₁,1))
 𝐜 = A \ [𝐳; 𝐳; (P²'f)[Block.(1:N-1)]]
