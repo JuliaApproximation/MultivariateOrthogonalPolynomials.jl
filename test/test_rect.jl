@@ -333,4 +333,23 @@ Random.seed!(3242)
         @test (M*c)[Block.(1:N)] ≈ M[Block.(1:N),Block.(1:N)] * c[Block.(1:N)] ≈ sparse(M[Block.(1:N),Block.(1:N)]) * c[Block.(1:N)]
         @test c'M*c ≈ f'f
     end
+
+    @testset "tuple constructors" begin
+        P = KronPolynomial(Legendre(), Chebyshev())
+        @test KronPolynomial((Legendre(), Chebyshev())) == KronPolynomial{2}((Legendre(), Chebyshev())) == KronPolynomial{2,Float64}((Legendre(), Chebyshev())) == P
+        @test KronPolynomial{2}(Legendre(), Chebyshev()) == KronPolynomial{2,Float64}(Legendre(), Chebyshev()) == P
+    end
+
+    @testset "P'f for quasi-vector f" begin
+        P = KronPolynomial(Jacobi(1,1), Legendre())
+        f = splat((x,y) -> exp(x*cos(y))).(axes(P,1))
+        @test MultivariateOrthogonalPolynomials.simplifiable(*, P', f) == Val(true)
+        @test MultivariateOrthogonalPolynomials.simplifiable(*, f', P) == Val(true)
+        c = P'f
+        @test c[1] ≈ sum(2sinh(cos(y))/cos(y) for y in ChebyshevInterval())
+        for k in (2, 3, 5)
+            @test c[k] ≈ sum(exp(x*cos(y))*P[SVector(x,y),k] for (x,y) in ChebyshevInterval()^2) atol=1E-12
+        end
+        @test (f'P)[1:6] ≈ c[1:6]
+    end
 end
