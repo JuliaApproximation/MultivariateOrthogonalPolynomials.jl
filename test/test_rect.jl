@@ -343,6 +343,8 @@ Random.seed!(3242)
     @testset "P'f for quasi-vector f" begin
         P = KronPolynomial(Jacobi(1,1), Legendre())
         f = splat((x,y) -> exp(x*cos(y))).(axes(P,1))
+        @test MultivariateOrthogonalPolynomials.simplifiable(*, P', f) == Val(true)
+        @test MultivariateOrthogonalPolynomials.simplifiable(*, f', P) == Val(true)
         c = P'f
         @test c[1] ≈ sum(2sinh(cos(y))/cos(y) for y in ChebyshevInterval())
         for k in (2, 3, 5)
