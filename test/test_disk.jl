@@ -42,13 +42,40 @@ import ForwardDiff: hessian
         r,θ = 0.1, 0.2
         rθ = RadialCoordinate(r,θ)
         xy = SVector(rθ)
-        @test Zernike()[rθ,1] ≈ Zernike()[xy,1] ≈ inv(sqrt(π)) ≈ zernikez(0, 0, rθ)
-        @test Zernike()[rθ,Block(1)] ≈ Zernike()[xy,Block(1)] ≈ [inv(sqrt(π))]
-        @test Zernike()[rθ,Block(2)] ≈ [2r/sqrt(π)*sin(θ), 2r/sqrt(π)*cos(θ)] ≈ [zernikez(1, -1, rθ), zernikez(1, 1, rθ)]
-        @test Zernike()[rθ,Block(3)] ≈ [sqrt(3/π)*(2r^2-1),sqrt(6/π)*r^2*sin(2θ),sqrt(6/π)*r^2*cos(2θ)] ≈ [zernikez(2, 0, rθ), zernikez(2, -2, rθ), zernikez(2, 2, rθ)]
+        @test Zernike()[rθ,1] ≈ Zernike()[xy,1] ≈ 1 ≈ zernikez(0, 0, rθ)
+        @test Zernike()[rθ,Block(1)] ≈ Zernike()[xy,Block(1)] ≈ [1]
+        @test Zernike()[rθ,Block(2)] ≈ [r*sin(θ), r*cos(θ)] ≈ [zernikez(1, -1, rθ), zernikez(1, 1, rθ)]
+        @test Zernike()[rθ,Block(3)] ≈ [2r^2-1, r^2*sin(2θ), r^2*cos(2θ)] ≈ [zernikez(2, 0, rθ), zernikez(2, -2, rθ), zernikez(2, 2, rθ)]
         @test Zernike()[rθ,Block(4)] ≈ [zernikez(3, -1, rθ), zernikez(3, 1, rθ), zernikez(3, -3, rθ), zernikez(3, 3, rθ)]
 
         @test zerniker(5, 0, norm(xy)) ≈ zernikez(5, 0, xy)
+        @test zerniker(5, 1, 0.3, 0.2, r) ≈ r * jacobip(2, 0.2, 1.3, 2r^2-1)
+
+        Q = Normalized(Zernike())
+        @test Q[rθ,1] ≈ Q[xy,1] ≈ inv(sqrt(π)) ≈ normalizedzernikez(0, 0, rθ)
+        @test Q[rθ,Block(1)] ≈ Q[xy,Block(1)] ≈ [inv(sqrt(π))]
+        @test Q[rθ,Block(2)] ≈ [2r/sqrt(π)*sin(θ), 2r/sqrt(π)*cos(θ)] ≈ [normalizedzernikez(1, -1, rθ), normalizedzernikez(1, 1, rθ)]
+        @test Q[rθ,Block(3)] ≈ [sqrt(3/π)*(2r^2-1),sqrt(6/π)*r^2*sin(2θ),sqrt(6/π)*r^2*cos(2θ)] ≈ [normalizedzernikez(2, 0, rθ), normalizedzernikez(2, -2, rθ), normalizedzernikez(2, 2, rθ)]
+        @test Q[rθ,Block(4)] ≈ [normalizedzernikez(3, -1, rθ), normalizedzernikez(3, 1, rθ), normalizedzernikez(3, -3, rθ), normalizedzernikez(3, 3, rθ)]
+        @test Q[xy,1:6] ≈ Q[xy,Block.(1:3)]
+        @test Q[xy,Block.(2:3)] ≈ Q[xy,2:6]
+
+        @test normalizedzerniker(5, 0, norm(xy)) ≈ normalizedzernikez(5, 0, xy)
+    end
+
+    @testset "Normalized" begin
+        xy = SVector(0.1,0.2)
+        for (a,b) in ((0,0), (0.1,0.2), (0,1))
+            Z = Zernike(a,b)
+            Q = Normalized(Z)
+            @test Q[xy,Block.(1:10)] ≈ Z[xy,Block.(1:10)] .* Q.scaling[1:55]
+        end
+        @test Normalized(Zernike()) == Normalized(Zernike())
+        @test Normalized(Zernike()) ≠ Normalized(Zernike(1))
+        @test Normalized(Zernike()) ≠ Zernike()
+        @test Zernike() ≠ Normalized(Zernike())
+        @test copy(Normalized(Zernike())) ≡ Normalized(Zernike())
+        @test stringmime("text/plain", Normalized(Zernike(1))) == "Normalized(Zernike(0.0, 1.0))"
     end
 
     @testset "ModalTrav" begin
@@ -79,70 +106,85 @@ import ForwardDiff: hessian
     @testset "expand" begin
         @test expand(Zernike(), splat((x,y) -> exp(x*cos(y))))[SVector(0.1,0.2)] ≈ expand(Zernike{ComplexF64}(), splat((x,y) -> exp(x*cos(y))))[SVector(0.1,0.2)] ≈ exp(0.1cos(0.2))
         @test expand(Zernike{ComplexF64}(), splat((x,y) -> exp(x*cos(y)+im*y)))[SVector(0.1,0.2)] ≈ expand(Zernike(), splat((x,y) -> exp(x*cos(y)+im*y)))[SVector(0.1,0.2)] ≈ exp(0.1cos(0.2)+im*0.2)
+        @test expand(Normalized(Zernike()), splat((x,y) -> exp(x*cos(y))))[SVector(0.1,0.2)] ≈ exp(0.1cos(0.2))
+        @test expand(Normalized(Zernike()), splat((x,y) -> exp(x*cos(y)+im*y)))[SVector(0.1,0.2)] ≈ exp(0.1cos(0.2)+im*0.2)
     end
 
     @testset "Jacobi matrices" begin
         # Setup
         α = 10 * rand()
-        Z = Zernike(α)
-        x, y = coordinates(Z)
-        n = 150
+        for Z in (Normalized(Zernike(α)), Zernike(α))
+            x, y = coordinates(Z)
+            n = 150
 
-        # X tests
-        JX = zeros(n,n)
-        for j = 1:n
-            JX[1:n,j] = (Z \ (x .* Z[:,j]))[1:n]
-        end 
-        X = Z \ (x .* Z)
-        # The Zernike Jacobi matrices are symmetric for this normalization
-        @test issymmetric(X)
-        # Consistency with expansion
-        @test X[1:150,1:150] ≈ JX
-        # Multiplication by x
-        f = Z \ (sin.(x.*y) .+ x.^2 .- y)
-        xf = Z \ (x.*sin.(x.*y) .+ x.^3 .- x.*y)
-        @test X[Block.(1:20),Block.(1:20)]*f[Block.(1:20)] ≈ xf[Block.(1:20)]
+            # X tests
+            JX = zeros(n,n)
+            for j = 1:n
+                JX[1:n,j] = (Z \ (x .* Z[:,j]))[1:n]
+            end 
+            X = Z \ (x .* Z)
+            # The Zernike Jacobi matrices are symmetric for the orthonormal polynomials
+            @test issymmetric(X) == (Z isa Normalized)
+            # Consistency with expansion
+            @test X[1:150,1:150] ≈ JX
+            # Multiplication by x
+            f = Z \ (sin.(x.*y) .+ x.^2 .- y)
+            xf = Z \ (x.*sin.(x.*y) .+ x.^3 .- x.*y)
+            @test X[Block.(1:20),Block.(1:20)]*f[Block.(1:20)] ≈ xf[Block.(1:20)]
 
-        # Y tests
-        JY = zeros(n,n)
-        for j = 1:n
-            JY[1:n,j] = (Z \ (y .* Z[:,j]))[1:n]
-        end 
-        Y = Z \ (y .* Z)
-        # The Zernike Jacobi matrices are symmetric for this normalization
-        @test issymmetric(Y)
-        # Consistency with expansion
-        @test Y[1:150,1:150] ≈ JY
-        # Multiplication by y
-        f = Z \ (sin.(x.*y) .+ x.^2 .- y)
-        yf = Z \ (y.*sin.(x.*y) .+ y .* x.^2 .- y.^2)
-        @test Y[Block.(1:20),Block.(1:20)]*f[Block.(1:20)] ≈ yf[Block.(1:20)]
+            # Y tests
+            JY = zeros(n,n)
+            for j = 1:n
+                JY[1:n,j] = (Z \ (y .* Z[:,j]))[1:n]
+            end 
+            Y = Z \ (y .* Z)
+            # The Zernike Jacobi matrices are symmetric for the orthonormal polynomials
+            @test issymmetric(Y) == (Z isa Normalized)
+            # Consistency with expansion
+            @test Y[1:150,1:150] ≈ JY
+            # Multiplication by y
+            f = Z \ (sin.(x.*y) .+ x.^2 .- y)
+            yf = Z \ (y.*sin.(x.*y) .+ y .* x.^2 .- y.^2)
+            @test Y[Block.(1:20),Block.(1:20)]*f[Block.(1:20)] ≈ yf[Block.(1:20)]
             
-        # Multiplication of Jacobi matrices
-        @test (X*X)[Block.(1:6),Block.(1:6)] ≈ (X[Block.(1:10),Block.(1:10)]*X[Block.(1:10),Block.(1:10)])[Block.(1:6),Block.(1:6)]
-        @test (X*Y)[Block.(1:6),Block.(1:6)] ≈ (X[Block.(1:10),Block.(1:10)]*Y[Block.(1:10),Block.(1:10)])[Block.(1:6),Block.(1:6)]
+            # Multiplication of Jacobi matrices
+            @test (X*X)[Block.(1:6),Block.(1:6)] ≈ (X[Block.(1:10),Block.(1:10)]*X[Block.(1:10),Block.(1:10)])[Block.(1:6),Block.(1:6)]
+            @test (X*Y)[Block.(1:6),Block.(1:6)] ≈ (X[Block.(1:10),Block.(1:10)]*Y[Block.(1:10),Block.(1:10)])[Block.(1:6),Block.(1:6)]
 
-        # Addition of Jacobi matrices
-        @test (X+Y)[Block.(1:6),Block.(1:6)] ≈ X[Block.(1:6),Block.(1:6)]+Y[Block.(1:6),Block.(1:6)]
-        @test (Y+Y)[Block.(1:6),Block.(1:6)] ≈ Y[Block.(1:6),Block.(1:6)]+Y[Block.(1:6),Block.(1:6)]
-            
+            # Addition of Jacobi matrices
+            @test (X+Y)[Block.(1:6),Block.(1:6)] ≈ X[Block.(1:6),Block.(1:6)]+Y[Block.(1:6),Block.(1:6)]
+            @test (Y+Y)[Block.(1:6),Block.(1:6)] ≈ Y[Block.(1:6),Block.(1:6)]+Y[Block.(1:6),Block.(1:6)]
+        end
+
         # for now, reject non-zero first parameter options
         @test_throws ErrorException("Implement for non-zero first basis parameter.") jacobimatrix(Val(1),Zernike(1,1))  
         @test_throws ErrorException("Implement for non-zero first basis parameter.") jacobimatrix(Val(2),Zernike(1,1))
+        @test_throws ErrorException("Implement for non-zero first basis parameter.") jacobimatrix(Val(1),Normalized(Zernike(1,1)))
     end
-        
+
     @testset "Transform" begin
-        for (a,b) in ((0,0), (0.1, 0.2), (0,1))
-            Zn = Zernike(a,b)[:,Block.(Base.OneTo(3))]
+        for (a,b) in ((0,0), (0.1, 0.2), (0,1)), Z in (Zernike(a,b), Normalized(Zernike(a,b)))
+            Zn = Z[:,Block.(Base.OneTo(3))]
             for k = 1:6
-                @test factorize(Zn) \ Zernike(a,b)[:,k] ≈ [zeros(k-1); 1; zeros(6-k)]
+                @test factorize(Zn) \ Z[:,k] ≈ [zeros(k-1); 1; zeros(6-k)]
             end
 
-            Z = Zernike(a,b);
             x,y = coordinates(Z)
             u = Z * (Z \ exp.(x .* cos.(y)))
             @test u[SVector(0.1,0.2)] ≈ exp(0.1cos(0.2))
         end
+
+        # coefficients differ by the normalization constants
+        Z = Zernike(0.1, 0.2)
+        x,y = coordinates(Z)
+        f = exp.(x .* cos.(y))
+        @test (Z \ f)[1:55] ≈ Normalized(Z).scaling[1:55] .* (Normalized(Z) \ f)[1:55]
+
+        P = plan_transform(Z, Block(5))
+        c = BlockedArray(randn(sum(1:5)), 1:5)
+        V = inv(P) * c
+        @test P * V ≈ c
+        @test V ≈ [(Z * [c; zeros(∞)])[SVector(𝐱)] for 𝐱 in grid(Z, Block(5))]
     end
 
     @testset "Laplacian" begin
@@ -166,8 +208,8 @@ import ForwardDiff: hessian
 
         f = t -> sqrt(2^(m+b+2-iszero(m))/π) * normalizedjacobip((ℓ-m) ÷ 2, b, m, 2t-1)
         ur = r -> r^m*f(r^2)
-        @test ur(r) ≈ zerniker(ℓ, m, b, r)
-        @test f(r^2) ≈ r^(-m) * zerniker(ℓ, m, b, r)
+        @test ur(r) ≈ normalizedzerniker(ℓ, m, b, r)
+        @test f(r^2) ≈ r^(-m) * normalizedzerniker(ℓ, m, b, r)
         # u = xy -> ((x,y) = xy; ur(norm(xy)) * cos(m*atan(y,x)))
         # t = r^2; 4*(m+1)*derivative(f,t) + 4t*derivative2(f,t)
 
@@ -181,7 +223,7 @@ import ForwardDiff: hessian
 
         f = t -> sqrt(2^(m+b+2-iszero(m))/π) * (1-t) * normalizedjacobip((ℓ-m) ÷ 2, b, m, 2t-1)
         ur = r -> r^m*f(r^2)
-        @test ur(r) ≈ (1-r^2) * zerniker(ℓ, m, b, r)
+        @test ur(r) ≈ (1-r^2) * normalizedzerniker(ℓ, m, b, r)
 
         D = Derivative(Chebyshev())
         D1 = Normalized(Jacobi(0, m+1)) \ (D * (HalfWeighted{:a}(Normalized(Jacobi(1, m)))))
@@ -229,114 +271,160 @@ import ForwardDiff: hessian
         # u = xy -> (1 - norm(xy)^2) * zernikez(4 , 4, 1, xy) # eval at 1
         # @test lap(u, xy...) ≈ Zernike(1)[xy,15] * (-4) * 5 * 1
 
-        WZ = Weighted(Zernike(1)) # Zernike(1) weighted by (1-r^2)
-        Δ = Laplacian(WZ)
-        Δ_Z = Zernike(1) \ (Δ * WZ)
-        @test exp.(Δ_Z)[1:10,1:10] == exp.(Δ_Z[1:10,1:10])
+        for Z in (Zernike(1), Normalized(Zernike(1)))
+            WZ = Weighted(Z) # Z weighted by (1-r^2)
+            Δ = Laplacian(WZ)
+            Δ_Z = Z \ (Δ * WZ)
+            @test exp.(Δ_Z)[1:10,1:10] == exp.(Δ_Z[1:10,1:10])
 
-        x,y = coordinates(WZ)
-        u = @. (1 - x^2 - y^2) * exp(x*cos(y))
-        Δu = @. (-exp(x*cos(y)) * (4 - x*(-5 + x^2 + y^2)cos(y) + (-1 + x^2 + y^2)cos(y)^2 - 4x*y*sin(y) + x^2*(x^2 + y^2-1)*sin(y)^2))
-        @test (WZ * (WZ \ u))[SVector(0.1,0.2)] ≈ u[SVector(0.1,0.2)]
-        @test (Δ_Z * (WZ \ u))[1:100]  ≈ (Zernike(1) \ Δu)[1:100]
+            x,y = coordinates(WZ)
+            u = @. (1 - x^2 - y^2) * exp(x*cos(y))
+            Δu = @. (-exp(x*cos(y)) * (4 - x*(-5 + x^2 + y^2)cos(y) + (-1 + x^2 + y^2)cos(y)^2 - 4x*y*sin(y) + x^2*(x^2 + y^2-1)*sin(y)^2))
+            @test (WZ * (WZ \ u))[SVector(0.1,0.2)] ≈ u[SVector(0.1,0.2)]
+            @test (Δ_Z * (WZ \ u))[1:100]  ≈ (Z \ Δu)[1:100]
+        end
 
         @testset "Unweighted" begin
             c = [randn(100); zeros(∞)]
-            Z = Zernike()
-            Δ = Zernike(2) \ (Laplacian(Z) * Z)
-            @test tr(hessian(xy -> (Zernike{eltype(xy)}()*c)[xy], SVector(0.1,0.2))) ≈ (Zernike(2)*(Δ*c))[SVector(0.1,0.2)]
-
-            b = 0.2
-            Z = Zernike(b)
-            Δ = Zernike(b+2) \ (Laplacian(Z) * Z)
-            @test tr(hessian(xy -> (Zernike{eltype(xy)}(b)*c)[xy], SVector(0.1,0.2))) ≈ (Zernike(b+2)*(Δ*c))[SVector(0.1,0.2)]
+            for b in (0, 0.2), normalize in (identity, Normalized)
+                Z = normalize(Zernike(b))
+                Z₂ = normalize(Zernike(b+2))
+                Δ = Z₂ \ (Laplacian(Z) * Z)
+                @test tr(hessian(xy -> (normalize(Zernike{eltype(xy)}(b))*c)[xy], SVector(0.1,0.2))) ≈ (Z₂*(Δ*c))[SVector(0.1,0.2)]
+            end
         end
     end
 
     @testset "Conversion" begin
+        xy = SVector(0.1,0.2)
+
+        # orthonormal
         R0 = Normalized(Jacobi(1, 0)) \ Normalized(Jacobi(0, 0))
         R1 = Normalized(Jacobi(1, 1)) \ Normalized(Jacobi(0, 1))
         R2 = Normalized(Jacobi(1, 2)) \ Normalized(Jacobi(0, 2))
         R3 = Normalized(Jacobi(1, 3)) \ Normalized(Jacobi(0, 3))
 
-        xy = SVector(0.1,0.2)
-        @test Zernike()[xy,Block(1)[1]] ≈ Zernike(1)[xy,Block(1)[1]]/sqrt(2)
+        Q, Q₁ = Normalized(Zernike()), Normalized(Zernike(1))
+        @test Q[xy,Block(1)[1]] ≈ Q₁[xy,Block(1)[1]]/sqrt(2)
 
-        @test Zernike()[xy,Block(2)[1]] ≈ Zernike(1)[xy,Block(2)[1]]*R1[1,1]/sqrt(2)
-        @test Zernike()[xy,Block(2)[2]] ≈ Zernike(1)[xy,Block(2)[2]]*R1[1,1]/sqrt(2)
+        @test Q[xy,Block(2)[1]] ≈ Q₁[xy,Block(2)[1]]*R1[1,1]/sqrt(2)
+        @test Q[xy,Block(2)[2]] ≈ Q₁[xy,Block(2)[2]]*R1[1,1]/sqrt(2)
 
-        @test Zernike()[xy,Block(3)[1]] ≈ R0[1:2,2]'*Zernike(1)[xy,getindex.(Block.(1:2:3),1)]/sqrt(2)
-        @test Zernike()[xy,Block(3)[2]] ≈ R2[1,1]*Zernike(1)[xy,Block(3)[2]]/sqrt(2)
-        @test Zernike()[xy,Block(3)[3]] ≈ R2[1,1]*Zernike(1)[xy,Block(3)[3]]/sqrt(2)
+        @test Q[xy,Block(3)[1]] ≈ R0[1:2,2]'*Q₁[xy,getindex.(Block.(1:2:3),1)]/sqrt(2)
+        @test Q[xy,Block(3)[2]] ≈ R2[1,1]*Q₁[xy,Block(3)[2]]/sqrt(2)
+        @test Q[xy,Block(3)[3]] ≈ R2[1,1]*Q₁[xy,Block(3)[3]]/sqrt(2)
 
-        @test Zernike()[xy,Block(4)[1]] ≈ R1[1:2,2]'*Zernike(1)[xy,getindex.(Block.(2:2:4),1)]/sqrt(2)
-        @test Zernike()[xy,Block(4)[2]] ≈ R1[1:2,2]'*Zernike(1)[xy,getindex.(Block.(2:2:4),2)]/sqrt(2)
-        @test Zernike()[xy,Block(4)[3]] ≈ R3[1,1]*Zernike(1)[xy,Block(4)[3]]/sqrt(2)
-        @test Zernike()[xy,Block(4)[4]] ≈ R3[1,1]*Zernike(1)[xy,Block(4)[4]]/sqrt(2)
+        @test Q[xy,Block(4)[1]] ≈ R1[1:2,2]'*Q₁[xy,getindex.(Block.(2:2:4),1)]/sqrt(2)
+        @test Q[xy,Block(4)[2]] ≈ R1[1:2,2]'*Q₁[xy,getindex.(Block.(2:2:4),2)]/sqrt(2)
+        @test Q[xy,Block(4)[3]] ≈ R3[1,1]*Q₁[xy,Block(4)[3]]/sqrt(2)
+        @test Q[xy,Block(4)[4]] ≈ R3[1,1]*Q₁[xy,Block(4)[4]]/sqrt(2)
 
-        @test Zernike()[xy,Block(5)[1]] ≈ R0[2:3,3]'*Zernike(1)[xy,getindex.(Block.(3:2:5),1)]/sqrt(2)
+        @test Q[xy,Block(5)[1]] ≈ R0[2:3,3]'*Q₁[xy,getindex.(Block.(3:2:5),1)]/sqrt(2)
 
+        # unnormalized
+        R0 = Jacobi(1, 0) \ Jacobi(0, 0)
+        R1 = Jacobi(1, 1) \ Jacobi(0, 1)
+        R2 = Jacobi(1, 2) \ Jacobi(0, 2)
+
+        @test Zernike()[xy,Block(1)[1]] ≈ Zernike(1)[xy,Block(1)[1]]
+        @test Zernike()[xy,Block(2)[1]] ≈ Zernike(1)[xy,Block(2)[1]]*R1[1,1]
+        @test Zernike()[xy,Block(3)[1]] ≈ R0[1:2,2]'*Zernike(1)[xy,getindex.(Block.(1:2:3),1)]
+        @test Zernike()[xy,Block(3)[2]] ≈ R2[1,1]*Zernike(1)[xy,Block(3)[2]]
+        @test Zernike()[xy,Block(4)[1]] ≈ R1[1:2,2]'*Zernike(1)[xy,getindex.(Block.(2:2:4),1)]
+        @test Zernike()[xy,Block(5)[1]] ≈ R0[2:3,3]'*Zernike(1)[xy,getindex.(Block.(3:2:5),1)]
 
         R = Zernike(1) \ Zernike()
-
         @test R[Block.(Base.OneTo(6)), Block.(Base.OneTo(7))] == R[Block.(1:6), Block.(1:7)]
-        @test Zernike()[xy,Block.(1:6)]' ≈ Zernike(1)[xy,Block.(1:6)]'*R[Block.(1:6),Block.(1:6)]
 
-        R = Zernike(2) \ Zernike()
-        @test Zernike()[xy,Block.(1:6)]' ≈ Zernike(2)[xy,Block.(1:6)]'*R[Block.(1:6),Block.(1:6)]
+        for (A,B) in ((Zernike(1), Zernike()), (Zernike(2), Zernike()), (Zernike(0.1,1.2), Zernike(0.1,0.2)),
+                      (Normalized(Zernike(1)), Normalized(Zernike())), (Normalized(Zernike(2)), Normalized(Zernike())),
+                      (Zernike(), Normalized(Zernike())), (Normalized(Zernike()), Zernike()),
+                      (Zernike(1), Normalized(Zernike())), (Normalized(Zernike(2)), Zernike()))
+            R = A \ B
+            @test B[xy,Block.(1:6)]' ≈ A[xy,Block.(1:6)]'*R[Block.(1:6),Block.(1:6)]
+        end
+        @test Zernike() \ Zernike() isa Eye
+        @test Normalized(Zernike()) \ Normalized(Zernike()) isa Eye
+        @test (Zernike() \ Normalized(Zernike()))[1:10,1:10] ≈ Diagonal(Normalized(Zernike()).scaling[1:10])
     end
 
     @testset "Lowering" begin
-        L0 = Normalized(Jacobi(0, 0)) \ HalfWeighted{:a}(Normalized(Jacobi(1, 0)))
-        L1 = Normalized(Jacobi(0, 1)) \ HalfWeighted{:a}(Normalized(Jacobi(1, 1)))
-        L2 = Normalized(Jacobi(0, 2)) \ HalfWeighted{:a}(Normalized(Jacobi(1, 2)))
-        L3 = Normalized(Jacobi(0, 3)) \ HalfWeighted{:a}(Normalized(Jacobi(1, 3)))
-
         xy = SVector(0.1,0.2)
         r = norm(xy)
         w = 1 - r^2
 
-        @test w*Zernike(1)[xy,Block(1)[1]] ≈ L0[1:2,1]'*Zernike()[xy,getindex.(Block.(1:2:3),1)] / sqrt(2)
+        # orthonormal
+        L0 = Normalized(Jacobi(0, 0)) \ HalfWeighted{:a}(Normalized(Jacobi(1, 0)))
+        L1 = Normalized(Jacobi(0, 1)) \ HalfWeighted{:a}(Normalized(Jacobi(1, 1)))
+        L2 = Normalized(Jacobi(0, 2)) \ HalfWeighted{:a}(Normalized(Jacobi(1, 2)))
 
-        @test w*Zernike(1)[xy,Block(2)[1]] ≈ L1[1:2,1]'*Zernike()[xy,getindex.(Block.(2:2:4),1)]/sqrt(2)
-        @test w*Zernike(1)[xy,Block(2)[2]] ≈ L1[1:2,1]'*Zernike()[xy,getindex.(Block.(2:2:4),2)]/sqrt(2)
+        Q, Q₁ = Normalized(Zernike()), Normalized(Zernike(1))
+        @test w*Q₁[xy,Block(1)[1]] ≈ L0[1:2,1]'*Q[xy,getindex.(Block.(1:2:3),1)] / sqrt(2)
 
-        @test w*Zernike(1)[xy,Block(3)[1]] ≈ L0[2:3,2]'*Zernike()[xy,getindex.(Block.(3:2:5),1)]/sqrt(2)
-        @test w*Zernike(1)[xy,Block(3)[2]] ≈ L2[1:2,1]'*Zernike()[xy,getindex.(Block.(3:2:5),2)]/sqrt(2)
-        @test w*Zernike(1)[xy,Block(3)[3]] ≈ L2[1:2,1]'*Zernike()[xy,getindex.(Block.(3:2:5),3)]/sqrt(2)
+        @test w*Q₁[xy,Block(2)[1]] ≈ L1[1:2,1]'*Q[xy,getindex.(Block.(2:2:4),1)]/sqrt(2)
+        @test w*Q₁[xy,Block(2)[2]] ≈ L1[1:2,1]'*Q[xy,getindex.(Block.(2:2:4),2)]/sqrt(2)
+
+        @test w*Q₁[xy,Block(3)[1]] ≈ L0[2:3,2]'*Q[xy,getindex.(Block.(3:2:5),1)]/sqrt(2)
+        @test w*Q₁[xy,Block(3)[2]] ≈ L2[1:2,1]'*Q[xy,getindex.(Block.(3:2:5),2)]/sqrt(2)
+        @test w*Q₁[xy,Block(3)[3]] ≈ L2[1:2,1]'*Q[xy,getindex.(Block.(3:2:5),3)]/sqrt(2)
+
+        # unnormalized: (1-r^2) == (1-s)/2 where s = 2r^2-1
+        L0 = Jacobi(0, 0) \ HalfWeighted{:a}(Jacobi(1, 0))
+        L1 = Jacobi(0, 1) \ HalfWeighted{:a}(Jacobi(1, 1))
+        L2 = Jacobi(0, 2) \ HalfWeighted{:a}(Jacobi(1, 2))
+
+        @test w*Zernike(1)[xy,Block(1)[1]] ≈ L0[1:2,1]'*Zernike()[xy,getindex.(Block.(1:2:3),1)]/2
+        @test w*Zernike(1)[xy,Block(2)[1]] ≈ L1[1:2,1]'*Zernike()[xy,getindex.(Block.(2:2:4),1)]/2
+        @test w*Zernike(1)[xy,Block(3)[1]] ≈ L0[2:3,2]'*Zernike()[xy,getindex.(Block.(3:2:5),1)]/2
+        @test w*Zernike(1)[xy,Block(3)[2]] ≈ L2[1:2,1]'*Zernike()[xy,getindex.(Block.(3:2:5),2)]/2
 
         L = Zernike() \ Weighted(Zernike(1))
-        @test w*Zernike(1)[xy,Block.(1:5)]' ≈ Zernike()[xy,Block.(1:7)]'*L[Block.(1:7),Block.(1:5)]
-
         @test exp.(L)[1:10,1:10] == exp.(L[1:10,1:10])
 
-        L = Zernike(1) \ Weighted(Zernike(1))
-        @test 2w*Zernike(1)[xy,Block.(1:5)]' ≈ Zernike(1)[xy,Block.(1:7)]'*L[Block.(1:7),Block.(1:5)]
+        for normalize in (identity, Normalized)
+            A, B = normalize(Zernike()), normalize(Zernike(1))
+            L = A \ Weighted(B)
+            @test w*B[xy,Block.(1:5)] ≈ transpose(L[Block.(1:7),Block.(1:5)])*A[xy,Block.(1:7)]
 
-        L = Zernike() \ Weighted(Zernike(2))
-        @test w^2*Zernike(2)[xy,Block.(1:5)]' ≈ Zernike()[xy,Block.(1:9)]'*L[Block.(1:9),Block.(1:5)]
+            L = B \ Weighted(B)
+            @test w*B[xy,Block.(1:5)] ≈ transpose(L[Block.(1:7),Block.(1:5)])*B[xy,Block.(1:7)]
+
+            B = normalize(Zernike(2))
+            L = A \ Weighted(B)
+            @test w^2*B[xy,Block.(1:5)] ≈ transpose(L[Block.(1:9),Block.(1:5)])*A[xy,Block.(1:9)]
+        end
+
+        L = Zernike() \ Weighted(Normalized(Zernike(1)))
+        @test w*Q₁[xy,Block.(1:5)] ≈ transpose(L[Block.(1:7),Block.(1:5)])*Zernike()[xy,Block.(1:7)]
+        @test Zernike() \ Weighted(Zernike()) isa Eye
     end
 
     @testset "plotting" begin
-        Z = Zernike()
-        u = Z * [1; 2; zeros(∞)];
-        rep = RecipesBase.apply_recipe(Dict{Symbol, Any}(), u);
-        g = MultivariateOrthogonalPolynomials.plotgrid(Z[:,1:3])
-        @test all(rep[1].args .≈ (first.(g),last.(g),u[g]))
+        for Z in (Zernike(), Normalized(Zernike()))
+            u = Z * [1; 2; zeros(∞)];
+            rep = RecipesBase.apply_recipe(Dict{Symbol, Any}(), u);
+            g = MultivariateOrthogonalPolynomials.plotgrid(Z[:,1:3])
+            @test all(rep[1].args .≈ (first.(g),last.(g),u[g]))
+        end
 
-        W = Weighted(Zernike(1))
-        u = W * [1; 2; zeros(∞)];
-        rep = RecipesBase.apply_recipe(Dict{Symbol, Any}(), u)
-        g = MultivariateOrthogonalPolynomials.plotgrid(W[:,1:3])
-        @test all(rep[1].args .≈ (first.(g),last.(g),u[g]))
+        for W in (Weighted(Zernike(1)), Weighted(Normalized(Zernike(1))))
+            u = W * [1; 2; zeros(∞)];
+            rep = RecipesBase.apply_recipe(Dict{Symbol, Any}(), u)
+            g = MultivariateOrthogonalPolynomials.plotgrid(W[:,1:3])
+            @test all(rep[1].args .≈ (first.(g),last.(g),u[g]))
+        end
     end
 
     @testset "sum" begin
-        P = Zernike()
-        x,y = coordinates(P)
-        @test sum(expand(P, 𝐱 -> 1)) ≈ π
-        @test sum(expand(P, 𝐱 -> let (x,y) = 𝐱; exp(x*cos(y)) end)) ≈ sum(exp.(x.*cos.(y))) ≈ sum(exp.(x.*cos.(y)) for (x,y) in UnitDisk()) ≈ 3.4898933353782744
-        @test [sum(P[:,k] .* P[:,j]) for k=1:10, j=1:10] ≈ I
+        for P in (Zernike(), Normalized(Zernike()))
+            x,y = coordinates(P)
+            @test sum(expand(P, 𝐱 -> 1)) ≈ π
+            @test sum(expand(P, 𝐱 -> let (x,y) = 𝐱; exp(x*cos(y)) end)) ≈ sum(exp.(x.*cos.(y))) ≈ sum(exp.(x.*cos.(y)) for (x,y) in UnitDisk()) ≈ 3.4898933353782744
+        end
+        Q = Normalized(Zernike())
+        @test [sum(Q[:,k] .* Q[:,j]) for k=1:10, j=1:10] ≈ I
+        Z = Zernike()
+        @test [sum(Z[:,k] .* Z[:,j]) for k=1:10, j=1:10] ≈ Diagonal(inv.(Q.scaling[1:10]).^2)
     end
 
     @testset "Show" begin
