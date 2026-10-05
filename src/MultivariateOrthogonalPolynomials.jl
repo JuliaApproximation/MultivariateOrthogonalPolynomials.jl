@@ -24,7 +24,7 @@ import InfiniteArrays: InfiniteCardinal, OneToInf
 import ClassicalOrthogonalPolynomials: jacobimatrix, Weighted, orthogonalityweight, HalfWeighted, WeightedBasis, pad, recurrencecoefficients, clenshaw, weightedgrammatrix, Clenshaw, OPLayout, normalized, normalizationconstant
 import HarmonicOrthogonalPolynomials: BivariateOrthogonalPolynomial, MultivariateOrthogonalPolynomial, Plan,
                                           AngularMomentum, angularmomentum, BlockOneTo, BlockRange1, interlace,
-                                          MultivariateOPLayout, AbstractMultivariateOPLayout, MAX_PLOT_BLOCKS, FirstInclusion, LastInclusion
+                                          MultivariateOPLayout, AbstractMultivariateOPLayout, MAX_PLOT_BLOCKS
 
 export MultivariateOrthogonalPolynomial, BivariateOrthogonalPolynomial,
        UnitTriangle, UnitDisk,
