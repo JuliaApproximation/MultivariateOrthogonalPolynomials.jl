@@ -354,24 +354,9 @@ deduceeltype(T, f) = all(isreal, f) ? T : Complex{T}
 
 inv(P::ZernikeTransform) = ZernikeITransform(P.N, P.disk2cxf, inv(P.analysis))
 
-# transforms for Zernike(a,b) rescale those for Normalized(Zernike(a,b))
-struct UnnormalizedZernikeTransform{T, ZZ<:Zernike} <: Plan{T}
-    Z::ZZ
-    F::ZernikeTransform{T}
-end
-
-struct UnnormalizedZernikeITransform{T, ZZ<:Zernike} <: Plan{T}
-    Z::ZZ
-    F::ZernikeITransform{T}
-end
-
-*(P::UnnormalizedZernikeTransform, f::AbstractArray) = _normalized2zernike(P.Z, P.F * f)
-*(P::UnnormalizedZernikeITransform, c::AbstractVector) = P.F * _zernike2normalized(P.Z, c)
-
-inv(P::UnnormalizedZernikeTransform) = UnnormalizedZernikeITransform(P.Z, inv(P.F))
-
 plan_transform(Q::NormalizedZernike{T}, (N,)::Tuple{Block{1}}, dims=1) where T = ZernikeTransform{real(T)}(Int(N), Q.P.a, Q.P.b)
-plan_transform(Z::Zernike{T}, (N,)::Tuple{Block{1}}, dims=1) where T = UnnormalizedZernikeTransform(Z, ZernikeTransform{real(T)}(Int(N), Z.a, Z.b))
+# transforms for Zernike(a,b) rescale those for Normalized(Zernike(a,b))
+plan_transform(Z::Zernike{T}, (N,)::Tuple{Block{1}}, dims=1) where T = ApplyPlan(Base.Fix1(_normalized2zernike, Z), ZernikeTransform{real(T)}(Int(N), Z.a, Z.b))
 
 ##
 # Laplacian

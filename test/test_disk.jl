@@ -182,9 +182,8 @@ import ForwardDiff: hessian
 
         P = plan_transform(Z, Block(5))
         c = BlockedArray(randn(sum(1:5)), 1:5)
-        V = inv(P) * c
+        V = [(Z * [c; zeros(∞)])[SVector(𝐱)] for 𝐱 in grid(Z, Block(5))]
         @test P * V ≈ c
-        @test V ≈ [(Z * [c; zeros(∞)])[SVector(𝐱)] for 𝐱 in grid(Z, Block(5))]
     end
 
     @testset "Laplacian" begin
