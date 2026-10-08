@@ -36,6 +36,7 @@ import ForwardDiff: hessian
         @test ZernikeWeight() ≡ copy(ZernikeWeight())
 
         @test AbstractQuasiArray{ComplexF64}(Zernike()) ≡ AbstractQuasiMatrix{ComplexF64}(Zernike()) ≡ Zernike{ComplexF64}()
+        @test AbstractQuasiArray{ComplexF64}(Zernike(0.1,0.2)) ≡ AbstractQuasiMatrix{ComplexF64}(Zernike(0.1,0.2)) ≡ Zernike{ComplexF64}(0.1,0.2)
     end
 
     @testset "Evaluation" begin
@@ -108,6 +109,7 @@ import ForwardDiff: hessian
         @test expand(Zernike{ComplexF64}(), splat((x,y) -> exp(x*cos(y)+im*y)))[SVector(0.1,0.2)] ≈ expand(Zernike(), splat((x,y) -> exp(x*cos(y)+im*y)))[SVector(0.1,0.2)] ≈ exp(0.1cos(0.2)+im*0.2)
         @test expand(Normalized(Zernike()), splat((x,y) -> exp(x*cos(y))))[SVector(0.1,0.2)] ≈ exp(0.1cos(0.2))
         @test expand(Normalized(Zernike()), splat((x,y) -> exp(x*cos(y)+im*y)))[SVector(0.1,0.2)] ≈ exp(0.1cos(0.2)+im*0.2)
+        @test expand(Zernike(0.1,0.2), splat((x,y) -> exp(x*cos(y)+im*y)))[SVector(0.1,0.2)] ≈ exp(0.1cos(0.2)+im*0.2)
     end
 
     @testset "Jacobi matrices" begin
@@ -428,6 +430,162 @@ import ForwardDiff: hessian
 
     @testset "Show" begin
         @test stringmime("text/plain", Zernike()) == "Zernike(0.0, 0.0)"
+    end
+end
+
+@testset "ComplexZernike" begin
+    xy = SVector(0.1,0.2)
+    r,θ = norm(xy), atan(xy[2], xy[1])
+    rθ = RadialCoordinate(xy)
+
+    @testset "Basics" begin
+        C = ComplexZernike()
+        @test C == ComplexZernike(0,0) == ComplexZernike{ComplexF64}() == ComplexZernike{ComplexF64}(0) == ComplexZernike{ComplexF64}(0,0)
+        @test C ≠ ComplexZernike(1)
+        @test C ≠ Zernike() && Zernike() ≠ C
+        @test C ≡ copy(C)
+        @test eltype(C) == ComplexF64
+        @test eltype(ComplexZernike(1f0)) == ComplexF32
+        @test axes(C) == axes(Zernike())
+        @test ClassicalOrthogonalPolynomials.orthogonalityweight(ComplexZernike(0.1,0.2)) == ZernikeWeight(0.1,0.2)
+        @test AbstractQuasiArray{ComplexF32}(ComplexZernike(1)) ≡ AbstractQuasiMatrix{ComplexF32}(ComplexZernike(1)) ≡ ComplexZernike{ComplexF32}(1)
+        @test stringmime("text/plain", ComplexZernike()) == "ComplexZernike(0.0, 0.0)"
+        @test stringmime("text/plain", Normalized(ComplexZernike(1))) == "Normalized(ComplexZernike(0.0, 1.0))"
+    end
+
+    @testset "Evaluation" begin
+        C = ComplexZernike()
+        @test C[rθ,1] ≈ C[xy,1] ≈ 1 ≈ complexzernikez(0, 0, rθ)
+        @test C[xy,Block(2)] ≈ [r*exp(-im*θ), r*exp(im*θ)] ≈ [complexzernikez(1, -1, rθ), complexzernikez(1, 1, rθ)]
+        @test C[xy,Block(3)] ≈ [2r^2-1, r^2*exp(-2im*θ), r^2*exp(2im*θ)]
+        @test C[xy,Block(4)] ≈ [complexzernikez(3, -1, rθ), complexzernikez(3, 1, rθ), complexzernikez(3, -3, rθ), complexzernikez(3, 3, rθ)]
+        @test C[xy,1:6] ≈ C[xy,Block.(1:3)]
+        for (a,b) in ((0,0), (0.1,0.2), (0,1))
+            # same radial parts as Zernike
+            @test complexzernikez(5, -3, a, b, rθ) ≈ zerniker(5, 3, a, b, r) * exp(-3im*θ)
+            @test complexzernikez(5, 3, a, b, rθ) ≈ zernikez(5, 3, a, b, rθ) + im*zernikez(5, -3, a, b, rθ)
+        end
+
+        Q = Normalized(ComplexZernike())
+        @test Q[xy,1] ≈ inv(sqrt(π)) ≈ normalizedcomplexzernikez(0, 0, rθ)
+        @test Q[xy,Block(2)] ≈ [sqrt(2/π)*r*exp(-im*θ), sqrt(2/π)*r*exp(im*θ)]
+        @test Q[xy,Block(4)] ≈ [normalizedcomplexzernikez(3, -1, rθ), normalizedcomplexzernikez(3, 1, rθ), normalizedcomplexzernikez(3, -3, rθ), normalizedcomplexzernikez(3, 3, rθ)]
+        for (a,b) in ((0,0), (0.1,0.2), (0,1))
+            C = ComplexZernike(a,b)
+            @test Normalized(C)[xy,Block.(1:10)] ≈ C[xy,Block.(1:10)] .* Normalized(C).scaling[1:55]
+        end
+    end
+
+    @testset "Orthogonality" begin
+        Q = Normalized(ComplexZernike())
+        @test [sum(conj(Q[:,k]) .* Q[:,j]) for k=1:10, j=1:10] ≈ I
+        C = ComplexZernike()
+        @test [sum(conj(C[:,k]) .* C[:,j]) for k=1:10, j=1:10] ≈ Diagonal(inv.(Q.scaling[1:10]).^2)
+    end
+
+    @testset "Zernike conversion" begin
+        for (a,b) in ((0,0), (0.1,0.2)), normalize in (identity, Normalized)
+            Z, C = normalize(Zernike(a,b)), normalize(ComplexZernike(a,b))
+            R = C \ Z
+            @test transpose(Z[xy,Block.(1:6)]) ≈ transpose(C[xy,Block.(1:6)])*R[Block.(1:6),Block.(1:6)]
+            R = Z \ C
+            @test transpose(C[xy,Block.(1:6)]) ≈ transpose(Z[xy,Block.(1:6)])*R[Block.(1:6),Block.(1:6)]
+        end
+        # orthonormal bases are related by a unitary matrix
+        U = Normalized(ComplexZernike()) \ Normalized(Zernike())
+        @test U[Block.(1:5),Block.(1:5)]' * U[Block.(1:5),Block.(1:5)] ≈ I
+        # different parameters
+        for (A,B) in ((ComplexZernike(1), Zernike()), (Zernike(1), ComplexZernike()))
+            R = A \ B
+            @test transpose(B[xy,Block.(1:6)]) ≈ transpose(A[xy,Block.(1:6)])*R[Block.(1:6),Block.(1:6)]
+        end
+    end
+
+    @testset "Conversion and lowering" begin
+        w = 1 - r^2
+        for (A,B) in ((ComplexZernike(1), ComplexZernike()), (ComplexZernike(0.1,1.2), ComplexZernike(0.1,0.2)),
+                      (Normalized(ComplexZernike(1)), Normalized(ComplexZernike())), (ComplexZernike(), Normalized(ComplexZernike())))
+            R = A \ B
+            @test transpose(B[xy,Block.(1:6)]) ≈ transpose(A[xy,Block.(1:6)])*R[Block.(1:6),Block.(1:6)]
+        end
+        @test ComplexZernike() \ ComplexZernike() isa Eye
+        @test ComplexZernike() \ Weighted(ComplexZernike()) isa Eye
+
+        for normalize in (identity, Normalized)
+            A, B = normalize(ComplexZernike()), normalize(ComplexZernike(1))
+            L = A \ Weighted(B)
+            @test w*B[xy,Block.(1:5)] ≈ transpose(L[Block.(1:7),Block.(1:5)])*A[xy,Block.(1:7)]
+        end
+    end
+
+    @testset "expand" begin
+        for C in (ComplexZernike(), ComplexZernike(0.1,0.2), Normalized(ComplexZernike()))
+            @test expand(C, splat((x,y) -> exp(x*cos(y))))[xy] ≈ exp(0.1cos(0.2))
+            @test expand(C, splat((x,y) -> exp(x*cos(y)+im*y)))[xy] ≈ exp(0.1cos(0.2)+im*0.2)
+            @test expand(C, splat((x,y) -> exp(x+2im*y)))[xy] ≈ exp(0.1+0.4im)
+        end
+
+        # coefficients of Zernike and ComplexZernike are related by the conversion
+        Z, C = Zernike(0.1, 0.2), ComplexZernike(0.1, 0.2)
+        x,y = coordinates(C)
+        f = exp.(x .* cos.(y) .+ im .* y)
+        @test (C \ f)[1:55] ≈ (C \ Z)[1:55,1:55] * (Z \ f)[1:55]
+        @test (C \ f)[1:55] ≈ Normalized(C).scaling[1:55] .* (Normalized(C) \ f)[1:55]
+
+        P = plan_transform(C, Block(5))
+        c = BlockedArray(randn(ComplexF64, sum(1:5)), 1:5)
+        V = [(C * [c; zeros(∞)])[SVector(𝐱)] for 𝐱 in grid(C, Block(5))]
+        @test P * V ≈ c
+    end
+
+    @testset "Jacobi matrices" begin
+        for C in (ComplexZernike(), ComplexZernike(0.3), Normalized(ComplexZernike(0.3)))
+            x,y = coordinates(C)
+            X = C \ (x .* C)
+            Y = C \ (y .* C)
+            @test xy[1]*transpose(C[xy,Block.(1:5)]) ≈ transpose(C[xy,Block.(1:6)])*X[Block.(1:6),Block.(1:5)]
+            @test xy[2]*transpose(C[xy,Block.(1:5)]) ≈ transpose(C[xy,Block.(1:6)])*Y[Block.(1:6),Block.(1:5)]
+
+            f = C \ (sin.(x.*y) .+ x.^2 .- y)
+            @test X[Block.(1:20),Block.(1:21)]*f[Block.(1:21)] ≈ (C \ (x.*sin.(x.*y) .+ x.^3 .- x.*y))[Block.(1:20)]
+            @test Y[Block.(1:20),Block.(1:21)]*f[Block.(1:21)] ≈ (C \ (y.*sin.(x.*y) .+ y .* x.^2 .- y.^2))[Block.(1:20)]
+
+            if C isa Normalized
+                # multiplication by x is real symmetric and by y is Hermitian
+                @test X[Block.(1:6),Block.(1:6)] ≈ real(X[Block.(1:6),Block.(1:6)]) ≈ transpose(X[Block.(1:6),Block.(1:6)])
+                @test Y[Block.(1:6),Block.(1:6)] ≈ Y[Block.(1:6),Block.(1:6)]'
+            end
+        end
+    end
+
+    @testset "Laplacian" begin
+        for C in (ComplexZernike(1), Normalized(ComplexZernike(1)))
+            WC = Weighted(C)
+            Δ_C = C \ (Laplacian(WC) * WC)
+            x,y = coordinates(WC)
+            u = @. (1 - x^2 - y^2) * exp(x*cos(y))
+            Δu = @. (-exp(x*cos(y)) * (4 - x*(-5 + x^2 + y^2)cos(y) + (-1 + x^2 + y^2)cos(y)^2 - 4x*y*sin(y) + x^2*(x^2 + y^2-1)*sin(y)^2))
+            @test (Δ_C * (WC \ u))[1:100] ≈ (C \ Δu)[1:100]
+        end
+
+        c = [randn(ComplexF64, 100); zeros(∞)]
+        for b in (0, 0.2), normalize in (identity, Normalized)
+            C = normalize(ComplexZernike(b))
+            C₂ = normalize(ComplexZernike(b+2))
+            Δ = C₂ \ (Laplacian(C) * C)
+            f = 𝐱 -> (normalize(ComplexZernike{complex(eltype(𝐱))}(b))*c)[𝐱]
+            @test tr(hessian(𝐱 -> real(f(𝐱)), xy)) + im*tr(hessian(𝐱 -> imag(f(𝐱)), xy)) ≈ (C₂*(Δ*c))[xy]
+        end
+
+        WC = Weighted(ComplexZernike(1.))
+        @test (ComplexZernike(1) \ (Laplacian(WC) * WC))[1:100,1:100] ≈ -(ComplexZernike(1) \ (AbsLaplacian(WC,1.) * WC))[1:100,1:100]
+    end
+
+    @testset "sum" begin
+        for C in (ComplexZernike(), Normalized(ComplexZernike()))
+            @test sum(expand(C, 𝐱 -> 1)) ≈ π
+            @test sum(expand(C, splat((x,y) -> exp(x*cos(y))))) ≈ 3.4898933353782744
+        end
     end
 end
 
