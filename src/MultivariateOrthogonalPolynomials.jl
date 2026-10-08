@@ -21,7 +21,7 @@ import LazyArrays: arguments, paddeddata, LazyArrayStyle, LazyLayout, PaddedLayo
 import LazyBandedMatrices: LazyBandedBlockBandedLayout, AbstractBandedBlockBandedLayout, AbstractLazyBandedBlockBandedLayout, _krontrav_axes, DiagTravLayout, diagtrav, invdiagtrav, ApplyBandedBlockBandedLayout, krontrav
 import InfiniteArrays: InfiniteCardinal, OneToInf
 
-import ClassicalOrthogonalPolynomials: jacobimatrix, Weighted, orthogonalityweight, HalfWeighted, WeightedBasis, pad, recurrencecoefficients, clenshaw, weightedgrammatrix, Clenshaw, OPLayout, normalized
+import ClassicalOrthogonalPolynomials: jacobimatrix, Weighted, orthogonalityweight, HalfWeighted, WeightedBasis, pad, recurrencecoefficients, clenshaw, weightedgrammatrix, Clenshaw, OPLayout, normalized, normalizationconstant
 import HarmonicOrthogonalPolynomials: BivariateOrthogonalPolynomial, MultivariateOrthogonalPolynomial, Plan,
                                           AngularMomentum, angularmomentum, BlockOneTo, BlockRange1, interlace,
                                           MultivariateOPLayout, AbstractMultivariateOPLayout, MAX_PLOT_BLOCKS
@@ -30,7 +30,7 @@ export MultivariateOrthogonalPolynomial, BivariateOrthogonalPolynomial,
        UnitTriangle, UnitDisk,
        JacobiTriangle, TriangleWeight, WeightedTriangle,
        DunklXuDisk, DunklXuDiskWeight, WeightedDunklXuDisk,
-       Zernike, ZernikeWeight, zerniker, zernikez,
+       Zernike, ZernikeWeight, zerniker, zernikez, normalizedzerniker, normalizedzernikez,
        AngularMomentum,
        RadialCoordinate, Weighted, Block, jacobimatrix, KronPolynomial, RectPolynomial,
        grammatrix, oneto, coordinates, Laplacian, AbsLaplacian, laplacian, abslaplacian, angularmomentum, weaklaplacian

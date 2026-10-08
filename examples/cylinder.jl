@@ -23,7 +23,6 @@ end
 
 @test Zernike()[SVector(0.1,0.2),Block(1):(M+1)]'C*Fourier()[0.3,1:n] ≈ f(0.1,0.2,0.3)
 
-Z_ipl = inv(Z_pl)
 F_ipl = inv(F_pl)
 
 

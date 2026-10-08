@@ -12,7 +12,7 @@ pyplot()
 # with the weight (1-|𝐱|^2) = (1-x^2-y^2)
 ####
 
-Z = Zernike(1)
+Z = Normalized(Zernike(1)) # orthonormal so that the mass matrix below is symmetric
 W = Weighted(Z) # w*Z
 x, y = coordinates(W)
 Δ = Z \ laplacian(W)

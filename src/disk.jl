@@ -38,7 +38,12 @@ end
 """
     Zernike(a, b)
 
-is a quasi-matrix orthogonal `r^(2a) * (1-r^2)^b`
+is a quasi-matrix orthogonal `r^(2a) * (1-r^2)^b`. The polynomials are not normalized:
+the entry of degree `ℓ` and Fourier mode `m` is
+
+    r^|m| * jacobip((ℓ-|m|) ÷ 2, b, |m|+a, 2r^2-1) * (signbit(m) ? sin(|m|*θ) : cos(|m|*θ))
+
+Use `Normalized(Zernike(a, b))` for the orthonormal polynomials.
 """
 struct Zernike{T} <: BivariateOrthogonalPolynomial{T}
     a::T
@@ -74,37 +79,109 @@ orthogonalityweight(Z::Zernike) = ZernikeWeight(Z.a, Z.b)
 
 basis_axes(::Inclusion{<:Any,<:UnitDisk}, v) = Zernike()
 
-zerniker(ℓ, m, a, b, r::T) where T = sqrt(convert(T,2)^(m+a+b+2-iszero(m))/π) * r^m * normalizedjacobip((ℓ-m) ÷ 2, b, m+a, 2r^2-1)
+###
+# Evaluation
+###
+
+zerniker(ℓ, m, a, b, r::T) where T = r^m * jacobip((ℓ-m) ÷ 2, b, m+a, 2r^2-1)
 zerniker(ℓ, m, b, r) = zerniker(ℓ, m, zero(b), b, r)
 zerniker(ℓ, m, r) = zerniker(ℓ, m, zero(r), r)
 
-function zernikez(ℓ, ms, a, b, rθ::RadialCoordinate{T}) where T
+normalizedzerniker(ℓ, m, a, b, r::T) where T = sqrt(convert(T,2)^(m+a+b+2-iszero(m))/π) * r^m * normalizedjacobip((ℓ-m) ÷ 2, b, m+a, 2r^2-1)
+normalizedzerniker(ℓ, m, b, r) = normalizedzerniker(ℓ, m, zero(b), b, r)
+normalizedzerniker(ℓ, m, r) = normalizedzerniker(ℓ, m, zero(r), r)
+
+function _zernikez(radial, ℓ, ms, a, b, rθ::RadialCoordinate)
     r,θ = rθ.r,rθ.θ
     m = abs(ms)
-    zerniker(ℓ, m, a, b, r) * (signbit(ms) ? sin(m*θ) : cos(m*θ))
+    radial(ℓ, m, a, b, r) * (signbit(ms) ? sin(m*θ) : cos(m*θ))
 end
 
-zernikez(ℓ, ms, a, b, xy::StaticVector{2}) = zernikez(ℓ, ms, a, b, RadialCoordinate(xy))
-zernikez(ℓ, ms, b, xy::StaticVector{2}) = zernikez(ℓ, ms, zero(b), b, xy)
-zernikez(ℓ, ms, xy::StaticVector{2,T}) where T = zernikez(ℓ, ms, zero(T), xy)
+for (z, radial) in ((:zernikez, :zerniker), (:normalizedzernikez, :normalizedzerniker))
+    @eval begin
+        $z(ℓ, ms, a, b, rθ::RadialCoordinate) = _zernikez($radial, ℓ, ms, a, b, rθ)
+        $z(ℓ, ms, a, b, xy::StaticVector{2}) = $z(ℓ, ms, a, b, RadialCoordinate(xy))
+        $z(ℓ, ms, b, xy::StaticVector{2}) = $z(ℓ, ms, zero(b), b, xy)
+        $z(ℓ, ms, xy::StaticVector{2,T}) where T = $z(ℓ, ms, zero(T), xy)
+    end
+end
 
-function getindex(Z::Zernike{T}, rθ::RadialCoordinate, B::BlockIndex{1}) where T
+# degree ℓ and signed Fourier mode m of the entry B
+function _zernikelm(B::BlockIndex{1})
     ℓ = Int(block(B))-1
     k = blockindex(B)
     m = iseven(ℓ) ? k-isodd(k) : k-iseven(k)
-    zernikez(ℓ, (isodd(k+ℓ) ? 1 : -1) * m, Z.a, Z.b, rθ)
+    ℓ, (isodd(k+ℓ) ? 1 : -1) * m
 end
 
+const NormalizedZernike{T} = Normalized{T,Zernike{T}}
+
+getindex(Z::Zernike, rθ::RadialCoordinate, B::BlockIndex{1}) = zernikez(_zernikelm(B)..., Z.a, Z.b, rθ)
+getindex(Q::NormalizedZernike, rθ::RadialCoordinate, B::BlockIndex{1}) = normalizedzernikez(_zernikelm(B)..., Q.P.a, Q.P.b, rθ)
+getindex(Q::NormalizedZernike, xy::StaticVector{2}, B::BlockIndex{1}) = Q[RadialCoordinate(xy), B]
 
 getindex(Z::Zernike, xy::StaticVector{2}, B::BlockIndex{1}) = Z[RadialCoordinate(xy), B]
 getindex(Z::Zernike, xy::StaticVector{2}, B::Block{1}) = [Z[xy, B[j]] for j=1:Int(B)]
 getindex(Z::Zernike, xy::StaticVector{2}, JR::BlockOneTo) = mortar([Z[xy,Block(J)] for J = 1:Int(JR[end])])
 
+###
+# Normalization constants
+###
+
+"""
+    zernikenormalizationconstant(T, n, m, a, b)
+
+gives `c` such that `normalizedzerniker(ℓ, m, a, b, r) == c * zerniker(ℓ, m, a, b, r)` where `n == (ℓ-m) ÷ 2`.
+"""
+function zernikenormalizationconstant(::Type{T}, n::Integer, m::Integer, a, b) where T
+    α, β = convert(T, b), convert(T, m+a)
+    # ratio of 2^(α+β+1) to the norm squared of the Jacobi polynomial
+    lr = iszero(n) ? loggamma(α+β+2) - loggamma(α+1) - loggamma(β+1) :
+                     log(2n+α+β+1) + loggamma(n+α+β+1) + loggamma(n+one(T)) - loggamma(n+α+1) - loggamma(n+β+1)
+    sqrt(convert(T,2)^(1-iszero(m)) / convert(T,π) * exp(lr))
+end
+
+# the scaling such that Normalized(Z) == Z * Diagonal(ZernikeNormalizationConstant(Z.a, Z.b))
+struct ZernikeNormalizationConstant{T} <: AbstractBlockVector{T}
+    a::T
+    b::T
+end
+
+ZernikeNormalizationConstant{T}(Z::Zernike) where T = ZernikeNormalizationConstant{T}(Z.a, Z.b)
+
+axes(::ZernikeNormalizationConstant) = (blockedrange(oneto(∞)),)
+copy(c::ZernikeNormalizationConstant) = c
+
+MemoryLayout(::Type{<:ZernikeNormalizationConstant}) = LazyLayout()
+Base.BroadcastStyle(::Type{<:ZernikeNormalizationConstant}) = LazyArrayStyle{1}()
+Base.BroadcastStyle(::Type{<:Diagonal{<:Any,<:ZernikeNormalizationConstant}}) = LazyArrayStyle{2}()
+
+function getindex(c::ZernikeNormalizationConstant{T}, Kk::BlockIndex{1}) where T
+    ℓ, ms = _zernikelm(Kk)
+    m = abs(ms)
+    zernikenormalizationconstant(T, (ℓ-m) ÷ 2, m, c.a, c.b)
+end
+getindex(c::ZernikeNormalizationConstant, k::Integer) = c[findblockindex(axes(c,1),k)]
+Base.view(c::ZernikeNormalizationConstant, K::Block{1}) = [c[K[j]] for j = 1:Int(K)]
+
+normalizationconstant(Z::Zernike{T}) where T = ZernikeNormalizationConstant{real(T)}(Z)
+
+# the normalization constants laid out as the coefficient matrix of a ModalTrav:
+# row i corresponds to n = i-1 and column j to Fourier mode j ÷ 2
+_zernikemodalconstant(::Type{T}, (M,N)::NTuple{2,Int}, a, b) where T =
+    [zernikenormalizationconstant(T, i-1, j ÷ 2, a, b) for i = 1:M, j = 1:N]
+
+# coefficients in Normalized(Z) to coefficients in Z
+_normalized2zernike(Z::Zernike, c::ModalTrav) = ModalTrav(_zernikemodalconstant(real(eltype(Z)), size(c.matrix), Z.a, Z.b) .* c.matrix)
+# coefficients in Z to coefficients in Normalized(Z)
+_zernike2normalized(Z::Zernike, c::AbstractVector) = c ./ normalizationconstant(Z)[axes(c,1)]
+
 
 ###
 # Jacobi matrices
 ###
-function jacobimatrix(::Val{1}, Z::Zernike{T}) where T
+function jacobimatrix(::Val{1}, Q::NormalizedZernike{T}) where T
+    Z = Q.P
     if iszero(Z.a)
         α = Z.b     # extract second basis parameter
 
@@ -153,7 +230,8 @@ function jacobimatrix(::Val{1}, Z::Zernike{T}) where T
     end
 end
 
-function jacobimatrix(::Val{2}, Z::Zernike{T}) where T
+function jacobimatrix(::Val{2}, Q::NormalizedZernike{T}) where T
+    Z = Q.P
     if iszero(Z.a)
         α = Z.b     # extract second basis parameter
 
@@ -194,6 +272,15 @@ function jacobimatrix(::Val{2}, Z::Zernike{T}) where T
     end
 end
 
+# Normalized(Z) == Z * D so x * Z == Z * D * X * inv(D) where X is the Jacobi matrix of Normalized(Z)
+function jacobimatrix(v::Union{Val{1},Val{2}}, Z::Zernike)
+    s = Normalized(Z).scaling
+    _bandedblockbandeddiagonal(s) * jacobimatrix(v, Normalized(Z)) * _bandedblockbandeddiagonal(inv.(s))
+end
+
+# a Diagonal would lose the block-banded structure in the product
+_bandedblockbandeddiagonal(d::AbstractVector) = _BandedBlockBandedMatrix(BlockBroadcastArray(hcat, d)', axes(d,1), (0,0), (0,0))
+
 ###
 # Transforms
 ###
@@ -226,7 +313,7 @@ function plotvalues(u::ApplyQuasiVector{T,typeof(*),<:Tuple{Zernike, AbstractVec
     B = findblock(axes(Z,2), last(colsupport(c)))
     N = Int(B) ÷ 2 + 1 # polynomial degree
     F = ZernikeITransform{T}(min(2N, MAX_PLOT_BLOCKS), Z.a, Z.b)
-    C = F * c[Block.(OneTo(min(2N, MAX_PLOT_BLOCKS)))] # transform to grid
+    C = F * _zernike2normalized(Z, c[Block.(OneTo(min(2N, MAX_PLOT_BLOCKS)))]) # transform to grid
     [permutedims(u[x[1,:]]); # evaluate on edge of disk
      C C[:,1];
      fill(u[x[end,1]], 1, size(x,2))] # evaluate at origin and repeat
@@ -267,7 +354,9 @@ deduceeltype(T, f) = all(isreal, f) ? T : Complex{T}
 
 inv(P::ZernikeTransform) = ZernikeITransform(P.N, P.disk2cxf, inv(P.analysis))
 
-plan_transform(Z::Zernike{T}, (N,)::Tuple{Block{1}}, dims=1) where T = ZernikeTransform{real(T)}(Int(N), Z.a, Z.b)
+plan_transform(Q::NormalizedZernike{T}, (N,)::Tuple{Block{1}}, dims=1) where T = ZernikeTransform{real(T)}(Int(N), Q.P.a, Q.P.b)
+# transforms for Zernike(a,b) rescale those for Normalized(Zernike(a,b))
+plan_transform(Z::Zernike{T}, (N,)::Tuple{Block{1}}, dims=1) where T = ApplyPlan(Base.Fix1(_normalized2zernike, Z), ZernikeTransform{real(T)}(Int(N), Z.a, Z.b))
 
 ##
 # Laplacian
@@ -281,10 +370,10 @@ end
 function laplacian(Z::Zernike{T}; dims...) where T
     a,b = Z.a,Z.b
     @assert a == 0
-    D = Derivative(Inclusion(ChebyshevInterval{T}())) 
-    Δs = BroadcastVector{AbstractMatrix{T}}((C,B,A) -> 4(HalfWeighted{:b}(C)\(D*HalfWeighted{:b}(B)))*(B\(D*A)), Normalized.(Jacobi.(b+2,a:∞)), Normalized.(Jacobi.(b+1,(a+1):∞)), Normalized.(Jacobi.(b,a:∞)))
+    D = Derivative(Inclusion(ChebyshevInterval{T}()))
+    Δs = BroadcastVector{AbstractMatrix{T}}((C,B,A) -> 8(HalfWeighted{:b}(C)\(D*HalfWeighted{:b}(B)))*(B\(D*A)), Jacobi{T}.(b+2,a:∞), Jacobi{T}.(b+1,(a+1):∞), Jacobi{T}.(b,a:∞))
     Δ = ModalInterlace(Δs, (ℵ₀,ℵ₀), (-2,2))
-    Zernike(a,b+2) * Δ
+    Zernike{T}(a,b+2) * Δ
 end
 
 ###
@@ -329,18 +418,18 @@ fractionalcfs2d(l::Integer, m::Integer, β) = fractionalcfs(l,m,β,2)
 
 function \(A::Zernike{T}, B::Zernike{V}) where {T,V}
     TV = promote_type(T,V)
-    A.a == B.a && A.b == B.b && return Eye{TV}((axes(A,2),))
+    A == B && return Eye{TV}((axes(A,2),))
     st = Int(A.a - B.a + A.b - B.b)
-    ModalInterlace{TV}((Normalized.(Jacobi{TV}.(A.b,A.a:∞)) .\ Normalized.(Jacobi{TV}.(B.b,B.a:∞))) .* convert(TV, 2)^(-st/2), (ℵ₀,ℵ₀), (0,2st))
+    ModalInterlace{TV}(Jacobi{TV}.(A.b,A.a:∞) .\ Jacobi{TV}.(B.b,B.a:∞), (ℵ₀,ℵ₀), (0,2st))
 end
 
 function \(A::Zernike{T}, wB::Weighted{V,Zernike{V}}) where {T,V}
     TV = promote_type(T,V)
     B = wB.P
     A.a == B.a == A.b == B.b == 0 && return Eye{TV}((axes(A,2),))
-    c = Int(B.a - A.a + B.b - A.b)
     @assert iszero(B.a)
-    ModalInterlace{TV}((Normalized.(Jacobi{TV}.(A.b, A.a:∞)) .\ HalfWeighted{:a}.(Normalized.(Jacobi{TV}.(B.b, B.a:∞)))) .* convert(TV, 2)^(-c/2), (ℵ₀,ℵ₀), (2Int(B.b), 2Int(A.a+A.b)))
+    # (1-r^2)^b == 2^(-b) * (1-s)^b where s = 2r^2-1
+    ModalInterlace{TV}((Jacobi{TV}.(A.b, A.a:∞) .\ HalfWeighted{:a}.(Jacobi{TV}.(B.b, B.a:∞))) ./ convert(TV, 2)^B.b, (ℵ₀,ℵ₀), (2Int(B.b), 2Int(A.a+A.b)))
 end
 
 
@@ -351,5 +440,5 @@ end
 function Base._sum(P::Zernike{T}, dims) where T
     @assert dims == 1
     @assert P.a == P.b == 0
-    Hcat(sqrt(convert(T, π)), Zeros{T}(1,∞))
+    Hcat(convert(T, π), Zeros{T}(1,∞))
 end
