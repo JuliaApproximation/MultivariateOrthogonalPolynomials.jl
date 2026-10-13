@@ -35,6 +35,8 @@ function getindex(w::ZernikeWeight, xy::StaticVector{2})
 end
 
 
+abstract type AbstractZernike{T} <: BivariateOrthogonalPolynomial{T} end
+
 """
     Zernike(a, b)
 
@@ -45,7 +47,7 @@ the entry of degree `ℓ` and Fourier mode `m` is
 
 Use `Normalized(Zernike(a, b))` for the orthonormal polynomials.
 """
-struct Zernike{T} <: BivariateOrthogonalPolynomial{T}
+struct Zernike{T} <: AbstractZernike{T}
     a::T
     b::T
     Zernike{T}(a::T, b::T) where T = new{T}(a, b)
@@ -55,8 +57,8 @@ Zernike(a::T, b::V) where {T,V} = Zernike{float(promote_type(T,V))}(a, b)
 Zernike{T}(b) where T = Zernike{T}(zero(b), b)
 Zernike{T}() where T = Zernike{T}(zero(T))
 
-AbstractQuasiArray{T}(::Zernike) where T = Zernike{T}()
-AbstractQuasiMatrix{T}(::Zernike) where T = Zernike{T}()
+AbstractQuasiArray{T}(Z::Zernike) where T = Zernike{T}(Z.a, Z.b)
+AbstractQuasiMatrix{T}(Z::Zernike) where T = Zernike{T}(Z.a, Z.b)
 
 """
     Zernike(b)
@@ -66,16 +68,50 @@ is a quasi-matrix orthogonal `(1-r^2)^b`
 Zernike(b) = Zernike(zero(b), b)
 Zernike() = Zernike{Float64}()
 
-axes(P::Zernike{T}) where T = (Inclusion(UnitDisk{real(T)}()),blockedrange(oneto(∞)))
+"""
+    ComplexZernike(a, b)
+
+is a quasi-matrix orthogonal `r^(2a) * (1-r^2)^b` with complex Fourier modes. It is ordered the same
+as `Zernike(a, b)` but with `sin(|m|*θ)` replaced by `exp(-im*|m|*θ)` and `cos(|m|*θ)` by `exp(im*|m|*θ)`,
+that is, the entry of degree `ℓ` and Fourier mode `m` is
+
+    r^|m| * jacobip((ℓ-|m|) ÷ 2, b, |m|+a, 2r^2-1) * exp(im*m*θ)
+
+Use `Normalized(ComplexZernike(a, b))` for the orthonormal polynomials. The type parameter `T` is the (complex) element type.
+"""
+struct ComplexZernike{T,V} <: AbstractZernike{T}
+    a::V
+    b::V
+    ComplexZernike{T,V}(a::V, b::V) where {T,V} = new{T,V}(a, b)
+end
+ComplexZernike{T}(a, b) where T = ComplexZernike{T,real(T)}(convert(real(T),a), convert(real(T),b))
+ComplexZernike(a::T, b::V) where {T,V} = ComplexZernike{complex(float(promote_type(T,V)))}(a, b)
+ComplexZernike{T}(b) where T = ComplexZernike{T}(zero(b), b)
+ComplexZernike{T}() where T = ComplexZernike{T}(zero(real(T)))
+ComplexZernike(b) = ComplexZernike(zero(b), b)
+ComplexZernike() = ComplexZernike{ComplexF64}()
+
+AbstractQuasiArray{T}(Z::ComplexZernike) where T = ComplexZernike{T}(Z.a, Z.b)
+AbstractQuasiMatrix{T}(Z::ComplexZernike) where T = ComplexZernike{T}(Z.a, Z.b)
+
+# Zernike-type basis of the same kind as Z with parameters a and b
+_zernike(::Zernike{T}, a, b) where T = Zernike{T}(a, b)
+_zernike(::ComplexZernike{T}, a, b) where T = ComplexZernike{T}(a, b)
+
+axes(P::AbstractZernike{T}) where T = (Inclusion(UnitDisk{real(T)}()),blockedrange(oneto(∞)))
 
 ==(w::Zernike, v::Zernike) = w.a == v.a && w.b == v.b
+==(w::ComplexZernike, v::ComplexZernike) = w.a == v.a && w.b == v.b
+==(::Zernike, ::ComplexZernike) = false
+==(::ComplexZernike, ::Zernike) = false
 
-copy(A::Zernike) = A
+copy(A::AbstractZernike) = A
 
-show(io::IO, P::Zernike) = summary(io, P)
+show(io::IO, P::AbstractZernike) = summary(io, P)
 summary(io::IO, P::Zernike) = print(io, "Zernike($(P.a), $(P.b))")
+summary(io::IO, P::ComplexZernike) = print(io, "ComplexZernike($(P.a), $(P.b))")
 
-orthogonalityweight(Z::Zernike) = ZernikeWeight(Z.a, Z.b)
+orthogonalityweight(Z::AbstractZernike) = ZernikeWeight(Z.a, Z.b)
 
 basis_axes(::Inclusion{<:Any,<:UnitDisk}, v) = Zernike()
 
@@ -91,15 +127,19 @@ normalizedzerniker(ℓ, m, a, b, r::T) where T = sqrt(convert(T,2)^(m+a+b+2-isze
 normalizedzerniker(ℓ, m, b, r) = normalizedzerniker(ℓ, m, zero(b), b, r)
 normalizedzerniker(ℓ, m, r) = normalizedzerniker(ℓ, m, zero(r), r)
 
-function _zernikez(radial, ℓ, ms, a, b, rθ::RadialCoordinate)
-    r,θ = rθ.r,rθ.θ
-    m = abs(ms)
-    radial(ℓ, m, a, b, r) * (signbit(ms) ? sin(m*θ) : cos(m*θ))
-end
+# radial part of Normalized(ComplexZernike), which differs from normalizedzerniker as the
+# complex Fourier modes have the same norm for all m
+normalizedcomplexzerniker(ℓ, m, a, b, r::T) where T = sqrt(convert(T,2)^(m+a+b+1)/π) * r^m * normalizedjacobip((ℓ-m) ÷ 2, b, m+a, 2r^2-1)
 
-for (z, radial) in ((:zernikez, :zerniker), (:normalizedzernikez, :normalizedzerniker))
+_zernikeangular(ms, θ) = (m = abs(ms); signbit(ms) ? sin(m*θ) : cos(m*θ))
+_complexzernikeangular(ms, θ) = cis(ms*θ)
+
+_zernikez(radial, angular, ℓ, ms, a, b, rθ::RadialCoordinate) = radial(ℓ, abs(ms), a, b, rθ.r) * angular(ms, rθ.θ)
+
+for (z, radial, angular) in ((:zernikez, :zerniker, :_zernikeangular), (:normalizedzernikez, :normalizedzerniker, :_zernikeangular),
+                             (:complexzernikez, :zerniker, :_complexzernikeangular), (:normalizedcomplexzernikez, :normalizedcomplexzerniker, :_complexzernikeangular))
     @eval begin
-        $z(ℓ, ms, a, b, rθ::RadialCoordinate) = _zernikez($radial, ℓ, ms, a, b, rθ)
+        $z(ℓ, ms, a, b, rθ::RadialCoordinate) = _zernikez($radial, $angular, ℓ, ms, a, b, rθ)
         $z(ℓ, ms, a, b, xy::StaticVector{2}) = $z(ℓ, ms, a, b, RadialCoordinate(xy))
         $z(ℓ, ms, b, xy::StaticVector{2}) = $z(ℓ, ms, zero(b), b, xy)
         $z(ℓ, ms, xy::StaticVector{2,T}) where T = $z(ℓ, ms, zero(T), xy)
@@ -115,14 +155,17 @@ function _zernikelm(B::BlockIndex{1})
 end
 
 const NormalizedZernike{T} = Normalized{T,Zernike{T}}
+const NormalizedComplexZernike{T} = Normalized{T,<:ComplexZernike{T}}
 
 getindex(Z::Zernike, rθ::RadialCoordinate, B::BlockIndex{1}) = zernikez(_zernikelm(B)..., Z.a, Z.b, rθ)
+getindex(Z::ComplexZernike, rθ::RadialCoordinate, B::BlockIndex{1}) = complexzernikez(_zernikelm(B)..., Z.a, Z.b, rθ)
 getindex(Q::NormalizedZernike, rθ::RadialCoordinate, B::BlockIndex{1}) = normalizedzernikez(_zernikelm(B)..., Q.P.a, Q.P.b, rθ)
-getindex(Q::NormalizedZernike, xy::StaticVector{2}, B::BlockIndex{1}) = Q[RadialCoordinate(xy), B]
+getindex(Q::NormalizedComplexZernike, rθ::RadialCoordinate, B::BlockIndex{1}) = normalizedcomplexzernikez(_zernikelm(B)..., Q.P.a, Q.P.b, rθ)
+getindex(Q::Union{NormalizedZernike,NormalizedComplexZernike}, xy::StaticVector{2}, B::BlockIndex{1}) = Q[RadialCoordinate(xy), B]
 
-getindex(Z::Zernike, xy::StaticVector{2}, B::BlockIndex{1}) = Z[RadialCoordinate(xy), B]
-getindex(Z::Zernike, xy::StaticVector{2}, B::Block{1}) = [Z[xy, B[j]] for j=1:Int(B)]
-getindex(Z::Zernike, xy::StaticVector{2}, JR::BlockOneTo) = mortar([Z[xy,Block(J)] for J = 1:Int(JR[end])])
+getindex(Z::AbstractZernike, xy::StaticVector{2}, B::BlockIndex{1}) = Z[RadialCoordinate(xy), B]
+getindex(Z::AbstractZernike, xy::StaticVector{2}, B::Block{1}) = [Z[xy, B[j]] for j=1:Int(B)]
+getindex(Z::AbstractZernike, xy::StaticVector{2}, JR::BlockOneTo) = mortar([Z[xy,Block(J)] for J = 1:Int(JR[end])])
 
 ###
 # Normalization constants
@@ -133,38 +176,59 @@ getindex(Z::Zernike, xy::StaticVector{2}, JR::BlockOneTo) = mortar([Z[xy,Block(J
 
 gives `c` such that `normalizedzerniker(ℓ, m, a, b, r) == c * zerniker(ℓ, m, a, b, r)` where `n == (ℓ-m) ÷ 2`.
 """
-function zernikenormalizationconstant(::Type{T}, n::Integer, m::Integer, a, b) where T
+zernikenormalizationconstant(::Type{T}, n::Integer, m::Integer, a, b) where T =
+    sqrt(convert(T,2)^(1-iszero(m))) * complexzernikenormalizationconstant(T, n, m, a, b)
+
+"""
+    complexzernikenormalizationconstant(T, n, m, a, b)
+
+gives `c` such that `normalizedcomplexzerniker(ℓ, m, a, b, r) == c * zerniker(ℓ, m, a, b, r)` where `n == (ℓ-m) ÷ 2`.
+"""
+function complexzernikenormalizationconstant(::Type{T}, n::Integer, m::Integer, a, b) where T
     α, β = convert(T, b), convert(T, m+a)
     # ratio of 2^(α+β+1) to the norm squared of the Jacobi polynomial
     lr = iszero(n) ? loggamma(α+β+2) - loggamma(α+1) - loggamma(β+1) :
                      log(2n+α+β+1) + loggamma(n+α+β+1) + loggamma(n+one(T)) - loggamma(n+α+1) - loggamma(n+β+1)
-    sqrt(convert(T,2)^(1-iszero(m)) / convert(T,π) * exp(lr))
+    sqrt(exp(lr) / convert(T,π))
 end
 
+abstract type AbstractZernikeNormalizationConstant{T} <: AbstractBlockVector{T} end
+
 # the scaling such that Normalized(Z) == Z * Diagonal(ZernikeNormalizationConstant(Z.a, Z.b))
-struct ZernikeNormalizationConstant{T} <: AbstractBlockVector{T}
+struct ZernikeNormalizationConstant{T} <: AbstractZernikeNormalizationConstant{T}
+    a::T
+    b::T
+end
+
+# the scaling such that Normalized(Z) == Z * Diagonal(ComplexZernikeNormalizationConstant(Z.a, Z.b)) for Z::ComplexZernike
+struct ComplexZernikeNormalizationConstant{T} <: AbstractZernikeNormalizationConstant{T}
     a::T
     b::T
 end
 
 ZernikeNormalizationConstant{T}(Z::Zernike) where T = ZernikeNormalizationConstant{T}(Z.a, Z.b)
+ComplexZernikeNormalizationConstant{T}(Z::ComplexZernike) where T = ComplexZernikeNormalizationConstant{T}(Z.a, Z.b)
 
-axes(::ZernikeNormalizationConstant) = (blockedrange(oneto(∞)),)
-copy(c::ZernikeNormalizationConstant) = c
+_zernikenormalizationconstant(::ZernikeNormalizationConstant, T, n, m, a, b) = zernikenormalizationconstant(T, n, m, a, b)
+_zernikenormalizationconstant(::ComplexZernikeNormalizationConstant, T, n, m, a, b) = complexzernikenormalizationconstant(T, n, m, a, b)
 
-MemoryLayout(::Type{<:ZernikeNormalizationConstant}) = LazyLayout()
-Base.BroadcastStyle(::Type{<:ZernikeNormalizationConstant}) = LazyArrayStyle{1}()
-Base.BroadcastStyle(::Type{<:Diagonal{<:Any,<:ZernikeNormalizationConstant}}) = LazyArrayStyle{2}()
+axes(::AbstractZernikeNormalizationConstant) = (blockedrange(oneto(∞)),)
+copy(c::AbstractZernikeNormalizationConstant) = c
 
-function getindex(c::ZernikeNormalizationConstant{T}, Kk::BlockIndex{1}) where T
+MemoryLayout(::Type{<:AbstractZernikeNormalizationConstant}) = LazyLayout()
+Base.BroadcastStyle(::Type{<:AbstractZernikeNormalizationConstant}) = LazyArrayStyle{1}()
+Base.BroadcastStyle(::Type{<:Diagonal{<:Any,<:AbstractZernikeNormalizationConstant}}) = LazyArrayStyle{2}()
+
+function getindex(c::AbstractZernikeNormalizationConstant{T}, Kk::BlockIndex{1}) where T
     ℓ, ms = _zernikelm(Kk)
     m = abs(ms)
-    zernikenormalizationconstant(T, (ℓ-m) ÷ 2, m, c.a, c.b)
+    _zernikenormalizationconstant(c, T, (ℓ-m) ÷ 2, m, c.a, c.b)
 end
-getindex(c::ZernikeNormalizationConstant, k::Integer) = c[findblockindex(axes(c,1),k)]
-Base.view(c::ZernikeNormalizationConstant, K::Block{1}) = [c[K[j]] for j = 1:Int(K)]
+getindex(c::AbstractZernikeNormalizationConstant, k::Integer) = c[findblockindex(axes(c,1),k)]
+Base.view(c::AbstractZernikeNormalizationConstant, K::Block{1}) = [c[K[j]] for j = 1:Int(K)]
 
 normalizationconstant(Z::Zernike{T}) where T = ZernikeNormalizationConstant{real(T)}(Z)
+normalizationconstant(Z::ComplexZernike{T}) where T = ComplexZernikeNormalizationConstant{real(T)}(Z)
 
 # the normalization constants laid out as the coefficient matrix of a ModalTrav:
 # row i corresponds to n = i-1 and column j to Fourier mode j ÷ 2
@@ -175,6 +239,60 @@ _zernikemodalconstant(::Type{T}, (M,N)::NTuple{2,Int}, a, b) where T =
 _normalized2zernike(Z::Zernike, c::ModalTrav) = ModalTrav(_zernikemodalconstant(real(eltype(Z)), size(c.matrix), Z.a, Z.b) .* c.matrix)
 # coefficients in Z to coefficients in Normalized(Z)
 _zernike2normalized(Z::Zernike, c::AbstractVector) = c ./ normalizationconstant(Z)[axes(c,1)]
+
+###
+# Zernike <-> ComplexZernike
+###
+
+# Map coefficients of sin(m*θ) and cos(m*θ), stored in columns 2m and 2m+1 of a ModalTrav,
+# to α*(c + im*s) and α*(c - im*s), the coefficients of exp(-im*m*θ) and exp(im*m*θ). As
+#   s*sin(m*θ) + c*cos(m*θ) == (c + im*s)/2 * exp(-im*m*θ) + (c - im*s)/2 * exp(im*m*θ)
+# α == 1/2 for Zernike to ComplexZernike and α == 1/sqrt(2) for their normalized counterparts.
+function _zernike2complex(c::ModalTrav, α)
+    A = c.matrix
+    B = similar(A, complex(promote_type(eltype(A), typeof(α))))
+    B[:,1] .= view(A,:,1)
+    for j = 2:2:size(A,2)
+        S, C = view(A,:,j), view(A,:,j+1)
+        B[:,j] .= α .* (C .+ im .* S)
+        B[:,j+1] .= α .* (C .- im .* S)
+    end
+    ModalTrav(B)
+end
+
+# The block-diagonal matrix that mixes the entries with Fourier modes -|m| and |m| in each block, which
+# are adjacent with the negative mode first. A column with a negative mode has diagonal entry d₋ and
+# sub-diagonal entry l₋, a column with a positive mode has super-diagonal entry u₊ and diagonal entry d₊,
+# and the m == 0 entries are left unchanged.
+function _zernikemixing(::Type{T}, d₋, l₋, u₊, d₊) where T
+    k = mortar(Base.OneTo.(oneto(∞)))     # k counts the entry in a block
+    n = mortar(Fill.(oneto(∞),oneto(∞)))  # n counts the block number which corresponds to the order (+1)
+    neg = isodd.(k .+ n)                  # entries with negative Fourier mode
+    pos = iseven.(k .+ n) .* ((k .> 1) .| iseven.(n)) # entries with positive Fourier mode
+    # the bands are conjugated as they are stored as an adjoint
+    # (copying a transpose of a BlockBroadcastArray conjugates its entries)
+    du = pos .* conj(convert(T, u₊))
+    d = neg .* conj(convert(T, d₋)) .+ pos .* conj(convert(T, d₊)) .+ (1 .- neg .- pos) .* one(T)
+    dl = neg .* conj(convert(T, l₋))
+    _BandedBlockBandedMatrix(BlockBroadcastArray(hcat, du, d, dl)', axes(n,1), (0,0), (1,1))
+end
+
+# sin(m*θ) == (im*exp(-im*m*θ) - im*exp(im*m*θ))/2 and cos(m*θ) == (exp(-im*m*θ) + exp(im*m*θ))/2
+_complexzernike2zernike(::Type{T}, α) where T = _zernikemixing(T, im*α, -im*α, α, α)
+# exp(-im*m*θ) == cos(m*θ) - im*sin(m*θ) and exp(im*m*θ) == cos(m*θ) + im*sin(m*θ)
+_zernike2complexzernike(::Type{T}, β) where T = _zernikemixing(T, -im*β, β, im*β, β)
+
+function \(A::ComplexZernike{T}, B::Zernike{V}) where {T,V}
+    TV = promote_type(T,V)
+    M = _complexzernike2zernike(TV, one(real(TV))/2)
+    (A.a == B.a && A.b == B.b) ? M : (A \ ComplexZernike{complex(TV)}(B.a, B.b)) * M
+end
+
+function \(A::Zernike{T}, B::ComplexZernike{V}) where {T,V}
+    TV = promote_type(T,V)
+    M = _zernike2complexzernike(TV, one(real(TV)))
+    (A.a == B.a && A.b == B.b) ? M : (A \ Zernike{real(TV)}(B.a, B.b)) * M
+end
 
 
 ###
@@ -278,6 +396,18 @@ function jacobimatrix(v::Union{Val{1},Val{2}}, Z::Zernike)
     _bandedblockbandeddiagonal(s) * jacobimatrix(v, Normalized(Z)) * _bandedblockbandeddiagonal(inv.(s))
 end
 
+# Normalized(ComplexZernike) == Normalized(Zernike) * U' for the unitary U == Normalized(ComplexZernike) \ Normalized(Zernike)
+function jacobimatrix(v::Union{Val{1},Val{2}}, Q::NormalizedComplexZernike{T}) where T
+    Z = Q.P
+    β = inv(sqrt(convert(real(T),2)))
+    _complexzernike2zernike(T, β) * jacobimatrix(v, Normalized(Zernike{real(T)}(Z.a, Z.b))) * _zernike2complexzernike(T, β)
+end
+
+function jacobimatrix(v::Union{Val{1},Val{2}}, Z::ComplexZernike{T}) where T
+    R = Zernike{real(T)}(Z.a, Z.b)
+    (Z \ R) * jacobimatrix(v, R) * (R \ Z)
+end
+
 # a Diagonal would lose the block-banded structure in the product
 _bandedblockbandeddiagonal(d::AbstractVector) = _BandedBlockBandedMatrix(BlockBroadcastArray(hcat, d)', axes(d,1), (0,0), (0,0))
 
@@ -285,7 +415,7 @@ _bandedblockbandeddiagonal(d::AbstractVector) = _BandedBlockBandedMatrix(BlockBr
 # Transforms
 ###
 
-function grid(S::Zernike, B::Block{1})
+function grid(S::AbstractZernike, B::Block{1})
     T = real(eltype(S))
     N = Int(B) ÷ 2 + 1 # matrix rows
     M = 4N-3 # matrix columns
@@ -357,30 +487,39 @@ inv(P::ZernikeTransform) = ZernikeITransform(P.N, P.disk2cxf, inv(P.analysis))
 plan_transform(Q::NormalizedZernike{T}, (N,)::Tuple{Block{1}}, dims=1) where T = ZernikeTransform{real(T)}(Int(N), Q.P.a, Q.P.b)
 # transforms for Zernike(a,b) rescale those for Normalized(Zernike(a,b))
 plan_transform(Z::Zernike{T}, (N,)::Tuple{Block{1}}, dims=1) where T = ApplyPlan(Base.Fix1(_normalized2zernike, Z), ZernikeTransform{real(T)}(Int(N), Z.a, Z.b))
+# transforms for ComplexZernike(a,b) mix the Fourier modes of those for Zernike(a,b)
+plan_transform(Q::NormalizedComplexZernike{T}, (N,)::Tuple{Block{1}}, dims=1) where T =
+    ApplyPlan(Base.Fix2(_zernike2complex, inv(sqrt(convert(real(T),2)))), ZernikeTransform{real(T)}(Int(N), Q.P.a, Q.P.b))
+plan_transform(Z::ComplexZernike{T}, (N,)::Tuple{Block{1}}, dims=1) where T =
+    ApplyPlan(Base.Fix2(_zernike2complex, one(real(T))/2) ∘ Base.Fix1(_normalized2zernike, Zernike{real(T)}(Z.a, Z.b)), ZernikeTransform{real(T)}(Int(N), Z.a, Z.b))
 
 ##
 # Laplacian
 ###
 
-function laplacian(WZ::Weighted{T,<:Zernike}; dims...) where T
+# The operators below act on each Fourier mode m via the radial part, which is the same for
+# sin(|m|*θ) and cos(|m|*θ) as for exp(-im*|m|*θ) and exp(im*|m|*θ), so are shared by Zernike and ComplexZernike.
+
+function laplacian(WZ::Weighted{T,<:AbstractZernike}; dims...) where T
     @assert WZ.P.a == 0 && WZ.P.b == 1
     WZ.P * ModalInterlace{T}(broadcast(k ->  Diagonal(-cumsum(k:8:∞)), 4:4:∞), (ℵ₀,ℵ₀), (0,0))
 end
 
-function laplacian(Z::Zernike{T}; dims...) where T
+function laplacian(Z::AbstractZernike{T}; dims...) where T
     a,b = Z.a,Z.b
     @assert a == 0
-    D = Derivative(Inclusion(ChebyshevInterval{T}()))
-    Δs = BroadcastVector{AbstractMatrix{T}}((C,B,A) -> 8(HalfWeighted{:b}(C)\(D*HalfWeighted{:b}(B)))*(B\(D*A)), Jacobi{T}.(b+2,a:∞), Jacobi{T}.(b+1,(a+1):∞), Jacobi{T}.(b,a:∞))
+    R = real(T)
+    D = Derivative(Inclusion(ChebyshevInterval{R}()))
+    Δs = BroadcastVector{AbstractMatrix{R}}((C,B,A) -> 8(HalfWeighted{:b}(C)\(D*HalfWeighted{:b}(B)))*(B\(D*A)), Jacobi{R}.(b+2,a:∞), Jacobi{R}.(b+1,(a+1):∞), Jacobi{R}.(b,a:∞))
     Δ = ModalInterlace(Δs, (ℵ₀,ℵ₀), (-2,2))
-    Zernike{T}(a,b+2) * Δ
+    _zernike(Z, a, b+2) * Δ
 end
 
 ###
 # Fractional Laplacian
 ###
 
-function abslaplacian(WZ::Weighted{<:Any,<:Zernike}, α; dims...)
+function abslaplacian(WZ::Weighted{<:Any,<:AbstractZernike}, α; dims...)
     @assert WZ.P.a == 0 && WZ.P.b == α
     WZ.P * Diagonal(WeightedZernikeFractionalLaplacianDiag{typeof(α)}(α))
 end
@@ -416,28 +555,34 @@ end
 # 2 dimensional special case, again without the 2^(2*β) factor
 fractionalcfs2d(l::Integer, m::Integer, β) = fractionalcfs(l,m,β,2)
 
-function \(A::Zernike{T}, B::Zernike{V}) where {T,V}
-    TV = promote_type(T,V)
+function _zernikeconversion(::Type{TV}, A::AbstractZernike, B::AbstractZernike) where TV
+    R = real(TV)
     A == B && return Eye{TV}((axes(A,2),))
     st = Int(A.a - B.a + A.b - B.b)
-    ModalInterlace{TV}(Jacobi{TV}.(A.b,A.a:∞) .\ Jacobi{TV}.(B.b,B.a:∞), (ℵ₀,ℵ₀), (0,2st))
+    ModalInterlace{TV}(Jacobi{R}.(A.b,A.a:∞) .\ Jacobi{R}.(B.b,B.a:∞), (ℵ₀,ℵ₀), (0,2st))
 end
 
-function \(A::Zernike{T}, wB::Weighted{V,Zernike{V}}) where {T,V}
-    TV = promote_type(T,V)
-    B = wB.P
+# the conversions between ComplexZernike act the same on each Fourier mode so are real
+\(A::Zernike{T}, B::Zernike{V}) where {T,V} = _zernikeconversion(promote_type(T,V), A, B)
+\(A::ComplexZernike{T}, B::ComplexZernike{V}) where {T,V} = _zernikeconversion(real(promote_type(T,V)), A, B)
+
+function _zernikelowering(::Type{TV}, A::AbstractZernike, B::AbstractZernike) where TV
+    R = real(TV)
     A.a == B.a == A.b == B.b == 0 && return Eye{TV}((axes(A,2),))
     @assert iszero(B.a)
     # (1-r^2)^b == 2^(-b) * (1-s)^b where s = 2r^2-1
-    ModalInterlace{TV}((Jacobi{TV}.(A.b, A.a:∞) .\ HalfWeighted{:a}.(Jacobi{TV}.(B.b, B.a:∞))) ./ convert(TV, 2)^B.b, (ℵ₀,ℵ₀), (2Int(B.b), 2Int(A.a+A.b)))
+    ModalInterlace{TV}((Jacobi{R}.(A.b, A.a:∞) .\ HalfWeighted{:a}.(Jacobi{R}.(B.b, B.a:∞))) ./ convert(R, 2)^B.b, (ℵ₀,ℵ₀), (2Int(B.b), 2Int(A.a+A.b)))
 end
+
+\(A::Zernike{T}, wB::Weighted{V,<:Zernike}) where {T,V} = _zernikelowering(promote_type(T,V), A, wB.P)
+\(A::ComplexZernike{T}, wB::Weighted{V,<:ComplexZernike}) where {T,V} = _zernikelowering(real(promote_type(T,V)), A, wB.P)
 
 
 ###
 # sum
 ###
 
-function Base._sum(P::Zernike{T}, dims) where T
+function Base._sum(P::AbstractZernike{T}, dims) where T
     @assert dims == 1
     @assert P.a == P.b == 0
     Hcat(convert(T, π), Zeros{T}(1,∞))

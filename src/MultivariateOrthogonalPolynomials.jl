@@ -31,6 +31,7 @@ export MultivariateOrthogonalPolynomial, BivariateOrthogonalPolynomial,
        JacobiTriangle, TriangleWeight, WeightedTriangle,
        DunklXuDisk, DunklXuDiskWeight, WeightedDunklXuDisk,
        Zernike, ZernikeWeight, zerniker, zernikez, normalizedzerniker, normalizedzernikez,
+       ComplexZernike, complexzernikez, normalizedcomplexzernikez,
        AngularMomentum,
        RadialCoordinate, Weighted, Block, jacobimatrix, KronPolynomial, RectPolynomial,
        grammatrix, oneto, coordinates, Laplacian, AbsLaplacian, laplacian, abslaplacian, angularmomentum, weaklaplacian
