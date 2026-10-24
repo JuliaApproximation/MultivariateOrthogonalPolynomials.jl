@@ -1,6 +1,6 @@
 name = "MultivariateOrthogonalPolynomials"
 uuid = "4f6956fd-4f93-5457-9149-7bfc4b2ce06d"
-version = "0.10"
+version = "0.10.0"
 
 [deps]
 ArrayLayouts = "4c555306-a7a7-4459-81d9-ec55ddd5c99a"
@@ -24,9 +24,11 @@ SpecialFunctions = "276daf66-3868-5448-9aa4-cd146d93841b"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
 [weakdeps]
+RecipesBase = "3cdcf5f2-1ef4-517c-9805-6587b60abb01"
 StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 
 [extensions]
+MultivariateOrthogonalPolynomialsRecipesBaseExt = "RecipesBase"
 MultivariateOrthogonalPolynomialsStatsBaseExt = "StatsBase"
 
 [compat]
@@ -46,6 +48,7 @@ LazyArrays = "2.14.3"
 LazyBandedMatrices = "0.11.7"
 QuasiArrays = "0.13.3"
 Random = "1"
+RecipesBase = "1"
 RecurrenceRelationships = "0.2"
 SpecialFunctions = "1, 2"
 StaticArrays = "1"

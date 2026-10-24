@@ -858,6 +858,27 @@ function plotvalues(u::ApplyQuasiVector{T,typeof(*),<:Tuple{JacobiTriangle, Abst
     C
 end
 
+"""
+    rectplotgridvalues(u)
+
+returns `(x, y, V)` where `x` and `y` are increasing vectors and `V[j,k] == u[SVector(x[k],y[j])]`,
+with `NaN` outside the triangle. This is used for plots that require a rectilinear grid, e.g. `contourf`.
+"""
+function rectplotgridvalues(u::ApplyQuasiVector{T,typeof(*),<:Tuple{JacobiTriangle, AbstractVector}}) where T
+    C = plotvalues(u) # C[n,m] = u at (x[n], (1-x[n])w[m]) where x[n] and w[m] are as in trigrid
+    N = size(C,1)
+    # along each row u is a polynomial in w, sampled at Chebyshev points mapped to [0,1]
+    A = plan_transform(ChebyshevT{T}(), (N,N), 2) * C
+    x = [sinpi((2n-1)/(4N))^2 for n in 1:N] # increasing version of trigrid's x, which satisfies 1-x[k] == x[N+1-k]
+    V = fill(convert(T, NaN), N, N)
+    for k in 1:N
+        n = N+1-k # x[k] corresponds to row n of C, and (x[k], x[j]) is in the triangle iff j ≤ n
+        w = x[1:n] ./ x[n] # y/(1-x)
+        V[1:n,k] = ChebyshevT{T}()[2w .- 1, 1:N] * A[n,:]
+    end
+    x, x, V
+end
+
 
 
 function Base._sum(P::JacobiTriangle{T}, dims) where T
