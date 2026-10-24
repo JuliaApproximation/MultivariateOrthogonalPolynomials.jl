@@ -1,5 +1,5 @@
 using MultivariateOrthogonalPolynomials, StaticArrays, BlockArrays, BlockBandedMatrices, ArrayLayouts,
-        QuasiArrays, Test, ClassicalOrthogonalPolynomials, BandedMatrices, FastTransforms, LinearAlgebra, ContinuumArrays
+        QuasiArrays, Test, ClassicalOrthogonalPolynomials, BandedMatrices, FastTransforms, LinearAlgebra, ContinuumArrays, RecipesBase
 import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleRecurrenceA, TriangleRecurrenceB, TriangleRecurrenceC, xy_muladd!, ExpansionLayout, Triangle, ApplyBandedBlockBandedLayout, weightedgrammatrix
 
 @testset "Triangle" begin
@@ -619,5 +619,23 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
         @test Pₙₖ_y ≈ (k+b+c+1)*Pₙ₋₁ₖ₋₁_y #M₀₁
         @test (k+b+c+1)*Pₙₖ + y*Pₙₖ_y ≈ (k+b+c+1)*Pₙₖᶜᵈ⁻ #M₀₂
         @test (k+b+c+1)*Pₙₖ - z*Pₙₖ_y ≈ (k+b+c+1)*Pₙₖᵇᵈ⁻ #M₀₂
+    end
+
+    @testset "plotting" begin
+        u = JacobiTriangle() * [1; 2; 3; zeros(∞)]
+        rep = RecipesBase.apply_recipe(Dict{Symbol, Any}(), u)
+        g = MultivariateOrthogonalPolynomials.plotgrid(u)
+        @test all(rep[1].args .≈ (first.(g),last.(g),u[g]))
+
+        f = expand(JacobiTriangle(), splat((x,y) -> exp(x*cos(y))))
+
+        for st in (:contour, :contourf, :heatmap)
+            rep = RecipesBase.apply_recipe(Dict{Symbol, Any}(:seriestype => st), f)
+            x,y,V = rep[1].args
+            @test x isa AbstractVector && y isa AbstractVector && issorted(x) && issorted(y)
+            @test size(V) == (length(y), length(x))
+            @test all(isnan(V[j,k]) for k in axes(V,2), j in axes(V,1) if x[k]+y[j] > 1+1E-14)
+            @test all(V[j,k] ≈ exp(x[k]*cos(y[j])) for k in axes(V,2), j in axes(V,1) if x[k]+y[j] ≤ 1)
+        end
     end
 end
