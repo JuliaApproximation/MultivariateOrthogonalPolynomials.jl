@@ -1,6 +1,7 @@
 using MultivariateOrthogonalPolynomials, ClassicalOrthogonalPolynomials, StaticArrays, BlockArrays, BandedMatrices, FastTransforms, LinearAlgebra, Test, SpecialFunctions, LazyArrays, InfiniteArrays, Base64, QuasiArrays
 using RecipesBase
-import MultivariateOrthogonalPolynomials: ModalTrav, grid, ZernikeTransform, ZernikeITransform, *, ModalInterlace
+import MultivariateOrthogonalPolynomials: ModalTrav, grid, ZernikeTransform, ZernikeITransform, NormalizedZernikeTransform, NormalizedZernikeITransform,
+                                          ComplexZernikeTransform, ComplexZernikeITransform, NormalizedComplexZernikeTransform, NormalizedComplexZernikeITransform, *, ModalInterlace
 import ClassicalOrthogonalPolynomials: HalfWeighted, expand
 import ForwardDiff: hessian
 
@@ -12,14 +13,36 @@ import ForwardDiff: hessian
 
         v = BlockedArray(randn(sum(1:N)),1:N)
         V = (Ti * v)
-        @test T * V ≈ T * Matrix{Any}(V) ≈ v
+        # the transforms return the matrix of a ModalTrav
+        @test T * V isa Matrix{Float64}
+        @test ModalTrav(T * V) ≈ ModalTrav(T * Matrix{Any}(V)) ≈ v
+        @test Ti * ModalTrav(v).matrix ≈ V
 
         @test T * (V + im*V) ≈ T * Matrix{Any}(V + im*V) ≈ (T*V) * (1+im)
 
         @test inv(T) * (T * V) ≈ V
-
+        @test inv(T) isa ZernikeITransform
 
         @test_throws MethodError T * randn(15)
+
+        @testset "matrix-output transforms" begin
+            for (a,b) in ((0,0), (0.1,0.2), (0,1)),
+                (Z, Trans, ITrans) in ((Zernike(a,b), ZernikeTransform, ZernikeITransform),
+                                       (Normalized(Zernike(a,b)), NormalizedZernikeTransform, NormalizedZernikeITransform),
+                                       (ComplexZernike(a,b), ComplexZernikeTransform, ComplexZernikeITransform),
+                                       (Normalized(ComplexZernike(a,b)), NormalizedComplexZernikeTransform, NormalizedComplexZernikeITransform))
+                P = Trans{Float64}(N, a, b)
+                Pi = ITrans{Float64}(N, a, b)
+                @test inv(P) isa ITrans
+                for c in (BlockedArray(randn(sum(1:N)),1:N), BlockedArray(randn(ComplexF64, sum(1:N)),1:N))
+                    V = [(Z * [c; zeros(∞)])[SVector(𝐱)] for 𝐱 in grid(Z, Block(N))]
+                    C = P * V
+                    @test C isa Matrix
+                    @test ModalTrav(C) ≈ plan_transform(Z, Block(N)) * V ≈ c
+                    @test Pi * C ≈ Pi * c ≈ inv(P) * C ≈ V
+                end
+            end
+        end
     end
     @testset "Basics" begin
         @test ZernikeWeight(1)[SVector(0.1,0.2)] ≈ (1 - 0.1^2 - 0.2^2)
