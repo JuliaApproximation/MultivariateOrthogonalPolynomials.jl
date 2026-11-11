@@ -453,7 +453,7 @@ end
 abstract type AbstractZernikeTransform{T} <: Plan{T} end
 abstract type AbstractZernikeITransform{T} <: Plan{T} end
 
-for (Trans, ITrans) in ((:NormalizedZernikeTransform, :NormalizedIZernikeTransform),
+for (Trans, ITrans) in ((:NormalizedZernikeTransform, :NormalizedZernikeITransform),
                         (:ZernikeTransform, :ZernikeITransform),
                         (:ComplexZernikeTransform, :ComplexZernikeITransform),
                         (:NormalizedComplexZernikeTransform, :NormalizedComplexZernikeITransform))
@@ -505,10 +505,10 @@ deduceeltype(T, f) = all(isreal, f) ? T : Complex{T}
 
 plan_transform(Q::NormalizedZernike{T}, (N,)::Tuple{Block{1}}, dims=1) where T = ApplyPlan(ModalTrav, NormalizedZernikeTransform{real(T)}(Int(N), Q.P.a, Q.P.b))
 # transforms for Zernike(a,b) rescale those for Normalized(Zernike(a,b))
-plan_transform(Z::Zernike{T}, (N,)::Tuple{Block{1}}, dims...) where T = ApplyPlan(ModalTrav, ZernikeTransform{real(T)}(Int(N), Q.P.a, Q.P.b))
+plan_transform(Z::Zernike{T}, (N,)::Tuple{Block{1}}, dims...) where T = ApplyPlan(ModalTrav, ZernikeTransform{real(T)}(Int(N), Z.a, Z.b))
 # transforms for ComplexZernike(a,b) mix the Fourier modes of those for Zernike(a,b)
 plan_transform(Q::NormalizedComplexZernike{T}, (N,)::Tuple{Block{1}}, dims=1) where T = ApplyPlan(ModalTrav, NormalizedComplexZernikeTransform{real(T)}(Int(N), Q.P.a, Q.P.b))
-plan_transform(Z::ComplexZernike{T}, (N,)::Tuple{Block{1}}, dims=1) where T = ApplyPlan(ModalTrav, ComplexZernikeTransform{real(T)}(Int(N), Q.P.a, Q.P.b))
+plan_transform(Z::ComplexZernike{T}, (N,)::Tuple{Block{1}}, dims=1) where T = ApplyPlan(ModalTrav, ComplexZernikeTransform{real(T)}(Int(N), Z.a, Z.b))
 
 ##
 # Laplacian
