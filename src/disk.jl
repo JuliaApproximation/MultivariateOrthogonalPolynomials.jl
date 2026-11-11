@@ -236,9 +236,11 @@ _zernikemodalconstant(::Type{T}, (M,N)::NTuple{2,Int}, a, b) where T =
     [zernikenormalizationconstant(T, i-1, j ÷ 2, a, b) for i = 1:M, j = 1:N]
 
 # coefficients in Normalized(Z) to coefficients in Z
-_normalized2zernike(Z::Zernike, c::ModalTrav) = ModalTrav(_zernikemodalconstant(real(eltype(Z)), size(c.matrix), Z.a, Z.b) .* c.matrix)
+_normalized2zernike(Z::Zernike, C::AbstractMatrix) = _zernikemodalconstant(real(eltype(Z)), size(C), Z.a, Z.b) .* C
 # coefficients in Z to coefficients in Normalized(Z)
-_zernike2normalized(Z::Zernike, c::AbstractVector) = c ./ normalizationconstant(Z)[axes(c,1)]
+_zernike2normalized(Z::Zernike, c::AbstractMatrix) = [c[k,j] / zernikenormalizationconstant(eltype(Z), k-1, j ÷ 2, Z.a, Z.b) for k in axes(c,1), j in axes(c,2)]
+
+normalizationconstant(Z)[axes(c,1)]
 
 ###
 # Zernike <-> ComplexZernike
@@ -248,8 +250,7 @@ _zernike2normalized(Z::Zernike, c::AbstractVector) = c ./ normalizationconstant(
 # to α*(c + im*s) and α*(c - im*s), the coefficients of exp(-im*m*θ) and exp(im*m*θ). As
 #   s*sin(m*θ) + c*cos(m*θ) == (c + im*s)/2 * exp(-im*m*θ) + (c - im*s)/2 * exp(im*m*θ)
 # α == 1/2 for Zernike to ComplexZernike and α == 1/sqrt(2) for their normalized counterparts.
-function _zernike2complex(c::ModalTrav, α)
-    A = c.matrix
+function _zernike2complex(A::AbstractMatrix, α)
     B = similar(A, complex(promote_type(eltype(A), typeof(α))))
     B[:,1] .= view(A,:,1)
     for j = 2:2:size(A,2)
@@ -257,7 +258,7 @@ function _zernike2complex(c::ModalTrav, α)
         B[:,j] .= α .* (C .+ im .* S)
         B[:,j+1] .= α .* (C .- im .* S)
     end
-    ModalTrav(B)
+    B
 end
 
 # The block-diagonal matrix that mixes the entries with Fourier modes -|m| and |m| in each block, which
@@ -442,7 +443,7 @@ function plotvalues(u::ApplyQuasiVector{T,typeof(*),<:Tuple{Zernike, AbstractVec
     Z,c = u.args
     B = findblock(axes(Z,2), last(colsupport(c)))
     N = Int(B) ÷ 2 + 1 # polynomial degree
-    F = ZernikeITransform{T}(min(2N, MAX_PLOT_BLOCKS), Z.a, Z.b)
+    F = NormalizedZernikeITransform{T}(min(2N, MAX_PLOT_BLOCKS), Z.a, Z.b)
     C = F * _zernike2normalized(Z, c[Block.(OneTo(min(2N, MAX_PLOT_BLOCKS)))]) # transform to grid
     [permutedims(u[x[1,:]]); # evaluate on edge of disk
      C C[:,1];
@@ -455,43 +456,45 @@ function plotvalues(u::ApplyQuasiVector{T,typeof(*),<:Tuple{Weighted{<:Any,<:Zer
     w[x] .* U
 end
 
-struct ZernikeTransform{T} <: Plan{T}
+struct NormalizedZernikeTransform{T} <: Plan{T}
     N::Int
     disk2cxf::FastTransforms.FTPlan{T,2,FastTransforms.DISK}
     analysis::FastTransforms.FTPlan{T,2,FastTransforms.DISKANALYSIS}
 end
 
-struct ZernikeITransform{T} <: Plan{T}
+struct NormalizedZernikeITransform{T} <: Plan{T}
     N::Int
     disk2cxf::FastTransforms.FTPlan{T,2,FastTransforms.DISK}
     synthesis::FastTransforms.FTPlan{T,2,FastTransforms.DISKSYNTHESIS}
 end
 
-function ZernikeTransform{T}(N::Int, a::Number, b::Number) where T<:Real
+function NormalizedZernikeTransform{T}(N::Int, a::Number, b::Number) where T<:Real
     Ñ = N ÷ 2 + 1
-    ZernikeTransform{T}(N, plan_disk2cxf(T, Ñ, a, b), plan_disk_analysis(T, Ñ, 4Ñ-3))
+    NormalizedZernikeTransform{T}(N, plan_disk2cxf(T, Ñ, a, b), plan_disk_analysis(T, Ñ, 4Ñ-3))
 end
-function ZernikeITransform{T}(N::Int, a::Number, b::Number) where T<:Real
+function NormalizedZernikeITransform{T}(N::Int, a::Number, b::Number) where T<:Real
     Ñ = N ÷ 2 + 1
-    ZernikeITransform{T}(N, plan_disk2cxf(T, Ñ, a, b), plan_disk_synthesis(T, Ñ, 4Ñ-3))
+    NormalizedZernikeITransform{T}(N, plan_disk2cxf(T, Ñ, a, b), plan_disk_synthesis(T, Ñ, 4Ñ-3))
 end
+
+ZernikeTransform{T}(N::Int, a::Number, b::Number) where T<:Real = ApplyPlan(Base.Fix1(_normalized2zernike, Z), plan_transform(Normalized(Z), (N,), dims...))
 
 deduceeltype(T, f) = all(isreal, f) ? T : Complex{T}
-*(P::ZernikeTransform{T}, f::AbstractArray) where T = P * convert(Matrix{deduceeltype(T, f)}, f)
-*(P::ZernikeTransform{T}, f::Matrix{Complex{T}}) where T = ModalTrav((P.disk2cxf \ (P.analysis * real(f))) + im * (P.disk2cxf \ (P.analysis * imag(f))))
-*(P::ZernikeTransform{T}, f::Matrix{T}) where T = ModalTrav(P.disk2cxf \ (P.analysis * f))
-*(P::ZernikeITransform, f::AbstractVector) = P.synthesis * (P.disk2cxf * ModalTrav(f).matrix)
+*(P::NormalizedZernikeTransform{T}, f::AbstractArray) where T = P * convert(Matrix{deduceeltype(T, f)}, f)
+*(P::NormalizedZernikeTransform{T}, f::Matrix{Complex{T}}) where T = (P.disk2cxf \ (P.analysis * real(f))) + im * (P.disk2cxf \ (P.analysis * imag(f)))
+*(P::NormalizedZernikeTransform{T}, f::Matrix{T}) where T = P.disk2cxf \ (P.analysis * f)
+*(P::NormalizedZernikeITransform, f::AbstractMatrix) = P.synthesis * (P.disk2cxf * f)
 
-inv(P::ZernikeTransform) = ZernikeITransform(P.N, P.disk2cxf, inv(P.analysis))
+inv(P::NormalizedZernikeTransform) = NormalizedZernikeITransform(P.N, P.disk2cxf, inv(P.analysis))
 
-plan_transform(Q::NormalizedZernike{T}, (N,)::Tuple{Block{1}}, dims=1) where T = ZernikeTransform{real(T)}(Int(N), Q.P.a, Q.P.b)
+plan_transform(Q::NormalizedZernike{T}, (N,)::Tuple{Block{1}}, dims=1) where T = ApplyPlan(ModalTrav, NormalizedZernikeTransform{real(T)}(Int(N), Q.P.a, Q.P.b))
 # transforms for Zernike(a,b) rescale those for Normalized(Zernike(a,b))
-plan_transform(Z::Zernike{T}, (N,)::Tuple{Block{1}}, dims=1) where T = ApplyPlan(Base.Fix1(_normalized2zernike, Z), ZernikeTransform{real(T)}(Int(N), Z.a, Z.b))
+plan_transform(Z::Zernike{T}, (N,)::Tuple{Block{1}}, dims...) where T = ApplyPlan(ModalTrav, ZernikeTransform{real(T)}(Int(N), Q.P.a, Q.P.b))
 # transforms for ComplexZernike(a,b) mix the Fourier modes of those for Zernike(a,b)
 plan_transform(Q::NormalizedComplexZernike{T}, (N,)::Tuple{Block{1}}, dims=1) where T =
-    ApplyPlan(Base.Fix2(_zernike2complex, inv(sqrt(convert(real(T),2)))), ZernikeTransform{real(T)}(Int(N), Q.P.a, Q.P.b))
+    ApplyPlan(Base.Fix2(_zernike2complex, inv(sqrt(convert(real(T),2)))), NormalizedZernikeTransform{real(T)}(Int(N), Q.P.a, Q.P.b))
 plan_transform(Z::ComplexZernike{T}, (N,)::Tuple{Block{1}}, dims=1) where T =
-    ApplyPlan(Base.Fix2(_zernike2complex, one(real(T))/2) ∘ Base.Fix1(_normalized2zernike, Zernike{real(T)}(Z.a, Z.b)), ZernikeTransform{real(T)}(Int(N), Z.a, Z.b))
+    ApplyPlan(Base.Fix2(_zernike2complex, one(real(T))/2) ∘ Base.Fix1(_normalized2zernike, Zernike{real(T)}(Z.a, Z.b)), NormalizedZernikeTransform{real(T)}(Int(N), Z.a, Z.b))
 
 ##
 # Laplacian
