@@ -42,6 +42,11 @@ import ForwardDiff: hessian
                     @test Pi * C ≈ Pi * c ≈ inv(P) * C ≈ V
                 end
             end
+            # generic matrices are converted before synthesis
+            Pi = NormalizedZernikeITransform{Float64}(N, 0, 0)
+            C = ModalTrav(BlockedArray(1:sum(1:N), 1:N)).matrix
+            @test C isa Matrix{Int}
+            @test Pi * C ≈ Pi * Matrix{Float64}(C)
         end
     end
     @testset "Basics" begin
@@ -60,6 +65,10 @@ import ForwardDiff: hessian
 
         @test AbstractQuasiArray{ComplexF64}(Zernike()) ≡ AbstractQuasiMatrix{ComplexF64}(Zernike()) ≡ Zernike{ComplexF64}()
         @test AbstractQuasiArray{ComplexF64}(Zernike(0.1,0.2)) ≡ AbstractQuasiMatrix{ComplexF64}(Zernike(0.1,0.2)) ≡ Zernike{ComplexF64}(0.1,0.2)
+
+        # lazy diagonal scalings broadcast lazily
+        @test Base.BroadcastStyle(typeof(Diagonal(MultivariateOrthogonalPolynomials.ZernikeNormalizationConstant{Float64}(0,0)))) == LazyArrays.LazyArrayStyle{2}()
+        @test Base.BroadcastStyle(typeof(Diagonal(MultivariateOrthogonalPolynomials.WeightedZernikeFractionalLaplacianDiag{Float64}(0.5)))) == LazyArrays.LazyArrayStyle{2}()
     end
 
     @testset "Evaluation" begin
@@ -493,6 +502,7 @@ end
         @test Q[xy,1] ≈ inv(sqrt(π)) ≈ normalizedcomplexzernikez(0, 0, rθ)
         @test Q[xy,Block(2)] ≈ [sqrt(2/π)*r*exp(-im*θ), sqrt(2/π)*r*exp(im*θ)]
         @test Q[xy,Block(4)] ≈ [normalizedcomplexzernikez(3, -1, rθ), normalizedcomplexzernikez(3, 1, rθ), normalizedcomplexzernikez(3, -3, rθ), normalizedcomplexzernikez(3, 3, rθ)]
+        @test Q[rθ,Block(4)[3]] ≈ Q[xy,Block(4)[3]] ≈ normalizedcomplexzernikez(3, -3, rθ)
         for (a,b) in ((0,0), (0.1,0.2), (0,1))
             C = ComplexZernike(a,b)
             @test Normalized(C)[xy,Block.(1:10)] ≈ C[xy,Block.(1:10)] .* Normalized(C).scaling[1:55]
