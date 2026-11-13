@@ -1,5 +1,9 @@
+const RadialUnitDisk{T} = StaticUnitBall{RadialCoordinate{T}, :closed}
+
 ClassicalOrthogonalPolynomials.checkpoints(d::UnitDisk{T}) where T = [SVector{2,T}(0.1,0.2), SVector{2,T}(0.2,0.3)]
+ClassicalOrthogonalPolynomials.checkpoints(d::RadialUnitDisk{T}) where T = [RadialCoordinate{T}(0.1,0.2), RadialCoordinate{T}(0.2,0.3)]
 pointchoice(d::UnitDisk{T}) where T = SVector{2,T}(0,0)
+pointchoice(d::RadialUnitDisk{T}) where T = RadialCoordinate{T}(0,0)
 
 """
     ZernikeWeight(a, b)
@@ -25,7 +29,7 @@ ZernikeWeight() = ZernikeWeight{Float64}()
 
 copy(w::ZernikeWeight) = w
 
-axes(::ZernikeWeight{T}) where T = (Inclusion(UnitDisk{T}()),)
+axes(::ZernikeWeight{T}) where T = (Inclusion(RadialUnitDisk{T}()),)
 
 ==(w::ZernikeWeight, v::ZernikeWeight) = w.a == v.a && w.b == v.b
 
@@ -98,7 +102,7 @@ AbstractQuasiMatrix{T}(Z::ComplexZernike) where T = ComplexZernike{T}(Z.a, Z.b)
 _zernike(::Zernike{T}, a, b) where T = Zernike{T}(a, b)
 _zernike(::ComplexZernike{T}, a, b) where T = ComplexZernike{T}(a, b)
 
-axes(P::AbstractZernike{T}) where T = (Inclusion(UnitDisk{real(T)}()),blockedrange(oneto(∞)))
+axes(P::AbstractZernike{T}) where T = (Inclusion(RadialUnitDisk{real(T)}()),blockedrange(oneto(∞)))
 
 ==(w::Zernike, v::Zernike) = w.a == v.a && w.b == v.b
 ==(w::ComplexZernike, v::ComplexZernike) = w.a == v.a && w.b == v.b
@@ -113,7 +117,7 @@ summary(io::IO, P::ComplexZernike) = print(io, "ComplexZernike($(P.a), $(P.b))")
 
 orthogonalityweight(Z::AbstractZernike) = ZernikeWeight(Z.a, Z.b)
 
-basis_axes(::Inclusion{<:Any,<:UnitDisk}, v) = Zernike()
+basis_axes(::Inclusion{<:Any,<:Union{UnitDisk,RadialUnitDisk}}, v) = Zernike()
 
 ###
 # Evaluation

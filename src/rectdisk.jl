@@ -12,7 +12,7 @@ DunklXuDisk() = DunklXuDisk(0)
 
 ==(D1::DunklXuDisk, D2::DunklXuDisk) = D1.β == D2.β
 
-axes(P::DunklXuDisk{T}) where T = (Inclusion(UnitDisk{T}()),blockedrange(oneto(∞)))
+axes(P::DunklXuDisk{T}) where T = (Inclusion(RadialUnitDisk{T}()),blockedrange(oneto(∞)))
 
 copy(A::DunklXuDisk) = A
 show(io::IO, P::DunklXuDisk) = summary(io, P)
