@@ -426,9 +426,13 @@ _bandedblockbandeddiagonal(d::AbstractVector) = _BandedBlockBandedMatrix(BlockBr
 # Transforms
 ###
 
-function grid(S::AbstractZernike, B::Block{1})
-    T = real(eltype(S))
-    N = Int(B) ÷ 2 + 1 # matrix rows
+
+grid(S::AbstractZernike, B::Block{1}) = zernikegrid(real(eltype(S)), Int(B))
+
+
+zernikegrid(B::Int) = zernikegrid(Float64, B)
+function zernikegrid(T, B::Int)
+    N = B ÷ 2 + 1 # matrix rows
     M = 4N-3 # matrix columns
 
     r = sinpi.((N .-(0:N-1) .- one(T)/2) ./ (2N))
@@ -493,11 +497,11 @@ for (Trans, ITrans) in ((:NormalizedZernikeTransform, :NormalizedZernikeITransfo
             synthesis::FastTransforms.FTPlan{T,2,FastTransforms.DISKSYNTHESIS}
         end
 
-        function $Trans{T}(N::Int, a::Number, b::Number) where T<:Real
+        function $Trans{T}(N::Int, a::Number=0, b::Number=0) where T<:Real
             Ñ = N ÷ 2 + 1
             $Trans{T}(N, a, b, plan_disk2cxf(T, Ñ, a, b), plan_disk_analysis(T, Ñ, 4Ñ-3))
         end
-        function $ITrans{T}(N::Int, a::Number, b::Number) where T<:Real
+        function $ITrans{T}(N::Int, a::Number=0, b::Number=0) where T<:Real
             Ñ = N ÷ 2 + 1
             $ITrans{T}(N, a, b, plan_disk2cxf(T, Ñ, a, b), plan_disk_synthesis(T, Ñ, 4Ñ-3))
         end
@@ -506,6 +510,9 @@ for (Trans, ITrans) in ((:NormalizedZernikeTransform, :NormalizedZernikeITransfo
         # the plans are shared between the different transforms
         $Trans(P::AbstractZernikeTransform) = $Trans(P.N, P.a, P.b, P.disk2cxf, P.analysis)
         $ITrans(P::AbstractZernikeITransform) = $ITrans(P.N, P.a, P.b, P.disk2cxf, P.synthesis)
+
+        $Trans(N::Int, a...) = $Trans{Float64}(N, a...)
+        $ITrans(N::Int, a...) = $ITrans{Float64}(N, a...)
     end
 end
 
