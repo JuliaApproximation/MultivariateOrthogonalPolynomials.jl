@@ -34,6 +34,10 @@ import ForwardDiff: hessian
                 P = Trans{Float64}(N, a, b)
                 Pi = ITrans{Float64}(N, a, b)
                 @test inv(P) isa ITrans
+                @test size(P) == size(Pi) == size(grid(Z, Block(N))) == (3,9)
+                @test size(P,1) == size(Pi,1) == 3
+                @test size(P,2) == size(Pi,2) == 9
+                @test size(P,3) == 1
                 for c in (BlockedArray(randn(sum(1:N)),1:N), BlockedArray(randn(ComplexF64, sum(1:N)),1:N))
                     V = [(Z * [c; zeros(∞)])[SVector(𝐱)] for 𝐱 in grid(Z, Block(N))]
                     C = P * V
@@ -47,6 +51,15 @@ import ForwardDiff: hessian
             C = ModalTrav(BlockedArray(1:sum(1:N), 1:N)).matrix
             @test C isa Matrix{Int}
             @test Pi * C ≈ Pi * Matrix{Float64}(C)
+        end
+
+        @testset "size" begin
+            for n in 1:6
+                P, Pi = ZernikeTransform{Float64}(n, 0, 0), ZernikeITransform{Float64}(n, 0, 0)
+                g = grid(Zernike(), Block(n))
+                C = ModalTrav(BlockedArray(randn(sum(1:n)), 1:n)).matrix
+                @test size(P) == size(Pi) == size(g) == size(C) == size(P * randn(size(g))) == size(Pi * C)
+            end
         end
     end
     @testset "Basics" begin

@@ -477,9 +477,7 @@ abstract type AbstractZernikeTransform{T} <: Plan{T} end
 abstract type AbstractZernikeITransform{T} <: Plan{T} end
 
 for (Trans, ITrans) in ((:NormalizedZernikeTransform, :NormalizedZernikeITransform),
-                        (:ZernikeTransform, :ZernikeITransform),
-                        (:ComplexZernikeTransform, :ComplexZernikeITransform),
-                        (:NormalizedComplexZernikeTransform, :NormalizedComplexZernikeITransform))
+                        (:ZernikeTransform, :ZernikeITransform))
     @eval begin
         struct $Trans{T} <: AbstractZernikeTransform{T}
             N::Int
@@ -496,7 +494,35 @@ for (Trans, ITrans) in ((:NormalizedZernikeTransform, :NormalizedZernikeITransfo
             disk2cxf::FastTransforms.FTPlan{T,2,FastTransforms.DISK}
             synthesis::FastTransforms.FTPlan{T,2,FastTransforms.DISKSYNTHESIS}
         end
+    end
+end
 
+for (Trans, ITrans) in ((:NormalizedComplexZernikeTransform, :NormalizedComplexZernikeITransform),
+                        (:ComplexZernikeTransform, :ComplexZernikeITransform))
+    @eval begin
+        struct $Trans{T} <: AbstractZernikeTransform{Complex{T}}
+            N::Int
+            a::T
+            b::T
+            disk2cxf::FastTransforms.FTPlan{T,2,FastTransforms.DISK}
+            analysis::FastTransforms.FTPlan{T,2,FastTransforms.DISKANALYSIS}
+        end
+
+        struct $ITrans{T} <: AbstractZernikeITransform{Complex{T}}
+            N::Int
+            a::T
+            b::T
+            disk2cxf::FastTransforms.FTPlan{T,2,FastTransforms.DISK}
+            synthesis::FastTransforms.FTPlan{T,2,FastTransforms.DISKSYNTHESIS}
+        end
+    end
+end
+
+for (Trans, ITrans) in ((:NormalizedZernikeTransform, :NormalizedZernikeITransform),
+                        (:ZernikeTransform, :ZernikeITransform),
+                        (:ComplexZernikeTransform, :ComplexZernikeITransform),
+                        (:NormalizedComplexZernikeTransform, :NormalizedComplexZernikeITransform))
+    @eval begin
         function $Trans{T}(N::Int, a::Number=0, b::Number=0) where T<:Real
             Ñ = N ÷ 2 + 1
             $Trans{T}(N, a, b, plan_disk2cxf(T, Ñ, a, b), plan_disk_analysis(T, Ñ, 4Ñ-3))
@@ -506,6 +532,7 @@ for (Trans, ITrans) in ((:NormalizedZernikeTransform, :NormalizedZernikeITransfo
             $ITrans{T}(N, a, b, plan_disk2cxf(T, Ñ, a, b), plan_disk_synthesis(T, Ñ, 4Ñ-3))
         end
         inv(P::$Trans) = $ITrans(P.N, P.a, P.b, P.disk2cxf, inv(P.analysis))
+        inv(P::$ITrans) = $Trans(P.N, P.a, P.b, P.disk2cxf, inv(P.synthesis))
 
         # the plans are shared between the different transforms
         $Trans(P::AbstractZernikeTransform) = $Trans(P.N, P.a, P.b, P.disk2cxf, P.analysis)
@@ -515,6 +542,13 @@ for (Trans, ITrans) in ((:NormalizedZernikeTransform, :NormalizedZernikeITransfo
         $ITrans(N::Int, a...) = $ITrans{Float64}(N, a...)
     end
 end
+
+# both the values on the grid and the coefficient matrices are (N ÷ 2 + 1) × (4(N ÷ 2 + 1) - 3)
+function size(P::Union{AbstractZernikeTransform,AbstractZernikeITransform})
+    Ñ = P.N ÷ 2 + 1
+    (Ñ, 4Ñ-3)
+end
+size(P::Union{AbstractZernikeTransform,AbstractZernikeITransform}, k::Integer) = k ≤ 2 ? size(P)[k] : 1
 
 deduceeltype(T, f) = all(isreal, f) ? T : Complex{T}
 *(P::NormalizedZernikeTransform{T}, f::AbstractArray) where T = P * convert(Matrix{deduceeltype(T, f)}, f)
