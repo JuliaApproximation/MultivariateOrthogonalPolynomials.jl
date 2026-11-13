@@ -1,7 +1,8 @@
 using MultivariateOrthogonalPolynomials, ClassicalOrthogonalPolynomials, StaticArrays, BlockArrays, BandedMatrices, FastTransforms, LinearAlgebra, Test, SpecialFunctions, LazyArrays, InfiniteArrays, Base64, QuasiArrays
 using RecipesBase
 import MultivariateOrthogonalPolynomials: ModalTrav, grid, ZernikeTransform, ZernikeITransform, NormalizedZernikeTransform, NormalizedZernikeITransform,
-                                          ComplexZernikeTransform, ComplexZernikeITransform, NormalizedComplexZernikeTransform, NormalizedComplexZernikeITransform, *, ModalInterlace
+                                          ComplexZernikeTransform, ComplexZernikeITransform, NormalizedComplexZernikeTransform, NormalizedComplexZernikeITransform, *, ModalInterlace,
+                                          RadialUnitDisk, zernikegrid, pointchoice, checkpoints
 import ClassicalOrthogonalPolynomials: HalfWeighted, expand
 import ForwardDiff: hessian
 
@@ -34,6 +35,9 @@ import ForwardDiff: hessian
                 P = Trans{Float64}(N, a, b)
                 Pi = ITrans{Float64}(N, a, b)
                 @test inv(P) isa ITrans
+                @test inv(Pi) isa Trans
+                @test Trans(N, a, b) isa Trans{Float64}
+                @test ITrans(N, a, b) isa ITrans{Float64}
                 @test size(P) == size(Pi) == size(grid(Z, Block(N))) == (3,9)
                 @test size(P,1) == size(Pi,1) == 3
                 @test size(P,2) == size(Pi,2) == 9
@@ -44,6 +48,7 @@ import ForwardDiff: hessian
                     @test C isa Matrix
                     @test ModalTrav(C) ≈ plan_transform(Z, Block(N)) * V ≈ c
                     @test Pi * C ≈ Pi * c ≈ inv(P) * C ≈ V
+                    @test inv(Pi) * V ≈ C
                 end
             end
             # generic matrices are converted before synthesis
@@ -51,6 +56,15 @@ import ForwardDiff: hessian
             C = ModalTrav(BlockedArray(1:sum(1:N), 1:N)).matrix
             @test C isa Matrix{Int}
             @test Pi * C ≈ Pi * Matrix{Float64}(C)
+        end
+
+        @testset "default parameters" begin
+            @test ZernikeTransform(N) isa ZernikeTransform{Float64}
+            @test ZernikeITransform(N) isa ZernikeITransform{Float64}
+            f = Zernike() * [BlockedArray(randn(sum(1:N)),1:N); zeros(∞)]
+            V = [f[SVector(𝐱)] for 𝐱 in grid(Zernike(), Block(N))]
+            @test ZernikeITransform(N) * (ZernikeTransform(N) * V) ≈ V
+            @test zernikegrid(N) == zernikegrid(Float64, N) == grid(Zernike(), Block(N))
         end
 
         @testset "size" begin
@@ -63,6 +77,11 @@ import ForwardDiff: hessian
         end
     end
     @testset "Basics" begin
+        @test checkpoints(UnitDisk()) == [SVector(0.1,0.2), SVector(0.2,0.3)]
+        @test checkpoints(RadialUnitDisk{Float64}()) == [RadialCoordinate(0.1,0.2), RadialCoordinate(0.2,0.3)]
+        @test pointchoice(UnitDisk()) == SVector(0.0,0.0)
+        @test pointchoice(RadialUnitDisk{Float64}()) == RadialCoordinate(0.0,0.0)
+        @test pointchoice(RadialUnitDisk{Float64}()) isa RadialCoordinate{Float64}
         @test ZernikeWeight(1)[SVector(0.1,0.2)] ≈ (1 - 0.1^2 - 0.2^2)
         @test ZernikeWeight(1) == ZernikeWeight(1)
 
