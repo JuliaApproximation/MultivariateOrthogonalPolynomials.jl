@@ -112,6 +112,11 @@ import ForwardDiff: hessian
         @test Zernike()[rθ,Block(2)] ≈ [r*sin(θ), r*cos(θ)] ≈ [zernikez(1, -1, rθ), zernikez(1, 1, rθ)]
         @test Zernike()[rθ,Block(3)] ≈ [2r^2-1, r^2*sin(2θ), r^2*cos(2θ)] ≈ [zernikez(2, 0, rθ), zernikez(2, -2, rθ), zernikez(2, 2, rθ)]
         @test Zernike()[rθ,Block(4)] ≈ [zernikez(3, -1, rθ), zernikez(3, 1, rθ), zernikez(3, -3, rθ), zernikez(3, 3, rθ)]
+        for Z in (Zernike(), Zernike(0.1,0.2), ComplexZernike())
+            v = Z[xy,Block.(Base.OneTo(5))]
+            @test v ≈ [Z[xy,k] for k in 1:15]
+            @test blockisequal(axes(v,1), blockedrange(1:5))
+        end
 
         @test zerniker(5, 0, norm(xy)) ≈ zernikez(5, 0, xy)
         @test zerniker(5, 1, 0.3, 0.2, r) ≈ r * jacobip(2, 0.2, 1.3, 2r^2-1)
