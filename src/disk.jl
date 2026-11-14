@@ -1,5 +1,9 @@
+const RadialUnitDisk{T} = StaticUnitBall{RadialCoordinate{T}, :closed}
+
 ClassicalOrthogonalPolynomials.checkpoints(d::UnitDisk{T}) where T = [SVector{2,T}(0.1,0.2), SVector{2,T}(0.2,0.3)]
+ClassicalOrthogonalPolynomials.checkpoints(d::RadialUnitDisk{T}) where T = [RadialCoordinate{T}(0.1,0.2), RadialCoordinate{T}(0.2,0.3)]
 pointchoice(d::UnitDisk{T}) where T = SVector{2,T}(0,0)
+pointchoice(d::RadialUnitDisk{T}) where T = RadialCoordinate{T}(0,0)
 
 """
     ZernikeWeight(a, b)
@@ -25,7 +29,7 @@ ZernikeWeight() = ZernikeWeight{Float64}()
 
 copy(w::ZernikeWeight) = w
 
-axes(::ZernikeWeight{T}) where T = (Inclusion(UnitDisk{T}()),)
+axes(::ZernikeWeight{T}) where T = (Inclusion(RadialUnitDisk{T}()),)
 
 ==(w::ZernikeWeight, v::ZernikeWeight) = w.a == v.a && w.b == v.b
 
@@ -98,7 +102,7 @@ AbstractQuasiMatrix{T}(Z::ComplexZernike) where T = ComplexZernike{T}(Z.a, Z.b)
 _zernike(::Zernike{T}, a, b) where T = Zernike{T}(a, b)
 _zernike(::ComplexZernike{T}, a, b) where T = ComplexZernike{T}(a, b)
 
-axes(P::AbstractZernike{T}) where T = (Inclusion(UnitDisk{real(T)}()),blockedrange(oneto(∞)))
+axes(P::AbstractZernike{T}) where T = (Inclusion(RadialUnitDisk{real(T)}()),blockedrange(oneto(∞)))
 
 ==(w::Zernike, v::Zernike) = w.a == v.a && w.b == v.b
 ==(w::ComplexZernike, v::ComplexZernike) = w.a == v.a && w.b == v.b
@@ -113,7 +117,7 @@ summary(io::IO, P::ComplexZernike) = print(io, "ComplexZernike($(P.a), $(P.b))")
 
 orthogonalityweight(Z::AbstractZernike) = ZernikeWeight(Z.a, Z.b)
 
-basis_axes(::Inclusion{<:Any,<:UnitDisk}, v) = Zernike()
+basis_axes(::Inclusion{<:Any,<:Union{UnitDisk,RadialUnitDisk}}, v) = Zernike()
 
 ###
 # Evaluation
@@ -422,9 +426,13 @@ _bandedblockbandeddiagonal(d::AbstractVector) = _BandedBlockBandedMatrix(BlockBr
 # Transforms
 ###
 
-function grid(S::AbstractZernike, B::Block{1})
-    T = real(eltype(S))
-    N = Int(B) ÷ 2 + 1 # matrix rows
+
+grid(S::AbstractZernike, B::Block{1}) = zernikegrid(real(eltype(S)), Int(B))
+
+
+zernikegrid(B::Int) = zernikegrid(Float64, B)
+function zernikegrid(T, B::Int)
+    N = B ÷ 2 + 1 # matrix rows
     M = 4N-3 # matrix columns
 
     r = sinpi.((N .-(0:N-1) .- one(T)/2) ./ (2N))
@@ -469,9 +477,7 @@ abstract type AbstractZernikeTransform{T} <: Plan{T} end
 abstract type AbstractZernikeITransform{T} <: Plan{T} end
 
 for (Trans, ITrans) in ((:NormalizedZernikeTransform, :NormalizedZernikeITransform),
-                        (:ZernikeTransform, :ZernikeITransform),
-                        (:ComplexZernikeTransform, :ComplexZernikeITransform),
-                        (:NormalizedComplexZernikeTransform, :NormalizedComplexZernikeITransform))
+                        (:ZernikeTransform, :ZernikeITransform))
     @eval begin
         struct $Trans{T} <: AbstractZernikeTransform{T}
             N::Int
@@ -488,22 +494,61 @@ for (Trans, ITrans) in ((:NormalizedZernikeTransform, :NormalizedZernikeITransfo
             disk2cxf::FastTransforms.FTPlan{T,2,FastTransforms.DISK}
             synthesis::FastTransforms.FTPlan{T,2,FastTransforms.DISKSYNTHESIS}
         end
+    end
+end
 
-        function $Trans{T}(N::Int, a::Number, b::Number) where T<:Real
+for (Trans, ITrans) in ((:NormalizedComplexZernikeTransform, :NormalizedComplexZernikeITransform),
+                        (:ComplexZernikeTransform, :ComplexZernikeITransform))
+    @eval begin
+        struct $Trans{T} <: AbstractZernikeTransform{Complex{T}}
+            N::Int
+            a::T
+            b::T
+            disk2cxf::FastTransforms.FTPlan{T,2,FastTransforms.DISK}
+            analysis::FastTransforms.FTPlan{T,2,FastTransforms.DISKANALYSIS}
+        end
+
+        struct $ITrans{T} <: AbstractZernikeITransform{Complex{T}}
+            N::Int
+            a::T
+            b::T
+            disk2cxf::FastTransforms.FTPlan{T,2,FastTransforms.DISK}
+            synthesis::FastTransforms.FTPlan{T,2,FastTransforms.DISKSYNTHESIS}
+        end
+    end
+end
+
+for (Trans, ITrans) in ((:NormalizedZernikeTransform, :NormalizedZernikeITransform),
+                        (:ZernikeTransform, :ZernikeITransform),
+                        (:ComplexZernikeTransform, :ComplexZernikeITransform),
+                        (:NormalizedComplexZernikeTransform, :NormalizedComplexZernikeITransform))
+    @eval begin
+        function $Trans{T}(N::Int, a::Number=0, b::Number=0) where T<:Real
             Ñ = N ÷ 2 + 1
             $Trans{T}(N, a, b, plan_disk2cxf(T, Ñ, a, b), plan_disk_analysis(T, Ñ, 4Ñ-3))
         end
-        function $ITrans{T}(N::Int, a::Number, b::Number) where T<:Real
+        function $ITrans{T}(N::Int, a::Number=0, b::Number=0) where T<:Real
             Ñ = N ÷ 2 + 1
             $ITrans{T}(N, a, b, plan_disk2cxf(T, Ñ, a, b), plan_disk_synthesis(T, Ñ, 4Ñ-3))
         end
         inv(P::$Trans) = $ITrans(P.N, P.a, P.b, P.disk2cxf, inv(P.analysis))
+        inv(P::$ITrans) = $Trans(P.N, P.a, P.b, P.disk2cxf, inv(P.synthesis))
 
         # the plans are shared between the different transforms
         $Trans(P::AbstractZernikeTransform) = $Trans(P.N, P.a, P.b, P.disk2cxf, P.analysis)
         $ITrans(P::AbstractZernikeITransform) = $ITrans(P.N, P.a, P.b, P.disk2cxf, P.synthesis)
+
+        $Trans(N::Int, a...) = $Trans{Float64}(N, a...)
+        $ITrans(N::Int, a...) = $ITrans{Float64}(N, a...)
     end
 end
+
+# both the values on the grid and the coefficient matrices are (N ÷ 2 + 1) × (4(N ÷ 2 + 1) - 3)
+function size(P::Union{AbstractZernikeTransform,AbstractZernikeITransform})
+    Ñ = P.N ÷ 2 + 1
+    (Ñ, 4Ñ-3)
+end
+size(P::Union{AbstractZernikeTransform,AbstractZernikeITransform}, k::Integer) = k ≤ 2 ? size(P)[k] : 1
 
 deduceeltype(T, f) = all(isreal, f) ? T : Complex{T}
 *(P::NormalizedZernikeTransform{T}, f::AbstractArray) where T = P * convert(Matrix{deduceeltype(T, f)}, f)

@@ -1,7 +1,8 @@
 using MultivariateOrthogonalPolynomials, ClassicalOrthogonalPolynomials, StaticArrays, BlockArrays, BandedMatrices, FastTransforms, LinearAlgebra, Test, SpecialFunctions, LazyArrays, InfiniteArrays, Base64, QuasiArrays
 using RecipesBase
 import MultivariateOrthogonalPolynomials: ModalTrav, grid, ZernikeTransform, ZernikeITransform, NormalizedZernikeTransform, NormalizedZernikeITransform,
-                                          ComplexZernikeTransform, ComplexZernikeITransform, NormalizedComplexZernikeTransform, NormalizedComplexZernikeITransform, *, ModalInterlace
+                                          ComplexZernikeTransform, ComplexZernikeITransform, NormalizedComplexZernikeTransform, NormalizedComplexZernikeITransform, *, ModalInterlace,
+                                          RadialUnitDisk, zernikegrid, pointchoice, checkpoints
 import ClassicalOrthogonalPolynomials: HalfWeighted, expand
 import ForwardDiff: hessian
 
@@ -34,12 +35,20 @@ import ForwardDiff: hessian
                 P = Trans{Float64}(N, a, b)
                 Pi = ITrans{Float64}(N, a, b)
                 @test inv(P) isa ITrans
+                @test inv(Pi) isa Trans
+                @test Trans(N, a, b) isa Trans{Float64}
+                @test ITrans(N, a, b) isa ITrans{Float64}
+                @test size(P) == size(Pi) == size(grid(Z, Block(N))) == (3,9)
+                @test size(P,1) == size(Pi,1) == 3
+                @test size(P,2) == size(Pi,2) == 9
+                @test size(P,3) == 1
                 for c in (BlockedArray(randn(sum(1:N)),1:N), BlockedArray(randn(ComplexF64, sum(1:N)),1:N))
                     V = [(Z * [c; zeros(∞)])[SVector(𝐱)] for 𝐱 in grid(Z, Block(N))]
                     C = P * V
                     @test C isa Matrix
                     @test ModalTrav(C) ≈ plan_transform(Z, Block(N)) * V ≈ c
                     @test Pi * C ≈ Pi * c ≈ inv(P) * C ≈ V
+                    @test inv(Pi) * V ≈ C
                 end
             end
             # generic matrices are converted before synthesis
@@ -48,8 +57,31 @@ import ForwardDiff: hessian
             @test C isa Matrix{Int}
             @test Pi * C ≈ Pi * Matrix{Float64}(C)
         end
+
+        @testset "default parameters" begin
+            @test ZernikeTransform(N) isa ZernikeTransform{Float64}
+            @test ZernikeITransform(N) isa ZernikeITransform{Float64}
+            f = Zernike() * [BlockedArray(randn(sum(1:N)),1:N); zeros(∞)]
+            V = [f[SVector(𝐱)] for 𝐱 in grid(Zernike(), Block(N))]
+            @test ZernikeITransform(N) * (ZernikeTransform(N) * V) ≈ V
+            @test zernikegrid(N) == zernikegrid(Float64, N) == grid(Zernike(), Block(N))
+        end
+
+        @testset "size" begin
+            for n in 1:6
+                P, Pi = ZernikeTransform{Float64}(n, 0, 0), ZernikeITransform{Float64}(n, 0, 0)
+                g = grid(Zernike(), Block(n))
+                C = ModalTrav(BlockedArray(randn(sum(1:n)), 1:n)).matrix
+                @test size(P) == size(Pi) == size(g) == size(C) == size(P * randn(size(g))) == size(Pi * C)
+            end
+        end
     end
     @testset "Basics" begin
+        @test checkpoints(UnitDisk()) == [SVector(0.1,0.2), SVector(0.2,0.3)]
+        @test checkpoints(RadialUnitDisk{Float64}()) == [RadialCoordinate(0.1,0.2), RadialCoordinate(0.2,0.3)]
+        @test pointchoice(UnitDisk()) == SVector(0.0,0.0)
+        @test pointchoice(RadialUnitDisk{Float64}()) == RadialCoordinate(0.0,0.0)
+        @test pointchoice(RadialUnitDisk{Float64}()) isa RadialCoordinate{Float64}
         @test ZernikeWeight(1)[SVector(0.1,0.2)] ≈ (1 - 0.1^2 - 0.2^2)
         @test ZernikeWeight(1) == ZernikeWeight(1)
 
@@ -80,6 +112,11 @@ import ForwardDiff: hessian
         @test Zernike()[rθ,Block(2)] ≈ [r*sin(θ), r*cos(θ)] ≈ [zernikez(1, -1, rθ), zernikez(1, 1, rθ)]
         @test Zernike()[rθ,Block(3)] ≈ [2r^2-1, r^2*sin(2θ), r^2*cos(2θ)] ≈ [zernikez(2, 0, rθ), zernikez(2, -2, rθ), zernikez(2, 2, rθ)]
         @test Zernike()[rθ,Block(4)] ≈ [zernikez(3, -1, rθ), zernikez(3, 1, rθ), zernikez(3, -3, rθ), zernikez(3, 3, rθ)]
+        for Z in (Zernike(), Zernike(0.1,0.2), ComplexZernike())
+            v = Z[xy,Block.(Base.OneTo(5))]
+            @test v ≈ [Z[xy,k] for k in 1:15]
+            @test blockisequal(axes(v,1), blockedrange(1:5))
+        end
 
         @test zerniker(5, 0, norm(xy)) ≈ zernikez(5, 0, xy)
         @test zerniker(5, 1, 0.3, 0.2, r) ≈ r * jacobip(2, 0.2, 1.3, 2r^2-1)
