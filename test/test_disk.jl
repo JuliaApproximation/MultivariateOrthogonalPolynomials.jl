@@ -3,6 +3,7 @@ using RecipesBase
 import MultivariateOrthogonalPolynomials: ModalTrav, grid, ZernikeTransform, ZernikeITransform, *, ModalInterlace
 import ClassicalOrthogonalPolynomials: HalfWeighted, expand
 import ForwardDiff: hessian
+import ContinuumArrays: broadcastbasis, basis, coefficients
 
 @testset "Disk" begin
     @testset "Transform" begin
@@ -400,6 +401,29 @@ import ForwardDiff: hessian
         @test Zernike() \ Weighted(Zernike()) isa Eye
     end
 
+    @testset "broadcastbasis" begin
+        𝐱 = SVector(0.1,0.2)
+        c = [1; 2; 3; zeros(∞)]
+        A,B = Zernike(), Zernike(1)
+        @test broadcastbasis(+, A, B) == broadcastbasis(+, B, A) == B
+        @test broadcastbasis(+, Zernike(1,0), Zernike(0,2)) == Zernike(1,2)
+        f,g = A*c, B*c
+        @test basis(f+g) == B
+        @test (f+g)[𝐱] ≈ (g+f)[𝐱] ≈ f[𝐱] + g[𝐱]
+        @test (f-g)[𝐱] ≈ f[𝐱] - g[𝐱]
+        @test (expand(A, splat((x,y) -> exp(x*cos(y)))) + expand(B, splat((x,y) -> sin(x+y))))[𝐱] ≈ exp(0.1cos(0.2)) + sin(0.3)
+
+        k = Normalized(A)*c
+        @test (k+g)[𝐱] ≈ k[𝐱] + g[𝐱]
+
+        W = Weighted(B)
+        @test broadcastbasis(+, B, W) == broadcastbasis(+, W, B) == B
+        @test broadcastbasis(+, A, W) == broadcastbasis(+, W, A) == A
+        h = W*c
+        @test (f+h)[𝐱] ≈ (h+f)[𝐱] ≈ f[𝐱] + h[𝐱]
+        @test (g+h)[𝐱] ≈ (h+g)[𝐱] ≈ g[𝐱] + h[𝐱]
+    end
+
     @testset "plotting" begin
         for Z in (Zernike(), Normalized(Zernike()))
             u = Z * [1; 2; zeros(∞)];
@@ -499,6 +523,25 @@ end
             R = A \ B
             @test transpose(B[xy,Block.(1:6)]) ≈ transpose(A[xy,Block.(1:6)])*R[Block.(1:6),Block.(1:6)]
         end
+    end
+
+    @testset "broadcastbasis" begin
+        𝐱 = SVector(0.1,0.2)
+        c = [1; 2im; 3; zeros(∞)]
+        A,B,Z = ComplexZernike(), ComplexZernike(1), Zernike()
+        @test broadcastbasis(+, A, B) === broadcastbasis(+, B, A) === B
+        @test broadcastbasis(+, Z, B) === broadcastbasis(+, B, Z) === B
+        @test broadcastbasis(+, Zernike(1), A) === B
+        f,g,h = A*c, B*c, Z*[1; 2; 3; zeros(∞)]
+        @test basis(f+g) == basis(h+g) == B
+        @test (f+g)[𝐱] ≈ (g+f)[𝐱] ≈ f[𝐱] + g[𝐱]
+        @test (h+g)[𝐱] ≈ (g+h)[𝐱] ≈ h[𝐱] + g[𝐱]
+        @test (h+f)[𝐱] ≈ h[𝐱] + f[𝐱]
+
+        W = Weighted(B)
+        @test broadcastbasis(+, B, W) === broadcastbasis(+, W, B) === B
+        k = W*c
+        @test (g+k)[𝐱] ≈ (k+g)[𝐱] ≈ g[𝐱] + k[𝐱]
     end
 
     @testset "Conversion and lowering" begin

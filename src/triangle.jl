@@ -395,7 +395,8 @@ end
 function \(A::JacobiTriangle, w_B::WeightedTriangle)
     w_B.P == JacobiTriangle() && return A \ w_B.P
     A == JacobiTriangle() && return Weighted(A) \ w_B
-    (TriangleWeight(0,0,0) .* A) \ w_B
+    P = JacobiTriangle{eltype(A)}()
+    (A \ P) * (Weighted(P) \ w_B) # lower to Legendre then raise
 end
 function \(w_A::WeightedTriangle, B::JacobiTriangle)
     w_A.P == JacobiTriangle() && return w_A.P \ B
@@ -424,6 +425,16 @@ end
         error("not implemented for $A and $B")
     end
 end
+
+
+# the basis for a sum is the one all terms can be converted to with banded-block-banded operators:
+# raise the parameters for polynomials, lower them for weighted polynomials.
+broadcastbasis(::typeof(+), A::JacobiTriangle{T}, B::JacobiTriangle{V}) where {T,V} =
+    JacobiTriangle{promote_type(T,V)}(promote(max(A.a,B.a), max(A.b,B.b), max(A.c,B.c))...)
+broadcastbasis(::typeof(+), w_A::WeightedTriangle{T}, w_B::WeightedTriangle{V}) where {T,V} =
+    Weighted(JacobiTriangle{promote_type(T,V)}(promote(min(w_A.P.a,w_B.P.a), min(w_A.P.b,w_B.P.b), min(w_A.P.c,w_B.P.c))...))
+broadcastbasis(::typeof(+), A::JacobiTriangle, w_B::WeightedTriangle) = broadcastbasis(+, A, JacobiTriangle{eltype(w_B)}())
+broadcastbasis(::typeof(+), w_A::WeightedTriangle, B::JacobiTriangle) = broadcastbasis(+, B, w_A)
 
 
 ## Jacobi matrix

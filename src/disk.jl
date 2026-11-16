@@ -578,6 +578,15 @@ end
 \(A::ComplexZernike{T}, wB::Weighted{V,<:ComplexZernike}) where {T,V} = _zernikelowering(real(promote_type(T,V)), A, wB.P)
 
 
+# the basis for a sum is the one all terms can be converted to: raise the parameters,
+# and use complex Fourier modes if either term does.
+broadcastbasis(::typeof(+), A::Zernike{T}, B::Zernike{V}) where {T,V} = Zernike{promote_type(T,V)}(max(A.a,B.a), max(A.b,B.b))
+broadcastbasis(::typeof(+), A::AbstractZernike{T}, B::AbstractZernike{V}) where {T,V} = ComplexZernike{complex(promote_type(T,V))}(max(A.a,B.a), max(A.b,B.b))
+broadcastbasis(::typeof(+), A::Zernike{T}, wB::Weighted{V,<:Zernike}) where {T,V} = Zernike{promote_type(T,V)}(A.a, A.b)
+broadcastbasis(::typeof(+), A::ComplexZernike{T}, wB::Weighted{V,<:ComplexZernike}) where {T,V} = ComplexZernike{promote_type(T,V)}(A.a, A.b)
+broadcastbasis(::typeof(+), wA::Weighted{<:Any,<:AbstractZernike}, B::AbstractZernike) = broadcastbasis(+, B, wA)
+
+
 ###
 # sum
 ###

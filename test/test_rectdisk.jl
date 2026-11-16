@@ -2,6 +2,9 @@ using MultivariateOrthogonalPolynomials, StaticArrays, BlockArrays, BlockBandedM
         QuasiArrays, Test, ClassicalOrthogonalPolynomials, BandedMatrices, FastTransforms, LinearAlgebra
 import MultivariateOrthogonalPolynomials: dunklxu_raising, dunklxu_lowering, AngularMomentum
 
+import ContinuumArrays: broadcastbasis, basis, coefficients
+import MultivariateOrthogonalPolynomials: WeightedDunklXuDisk
+
 @testset "Dunkl-Xu disk" begin
     @testset "basics" begin
         P = DunklXuDisk()
@@ -83,6 +86,25 @@ import MultivariateOrthogonalPolynomials: dunklxu_raising, dunklxu_lowering, Ang
             @test Dx[KR,JR] isa BandedBlockBandedMatrix
             @test Dy[KR,JR] isa BandedBlockBandedMatrix
         end
+    end
+
+    @testset "broadcastbasis" begin
+        c = [1; 2; 3; zeros(∞)]
+        A,B = DunklXuDisk(0), DunklXuDisk(1)
+        WA,WB = WeightedDunklXuDisk(0), WeightedDunklXuDisk(1)
+        @test broadcastbasis(+, A, B) == broadcastbasis(+, B, A) == B
+        @test broadcastbasis(+, WA, WB) == broadcastbasis(+, WB, WA) == WA
+        @test broadcastbasis(+, A, WB) == broadcastbasis(+, WB, A) == A
+
+        f = A*c + B*c
+        @test basis(f) == B
+        @test coefficients(f)[1:10] ≈ ((B\A)*c + c)[1:10]
+        f = WA*c + WB*c
+        @test basis(f) == WA
+        @test coefficients(f)[1:10] ≈ (c + (WA\WB)*c)[1:10]
+        f = A*c + WB*c
+        @test basis(f) == A
+        @test coefficients(f)[1:10] ≈ (c + (A\WB)*c)[1:10]
     end
 
     @testset "show" begin
