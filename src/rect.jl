@@ -97,8 +97,8 @@ mul(B::QuasiAdjoint{T,<:AbstractQuasiVector}, A::KronPolynomial{d}) where {d,T} 
 grammatrix(P::KronPolynomial) = KronTrav(reverse(grammatrix.(P.args))...)
     
 
-basis_axes(d::Inclusion{<:Any,<:ProductDomain}, v) = KronPolynomial(map(d -> basis(Inclusion(d)),components(d.domain))...)
-basis_axes(d::Inclusion{<:Any,<:DomainSets.FixedIntervalProduct{N,T,D}}, v) where {N,T,D} = KronPolynomial(Fill(basis(Inclusion(D())), N))
+basis_axes_eltype(d::Inclusion{<:Any,<:ProductDomain}, ::Type{T}, v) where T <: Number = KronPolynomial(map(d -> basis(Inclusion(d)), components(d.domain))...)
+basis_axes_eltype(d::Inclusion{<:Any,<:DomainSets.FixedIntervalProduct{N,T,D}}, ::Type{V}, v) where {N,T,D,V<:Number} = KronPolynomial(Fill(basis(Inclusion(D())), N))
 
 struct TensorPlan{T, Plans}
     plans::Plans

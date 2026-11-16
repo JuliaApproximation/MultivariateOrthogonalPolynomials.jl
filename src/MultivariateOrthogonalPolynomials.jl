@@ -11,7 +11,7 @@ import Base.Broadcast: Broadcasted, broadcasted, DefaultArrayStyle
 import DomainSets: boundary, EuclideanDomain
 
 import QuasiArrays: LazyQuasiMatrix, LazyQuasiArrayStyle, domain, vec_layout, reshape_layout, pointchoice
-import ContinuumArrays: @simplify, Weight, weight, grid, plotgrid, TransformFactorization, ExpansionLayout, plotvalues, unweighted, plan_transform, checkpoints, transform_ldiv, AbstractBasisLayout, basis_axes, Inclusion, grammatrix, weaklaplacian, layout_broadcasted, laplacian, abslaplacian, laplacian_axis, abslaplacian_axis, diff_layout, operatororder, broadcastbasis, KronExpansionLayout, ApplyPlan
+import ContinuumArrays: @simplify, Weight, weight, grid, plotgrid, TransformFactorization, ExpansionLayout, plotvalues, unweighted, plan_transform, checkpoints, transform_ldiv, AbstractBasisLayout, Inclusion, grammatrix, weaklaplacian, layout_broadcasted, laplacian, abslaplacian, laplacian_axis, abslaplacian_axis, diff_layout, operatororder, broadcastbasis, KronExpansionLayout, ApplyPlan
 
 import ArrayLayouts: MemoryLayout, sublayout, sub_materialize, mul
 import BlockArrays: block, blockindex, BlockSlice, viewblock, blockcolsupport, AbstractBlockStyle, BlockStyle
@@ -21,7 +21,7 @@ import LazyArrays: arguments, paddeddata, LazyArrayStyle, LazyLayout, PaddedLayo
 import LazyBandedMatrices: LazyBandedBlockBandedLayout, AbstractBandedBlockBandedLayout, AbstractLazyBandedBlockBandedLayout, _krontrav_axes, DiagTravLayout, diagtrav, invdiagtrav, ApplyBandedBlockBandedLayout, krontrav
 import InfiniteArrays: InfiniteCardinal, OneToInf
 
-import ClassicalOrthogonalPolynomials: jacobimatrix, Weighted, orthogonalityweight, HalfWeighted, WeightedBasis, pad, recurrencecoefficients, clenshaw, weightedgrammatrix, Clenshaw, OPLayout, normalized, normalizationconstant
+import ClassicalOrthogonalPolynomials: jacobimatrix, Weighted, orthogonalityweight, HalfWeighted, WeightedBasis, pad, recurrencecoefficients, clenshaw, weightedgrammatrix, Clenshaw, OPLayout, normalized, normalizationconstant, basis_axes_eltype
 import HarmonicOrthogonalPolynomials: BivariateOrthogonalPolynomial, MultivariateOrthogonalPolynomial, Plan,
                                           AngularMomentum, angularmomentum, BlockOneTo, BlockRange1, interlace,
                                           MultivariateOPLayout, AbstractMultivariateOPLayout, MAX_PLOT_BLOCKS
