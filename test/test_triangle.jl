@@ -1,5 +1,5 @@
 using MultivariateOrthogonalPolynomials, StaticArrays, BlockArrays, BlockBandedMatrices, ArrayLayouts,
-        QuasiArrays, Test, ClassicalOrthogonalPolynomials, BandedMatrices, FastTransforms, LinearAlgebra, ContinuumArrays
+        QuasiArrays, Test, ClassicalOrthogonalPolynomials, BandedMatrices, FastTransforms, LinearAlgebra, ContinuumArrays, ForwardDiff
 import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleRecurrenceA, TriangleRecurrenceB, TriangleRecurrenceC, xy_muladd!, ExpansionLayout, Triangle, ApplyBandedBlockBandedLayout, weightedgrammatrix
 
 import ContinuumArrays: broadcastbasis, basis, coefficients
@@ -573,6 +573,25 @@ import ContinuumArrays: broadcastbasis, basis, coefficients
                     end
                 end
             end
+        end
+    end
+
+    @testset "Weighted derivatives avoid negative parameters" begin
+        @test basis(diff(Weighted(JacobiTriangle(0,1,0)), (1,0))) == JacobiTriangle(1,0,1)
+        @test basis(diff(Weighted(JacobiTriangle(1,0,0)), (0,1))) == JacobiTriangle(0,1,1)
+        @test basis(diff(Weighted(JacobiTriangle(1,1,1)), (1,0))) == Weighted(JacobiTriangle(0,1,0))
+        @test basis(diff(Weighted(JacobiTriangle(1,1,1)), (0,1))) == Weighted(JacobiTriangle(1,0,0))
+
+        𝐱 = SVector(0.1,0.2)
+        x,y = 𝐱
+        for (a,b,c) in ((0,0,0), (0,1,0), (1,0,0), (0,0,1), (1,1,0), (0,1,1), (1,0,1), (2,0,1), (0,2,0))
+            W = Weighted(JacobiTriangle(a,b,c))
+            f = ((x,y),) -> x^a * y^b * (1-x-y)^c * (x^2 + 3y^2 + x*y)
+            fx = ((x,y),) -> ForwardDiff.derivative(x -> f((x,y)), x)
+            fy = ((x,y),) -> ForwardDiff.derivative(y -> f((x,y)), y)
+            u = expand(W, f)
+            @test diff(u, (1,0))[𝐱] ≈ fx(𝐱)
+            @test diff(u, (0,1))[𝐱] ≈ fy(𝐱)
         end
     end
 
