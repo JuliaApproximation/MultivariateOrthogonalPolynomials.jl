@@ -169,7 +169,43 @@ getindex(Q::Union{NormalizedZernike,NormalizedComplexZernike}, xy::StaticVector{
 
 getindex(Z::AbstractZernike, xy::StaticVector{2}, B::BlockIndex{1}) = Z[RadialCoordinate(xy), B]
 getindex(Z::AbstractZernike, xy::StaticVector{2}, B::Block{1}) = [Z[xy, B[j]] for j=1:Int(B)]
-getindex(Z::AbstractZernike, xy::StaticVector{2}, JR::BlockOneTo) = mortar([Z[xy,Block(J)] for J = 1:Int(JR[end])])
+
+# zerniker(m+2n, m, a, b, r) for n = 0,…,N-1. These are all multiples of Jacobi polynomials with the same parameters,
+# hence we get all of them in O(N) operations from the three-term recurrence.
+function _zernikers(::Type{T}, m, a, b, r, N) where T
+    ret = Base.unsafe_getindex(Jacobi{T}(b, m+a), 2r^2-1, oneto(N))
+    lmul!(r^m, ret)
+end
+
+# The first N blocks. Evaluating entry-by-entry redoes the recurrence for every entry which costs O(N^3) operations,
+# instead we do one recurrence for each Fourier mode m to achieve the optimal O(N^2) operations.
+function _zernike_getindex(angular, a, b, rθ::RadialCoordinate, N::Int)
+    r, θ = rθ.r, rθ.θ
+    R = polynomialtype(promote_type(typeof(a), typeof(b)), typeof(r))
+    T = promote_type(R, typeof(angular(0, θ)))
+    ret = mortar([Vector{T}(undef, J) for J = 1:N])
+    for m = 0:N-1
+        p = _zernikers(R, m, a, b, r, (N-m+1) ÷ 2)
+        c, s = angular(m, θ), angular(-m, θ)
+        for (j, pⱼ) in enumerate(p)
+            v = ret.blocks[m + 2j - 1] # degree ℓ = m + 2(j-1), where entries m and m+1 have signed Fourier modes -m and m
+            v[m+1] = pⱼ * c
+            m > 0 && (v[m] = pⱼ * s)
+        end
+    end
+    ret
+end
+
+getindex(Z::Zernike, xy::StaticVector{2}, JR::BlockOneTo) = _zernike_getindex(_zernikeangular, Z.a, Z.b, RadialCoordinate(xy), length(JR))
+getindex(Z::ComplexZernike, xy::StaticVector{2}, JR::BlockOneTo) = _zernike_getindex(_complexzernikeangular, Z.a, Z.b, RadialCoordinate(xy), length(JR))
+
+# Points that are not a RadialCoordinate are converted first, so that indexing by ranges of blocks/entries
+# uses the evaluation of the first N blocks above, instead of falling back to evaluating entry-by-entry.
+Base.@propagate_inbounds function _getindex(::Type{Tuple{IND1,IND2}}, Z::AbstractZernike, (xy,J)::Tuple{Union{Tuple,SVector{2}},Any}) where {IND1<:RadialCoordinate,IND2}
+    rθ = convert(IND1, xy)
+    @boundscheck checkbounds(Z, to_indices(Z, (rθ, J))...)
+    Z[rθ, J]
+end
 
 ###
 # Normalization constants

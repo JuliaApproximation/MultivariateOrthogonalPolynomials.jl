@@ -122,6 +122,34 @@ import ContinuumArrays: broadcastbasis, basis, coefficients
         @test zerniker(5, 0, norm(xy)) ≈ zernikez(5, 0, xy)
         @test zerniker(5, 1, 0.3, 0.2, r) ≈ r * jacobip(2, 0.2, 1.3, 2r^2-1)
 
+        @testset "first N blocks via recurrence" begin
+            N = 20
+            n = sum(1:N)
+            for Z in (Zernike(), Zernike(0.1,0.2), ComplexZernike(), ComplexZernike(0.1,0.2)), 𝐱 in (xy, SVector(0.0,0.0), SVector(-0.6,0.8))
+                v = Z[𝐱,Block.(Base.OneTo(N))]
+                @test eltype(v) == eltype(Z)
+                @test blockisequal(axes(v,1), blockedrange(1:N))
+                # compare with evaluating entry-by-entry
+                @test v ≈ [Z[𝐱,Block(J)[k]] for J in 1:N for k in 1:J]
+                # other points and ranges reduce to the first N blocks
+                @test Z[𝐱,Block.(1:N)] == Z[Tuple(𝐱),Block.(1:N)] == Z[RadialCoordinate(𝐱),Block.(1:N)] == v
+                @test Z[𝐱,Block.(3:N)] == Z[Tuple(𝐱),Block.(3:N)] == v[Block.(3:N)]
+                @test Z[𝐱,1:n] == Z[Tuple(𝐱),1:n] == v
+                @test Z[𝐱,5:n-3] == v[5:n-3]
+                @test Z[Tuple(𝐱),Block(N)] == v[Block(N)]
+                @test Z[𝐱,n] == Z[Tuple(𝐱),n] ≈ v[n]
+            end
+            @test isempty(Zernike()[xy,Block.(Base.OneTo(0))])
+            @test Zernike()[SVector(0.1f0,0.2f0),Block.(Base.OneTo(3))] ≈ Zernike()[SVector(0.1,0.2),Block.(Base.OneTo(3))] atol=1E-6
+            @test Zernike()[SVector(big(1)/10,big(2)/10),Block.(Base.OneTo(N))] isa AbstractVector{BigFloat}
+            @test Zernike()[SVector(big(1)/10,big(2)/10),Block.(Base.OneTo(N))] ≈ Zernike()[SVector(0.1,0.2),Block.(Base.OneTo(N))]
+
+            @test_throws BoundsError Zernike()[(2.0,0.0),Block.(1:3)]
+            @test_throws BoundsError Zernike()[SVector(2.0,0.0),1:3]
+            @test_throws BoundsError Zernike()[(2.0,0.0),1]
+            @test_throws BoundsError Zernike()[(0.1,0.2),0:3]
+        end
+
         Q = Normalized(Zernike())
         @test Q[rθ,1] ≈ Q[xy,1] ≈ inv(sqrt(π)) ≈ normalizedzernikez(0, 0, rθ)
         @test Q[rθ,Block(1)] ≈ Q[xy,Block(1)] ≈ [inv(sqrt(π))]
