@@ -149,6 +149,11 @@ end
 \(w_A::DunklXuDisk, w_B::WeightedDunklXuDisk) =
     (DunklXuDiskWeight(0) .* w_A) \ w_B
 
+broadcastbasis(::typeof(+), A::DunklXuDisk, B::DunklXuDisk) = DunklXuDisk(max(A.β, B.β))
+broadcastbasis(::typeof(+), w_A::WeightedDunklXuDisk, w_B::WeightedDunklXuDisk) = WeightedDunklXuDisk(min(w_A.args[2].β, w_B.args[2].β))
+broadcastbasis(::typeof(+), A::DunklXuDisk, w_B::WeightedDunklXuDisk) = A
+broadcastbasis(::typeof(+), w_A::WeightedDunklXuDisk, B::DunklXuDisk) = B
+
 # Actually Jxᵀ
 function jacobimatrix(::Val{1}, P::DunklXuDisk{T}) where T
     β = P.β
