@@ -32,6 +32,10 @@ import MultivariateOrthogonalPolynomials: ModalInterlace, ModalInterlaceLayout, 
 
     @test copy(m) isa ModalTrav{Int,Matrix{Int}}
     @test copy(m) == m
+
+    c = convert(ModalTrav{Float64,Matrix{Float64}}, m)
+    @test c isa ModalTrav{Float64,Matrix{Float64}}
+    @test c == m
 end
 
 @testset "ModalInterlace" begin

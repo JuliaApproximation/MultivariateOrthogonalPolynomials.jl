@@ -1,6 +1,8 @@
 using MultivariateOrthogonalPolynomials, ClassicalOrthogonalPolynomials, StaticArrays, BlockArrays, BandedMatrices, FastTransforms, LinearAlgebra, Test, SpecialFunctions, LazyArrays, InfiniteArrays, Base64, QuasiArrays
 using RecipesBase
-import MultivariateOrthogonalPolynomials: ModalTrav, grid, ZernikeTransform, ZernikeITransform, *, ModalInterlace
+import MultivariateOrthogonalPolynomials: ModalTrav, grid, ZernikeTransform, ZernikeITransform, NormalizedZernikeTransform, NormalizedZernikeITransform,
+                                          ComplexZernikeTransform, ComplexZernikeITransform, NormalizedComplexZernikeTransform, NormalizedComplexZernikeITransform, *, ModalInterlace,
+                                          RadialUnitDisk, zernikegrid, pointchoice, checkpoints
 import ClassicalOrthogonalPolynomials: HalfWeighted, expand
 import ForwardDiff: hessian
 import ContinuumArrays: broadcastbasis, basis, coefficients
@@ -13,16 +15,74 @@ import ContinuumArrays: broadcastbasis, basis, coefficients
 
         v = BlockedArray(randn(sum(1:N)),1:N)
         V = (Ti * v)
-        @test T * V ≈ T * Matrix{Any}(V) ≈ v
+        # the transforms return the matrix of a ModalTrav
+        @test T * V isa Matrix{Float64}
+        @test ModalTrav(T * V) ≈ ModalTrav(T * Matrix{Any}(V)) ≈ v
+        @test Ti * ModalTrav(v).matrix ≈ V
 
         @test T * (V + im*V) ≈ T * Matrix{Any}(V + im*V) ≈ (T*V) * (1+im)
 
         @test inv(T) * (T * V) ≈ V
-
+        @test inv(T) isa ZernikeITransform
 
         @test_throws MethodError T * randn(15)
+
+        @testset "matrix-output transforms" begin
+            for (a,b) in ((0,0), (0.1,0.2), (0,1)),
+                (Z, Trans, ITrans) in ((Zernike(a,b), ZernikeTransform, ZernikeITransform),
+                                       (Normalized(Zernike(a,b)), NormalizedZernikeTransform, NormalizedZernikeITransform),
+                                       (ComplexZernike(a,b), ComplexZernikeTransform, ComplexZernikeITransform),
+                                       (Normalized(ComplexZernike(a,b)), NormalizedComplexZernikeTransform, NormalizedComplexZernikeITransform))
+                P = Trans{Float64}(N, a, b)
+                Pi = ITrans{Float64}(N, a, b)
+                @test inv(P) isa ITrans
+                @test inv(Pi) isa Trans
+                @test Trans(N, a, b) isa Trans{Float64}
+                @test ITrans(N, a, b) isa ITrans{Float64}
+                @test size(P) == size(Pi) == size(grid(Z, Block(N))) == (3,9)
+                @test size(P,1) == size(Pi,1) == 3
+                @test size(P,2) == size(Pi,2) == 9
+                @test size(P,3) == 1
+                for c in (BlockedArray(randn(sum(1:N)),1:N), BlockedArray(randn(ComplexF64, sum(1:N)),1:N))
+                    V = [(Z * [c; zeros(∞)])[SVector(𝐱)] for 𝐱 in grid(Z, Block(N))]
+                    C = P * V
+                    @test C isa Matrix
+                    @test ModalTrav(C) ≈ plan_transform(Z, Block(N)) * V ≈ c
+                    @test Pi * C ≈ Pi * c ≈ inv(P) * C ≈ V
+                    @test inv(Pi) * V ≈ C
+                end
+            end
+            # generic matrices are converted before synthesis
+            Pi = NormalizedZernikeITransform{Float64}(N, 0, 0)
+            C = ModalTrav(BlockedArray(1:sum(1:N), 1:N)).matrix
+            @test C isa Matrix{Int}
+            @test Pi * C ≈ Pi * Matrix{Float64}(C)
+        end
+
+        @testset "default parameters" begin
+            @test ZernikeTransform(N) isa ZernikeTransform{Float64}
+            @test ZernikeITransform(N) isa ZernikeITransform{Float64}
+            f = Zernike() * [BlockedArray(randn(sum(1:N)),1:N); zeros(∞)]
+            V = [f[SVector(𝐱)] for 𝐱 in grid(Zernike(), Block(N))]
+            @test ZernikeITransform(N) * (ZernikeTransform(N) * V) ≈ V
+            @test zernikegrid(N) == zernikegrid(Float64, N) == grid(Zernike(), Block(N))
+        end
+
+        @testset "size" begin
+            for n in 1:6
+                P, Pi = ZernikeTransform{Float64}(n, 0, 0), ZernikeITransform{Float64}(n, 0, 0)
+                g = grid(Zernike(), Block(n))
+                C = ModalTrav(BlockedArray(randn(sum(1:n)), 1:n)).matrix
+                @test size(P) == size(Pi) == size(g) == size(C) == size(P * randn(size(g))) == size(Pi * C)
+            end
+        end
     end
     @testset "Basics" begin
+        @test checkpoints(UnitDisk()) == [SVector(0.1,0.2), SVector(0.2,0.3)]
+        @test checkpoints(RadialUnitDisk{Float64}()) == [RadialCoordinate(0.1,0.2), RadialCoordinate(0.2,0.3)]
+        @test pointchoice(UnitDisk()) == SVector(0.0,0.0)
+        @test pointchoice(RadialUnitDisk{Float64}()) == RadialCoordinate(0.0,0.0)
+        @test pointchoice(RadialUnitDisk{Float64}()) isa RadialCoordinate{Float64}
         @test ZernikeWeight(1)[SVector(0.1,0.2)] ≈ (1 - 0.1^2 - 0.2^2)
         @test ZernikeWeight(1) == ZernikeWeight(1)
 
@@ -38,6 +98,10 @@ import ContinuumArrays: broadcastbasis, basis, coefficients
 
         @test AbstractQuasiArray{ComplexF64}(Zernike()) ≡ AbstractQuasiMatrix{ComplexF64}(Zernike()) ≡ Zernike{ComplexF64}()
         @test AbstractQuasiArray{ComplexF64}(Zernike(0.1,0.2)) ≡ AbstractQuasiMatrix{ComplexF64}(Zernike(0.1,0.2)) ≡ Zernike{ComplexF64}(0.1,0.2)
+
+        # lazy diagonal scalings broadcast lazily
+        @test Base.BroadcastStyle(typeof(Diagonal(MultivariateOrthogonalPolynomials.ZernikeNormalizationConstant{Float64}(0,0)))) == LazyArrays.LazyArrayStyle{2}()
+        @test Base.BroadcastStyle(typeof(Diagonal(MultivariateOrthogonalPolynomials.WeightedZernikeFractionalLaplacianDiag{Float64}(0.5)))) == LazyArrays.LazyArrayStyle{2}()
     end
 
     @testset "Evaluation" begin
@@ -49,6 +113,11 @@ import ContinuumArrays: broadcastbasis, basis, coefficients
         @test Zernike()[rθ,Block(2)] ≈ [r*sin(θ), r*cos(θ)] ≈ [zernikez(1, -1, rθ), zernikez(1, 1, rθ)]
         @test Zernike()[rθ,Block(3)] ≈ [2r^2-1, r^2*sin(2θ), r^2*cos(2θ)] ≈ [zernikez(2, 0, rθ), zernikez(2, -2, rθ), zernikez(2, 2, rθ)]
         @test Zernike()[rθ,Block(4)] ≈ [zernikez(3, -1, rθ), zernikez(3, 1, rθ), zernikez(3, -3, rθ), zernikez(3, 3, rθ)]
+        for Z in (Zernike(), Zernike(0.1,0.2), ComplexZernike())
+            v = Z[xy,Block.(Base.OneTo(5))]
+            @test v ≈ [Z[xy,k] for k in 1:15]
+            @test blockisequal(axes(v,1), blockedrange(1:5))
+        end
 
         @test zerniker(5, 0, norm(xy)) ≈ zernikez(5, 0, xy)
         @test zerniker(5, 1, 0.3, 0.2, r) ≈ r * jacobip(2, 0.2, 1.3, 2r^2-1)
@@ -494,6 +563,7 @@ end
         @test Q[xy,1] ≈ inv(sqrt(π)) ≈ normalizedcomplexzernikez(0, 0, rθ)
         @test Q[xy,Block(2)] ≈ [sqrt(2/π)*r*exp(-im*θ), sqrt(2/π)*r*exp(im*θ)]
         @test Q[xy,Block(4)] ≈ [normalizedcomplexzernikez(3, -1, rθ), normalizedcomplexzernikez(3, 1, rθ), normalizedcomplexzernikez(3, -3, rθ), normalizedcomplexzernikez(3, 3, rθ)]
+        @test Q[rθ,Block(4)[3]] ≈ Q[xy,Block(4)[3]] ≈ normalizedcomplexzernikez(3, -3, rθ)
         for (a,b) in ((0,0), (0.1,0.2), (0,1))
             C = ComplexZernike(a,b)
             @test Normalized(C)[xy,Block.(1:10)] ≈ C[xy,Block.(1:10)] .* Normalized(C).scaling[1:55]

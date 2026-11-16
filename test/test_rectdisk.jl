@@ -13,9 +13,9 @@ import MultivariateOrthogonalPolynomials: WeightedDunklXuDisk
 
         xy = axes(P,1)
         x,y = coordinates(P)
-        @test xy[SVector(0.1,0.2)] == SVector(0.1,0.2)
-        @test x[SVector(0.1,0.2)] == 0.1
-        @test y[SVector(0.1,0.2)] == 0.2
+        @test xy[SVector(0.1,0.2)] ≈ SVector(0.1,0.2)
+        @test x[SVector(0.1,0.2)] ≈ 0.1
+        @test y[SVector(0.1,0.2)] ≈ 0.2
     end
 
     @testset "operators" begin

@@ -12,7 +12,7 @@ DunklXuDisk() = DunklXuDisk(0)
 
 ==(D1::DunklXuDisk, D2::DunklXuDisk) = D1.β == D2.β
 
-axes(P::DunklXuDisk{T}) where T = (Inclusion(UnitDisk{T}()),blockedrange(oneto(∞)))
+axes(P::DunklXuDisk{T}) where T = (Inclusion(RadialUnitDisk{T}()),blockedrange(oneto(∞)))
 
 copy(A::DunklXuDisk) = A
 show(io::IO, P::DunklXuDisk) = summary(io, P)
@@ -32,7 +32,7 @@ DunklXuDiskWeight(β::T) where T = DunklXuDiskWeight{float(T),T}(β)
 
 ==(a::DunklXuDiskWeight, b::DunklXuDiskWeight) = a.β == b.β
 
-axes(P::DunklXuDiskWeight{T}) where T = (Inclusion(UnitDisk{T}()),)
+axes(P::DunklXuDiskWeight{T}) where T = (Inclusion(RadialUnitDisk{T}()),)
 
 show(io::IO, P::DunklXuDiskWeight) = summary(io, P)
 summary(io::IO, P::DunklXuDiskWeight) = print(io, "(1-x^2-y^2)^$(P.β) on the unit disk")
