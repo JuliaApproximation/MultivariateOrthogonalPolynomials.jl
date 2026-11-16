@@ -166,10 +166,19 @@ function diff(P::JacobiTriangle{T}, ::Val{(0,1)}; dims=1) where T
     JacobiTriangle(a,b+1,c+1) * _BandedBlockBandedMatrix((k .+ convert(T, b+c))', axes(k,1), (-1,1), (-1,1))
 end
 
-# TODO: The derivatives below only hold for a, b, c > 0.
-function diff(w_P::WeightedTriangle{T}, ::Val{(1,0)}; dims=1) where T
+# The weighted derivative formulae lower the parameters, which is only valid if the
+# weight vanishes on the relevant edges. Otherwise we avoid negative parameters by
+# converting to JacobiTriangle(0,0,0) and then differentiating.
+function _unweighted_diff(w_P::WeightedTriangle{T}, order) where T
+    P = JacobiTriangle{T}()
+    Q, D = arguments(diff(P, order))
+    Q * (D * (P \ w_P))
+end
+
+function diff(w_P::WeightedTriangle{T}, order::Val{(1,0)}; dims=1) where T
     @assert dims == 1
     a, b, c = w_P.P.a, w_P.P.b, w_P.P.c
+    (iszero(a) || iszero(c)) && return _unweighted_diff(w_P, order)
     n = mortar(Fill.(oneto(∞),oneto(∞)))
     k = mortar(Base.OneTo.(oneto(∞)))    
     scale = -(2k .+ (b + c - 1))
@@ -179,9 +188,10 @@ function diff(w_P::WeightedTriangle{T}, ::Val{(1,0)}; dims=1) where T
     WeightedTriangle(a-1, b, c-1) * _BandedBlockBandedMatrix(dat', axes(k, 1), (1, -1), (1, 0))
 end
 
-function diff(w_P::WeightedTriangle{T}, ::Val{(0,1)}; dims=1) where T
+function diff(w_P::WeightedTriangle{T}, order::Val{(0,1)}; dims=1) where T
     @assert dims == 1
     a, b, c = w_P.P.a, w_P.P.b, w_P.P.c 
+    (iszero(b) || iszero(c)) && return _unweighted_diff(w_P, order)
     k = mortar(Base.OneTo.(oneto(∞)))
     WeightedTriangle(a, b-1, c-1) * _BandedBlockBandedMatrix(-one(T) * k', axes(k, 1), (1, -1), (1, -1))
 end
