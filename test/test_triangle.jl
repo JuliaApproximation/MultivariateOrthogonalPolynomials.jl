@@ -2,6 +2,8 @@ using MultivariateOrthogonalPolynomials, StaticArrays, BlockArrays, BlockBandedM
         QuasiArrays, Test, ClassicalOrthogonalPolynomials, BandedMatrices, FastTransforms, LinearAlgebra, ContinuumArrays, ForwardDiff
 import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleRecurrenceA, TriangleRecurrenceB, TriangleRecurrenceC, xy_muladd!, ExpansionLayout, Triangle, ApplyBandedBlockBandedLayout, weightedgrammatrix
 
+import ContinuumArrays: broadcastbasis, basis, coefficients
+
 @testset "Triangle" begin
     @testset "basics" begin
         P = JacobiTriangle()
@@ -413,6 +415,34 @@ import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleR
             𝐱 = SVector(0.1,0.2)
             @test P[𝐱,1:10]' ≈ Q[𝐱,1:10]' * R[1:10,1:10]
             @test Weighted(Q)[𝐱,1:10]' ≈ P[𝐱,1:50]'*L[1:50,1:10]
+        end
+
+        @testset "broadcastbasis" begin
+            𝐱 = SVector(0.1,0.2)
+            c = [1; 2; 3; zeros(∞)]
+            P,Q = JacobiTriangle(), JacobiTriangle(1,0,1)
+            @test broadcastbasis(+, P, Q) == broadcastbasis(+, Q, P) == Q
+            @test broadcastbasis(+, P, P) == P
+            @test broadcastbasis(+, JacobiTriangle(1,0,0), JacobiTriangle(0,1,0)) == JacobiTriangle(1,1,0)
+            f,g = P*c, Q*c
+            @test basis(f+g) == Q
+            @test (f+g)[𝐱] ≈ (g+f)[𝐱] ≈ f[𝐱] + g[𝐱]
+            @test (f-g)[𝐱] ≈ f[𝐱] - g[𝐱]
+            @test (expand(P, splat((x,y) -> exp(x*cos(y)))) + g)[𝐱] ≈ exp(0.1cos(0.2)) + g[𝐱]
+
+            W,V = Weighted(JacobiTriangle(1,1,1)), Weighted(Q)
+            @test broadcastbasis(+, W, V) == broadcastbasis(+, V, W) == V
+            f,g = W*c, V*c
+            @test basis(f+g) == V
+            @test (f+g)[𝐱] ≈ (g+f)[𝐱] ≈ f[𝐱] + g[𝐱]
+
+            @test broadcastbasis(+, W, P) == broadcastbasis(+, P, W) == P
+            @test broadcastbasis(+, W, Q) == broadcastbasis(+, Q, W) == Q
+            for R in (P, Q)
+                g = R*c
+                @test basis(f+g) == R
+                @test (f+g)[𝐱] ≈ (g+f)[𝐱] ≈ f[𝐱] + g[𝐱]
+            end
         end
 
         @testset "WeightedBasis" begin
