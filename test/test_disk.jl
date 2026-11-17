@@ -226,6 +226,40 @@ import ContinuumArrays: broadcastbasis, basis, coefficients
         @test expand(Normalized(Zernike()), splat((x,y) -> exp(x*cos(y))))[SVector(0.1,0.2)] ≈ exp(0.1cos(0.2))
         @test expand(Normalized(Zernike()), splat((x,y) -> exp(x*cos(y)+im*y)))[SVector(0.1,0.2)] ≈ exp(0.1cos(0.2)+im*0.2)
         @test expand(Zernike(0.1,0.2), splat((x,y) -> exp(x*cos(y)+im*y)))[SVector(0.1,0.2)] ≈ exp(0.1cos(0.2)+im*0.2)
+
+        @testset "evaluation via Clenshaw" begin
+            g = (x,y) -> exp(x - 2y) + x*y^3
+            for B in (Zernike(), Zernike(0.5,1.5), ComplexZernike(), ComplexZernike(1,0.5), Normalized(Zernike()), Normalized(Zernike(0.1,0.2)), Normalized(ComplexZernike()), Normalized(ComplexZernike(1,0.5)))
+                f = expand(B, splat(g))
+                c = coefficients(f)
+                N = Int(findblock(axes(B,2), last(LazyArrays.colsupport(c))))
+                for xy in (SVector(0.1,0.2), SVector(0.0,0.0), SVector(-0.6,0.8), SVector(0.3,-0.9))
+                    @test f[xy] isa eltype(f)
+                    @test f[xy] ≈ g(xy...)
+                    # compare with summing the coefficients times the basis evaluated entry-by-entry
+                    @test f[xy] ≈ sum(c[k] * B[xy,k] for k = 1:sum(1:N))
+                    @test f[Tuple(xy)] == f[RadialCoordinate(xy)] == f[xy]
+                end
+                @test_throws BoundsError f[(2.0,0.0)]
+                @test_throws BoundsError f[SVector(0.8,0.8)]
+            end
+            f = expand(cos(exp(10x*y^2)) for (x,y) in UnitDisk())
+            @test f[(0.1,0.2)] ≈ cos(exp(10*0.1*0.2^2))
+
+            # coefficients that are not a ModalTrav, including ones whose last block is incomplete
+            for N in (2, 3, 4, 7), Z in (Zernike(0.1,0.2), ComplexZernike(), Normalized(Zernike()))
+                w = randn(sum(1:N)-1)
+                xy = SVector(0.3,-0.4)
+                @test (Z * [w; zeros(∞)])[xy] ≈ sum(w[k] * Z[xy,k] for k in eachindex(w))
+            end
+            @test (Zernike() * zeros(∞))[SVector(0.1,0.2)] == 0
+
+            # normalization constants computed from their ratios
+            for (a,b) in ((0,0), (0.1,0.2), (-0.5,-0.5), (3,2)), m in (0, 1, 50)
+                @test MultivariateOrthogonalPolynomials._zernikenormalizationconstants!(zeros(200), Normalized(Zernike(a,b)), m) ≈ [MultivariateOrthogonalPolynomials.zernikenormalizationconstant(Float64, n, m, a, b) for n = 0:199]
+                @test MultivariateOrthogonalPolynomials._zernikenormalizationconstants!(zeros(200), Normalized(ComplexZernike(a,b)), m) ≈ [MultivariateOrthogonalPolynomials.complexzernikenormalizationconstant(Float64, n, m, a, b) for n = 0:199]
+            end
+        end
     end
 
     @testset "Jacobi matrices" begin

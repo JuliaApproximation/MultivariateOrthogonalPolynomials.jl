@@ -204,6 +204,86 @@ Base.@propagate_inbounds function _getindex(::Type{Tuple{IND1,IND2}}, Z::Abstrac
 end
 
 ###
+# Evaluation of expansions
+###
+
+_zernikeangular(::Union{Zernike,NormalizedZernike}) = _zernikeangular
+_zernikeangular(::Union{ComplexZernike,NormalizedComplexZernike}) = _complexzernikeangular
+
+_unnormalized(Z::AbstractZernike) = Z
+_unnormalized(Q::Normalized) = Q.P
+
+# For a normalized basis, the radial part of entry n of Fourier mode m is the unnormalized one times a
+# normalization constant. Fill w[k] with these constants for n = k-1. As loggamma is expensive we compute the first
+# two directly and the rest from the ratio of consecutive constants, whose factors are all positive for n ≥ 1.
+_zernikenormalizationconstants!(w, ::AbstractZernike, m) = nothing
+_zernikenormalizationconstants!(w, Q::NormalizedZernike, m) = _zernikenormalizationconstants!(w, zernikenormalizationconstant, Q.P, m)
+_zernikenormalizationconstants!(w, Q::NormalizedComplexZernike, m) = _zernikenormalizationconstants!(w, complexzernikenormalizationconstant, Q.P, m)
+function _zernikenormalizationconstants!(w::AbstractVector{T}, normalizationconstant, Z, m) where T
+    n = length(w)
+    α, β = convert(T, Z.b), convert(T, m+Z.a)
+    for k = 1:min(n,2)
+        w[k] = normalizationconstant(T, k-1, m, Z.a, Z.b)
+    end
+    for k = 2:n-1
+        j = k-1
+        w[k+1] = w[k] * sqrt((2j+α+β+3) * (j+α+β+1) * (j+1) / ((2j+α+β+1) * (j+α+1) * (j+β+1)))
+    end
+    w
+end
+
+const ZernikeBases = Union{AbstractZernike,NormalizedZernike,NormalizedComplexZernike}
+
+# Evaluate the expansion with coefficients stored as the matrix M of a ModalTrav. For Fourier mode m the radial parts
+# are r^m * P[2r^2-1, n+1] for P = Jacobi(b, m+a) (times a normalization constant for normalized bases), so we
+# sum the coefficients of sin(m*θ) and cos(m*θ), in columns 2m and 2m+1, using Clenshaw's algorithm at the same time.
+# This costs O(N^2) operations for N blocks.
+function _zernike_clenshaw(Z, M::AbstractMatrix, rθ::RadialCoordinate)
+    r, θ = rθ.r, rθ.θ
+    x = 2r^2-1
+    R = polynomialtype(real(eltype(Z)), typeof(r))
+    S = promote_type(eltype(M), R)
+    angular = _zernikeangular(Z)
+    a, b = _unnormalized(Z).a, _unnormalized(Z).b
+    N = (size(M,2)+1) ÷ 2 # number of blocks
+    w = Z isa Normalized ? Vector{real(eltype(Z))}(undef, size(M,1)) : nothing
+    ret = zero(promote_type(S, typeof(angular(0, θ))))
+    rᵐ = one(r)
+    for m = 0:N-1
+        n = min(size(M,1), (N-m+1) ÷ 2)
+        js, jc = max(1, 2m), 2m+1 # columns of sin(m*θ) and cos(m*θ), which are both the m = 0 column if m = 0
+        _zernikenormalizationconstants!(w === nothing ? w : view(w, 1:n), Z, m)
+        A, B, C = recurrencecoefficients(Jacobi{R}(b, m+a))
+        s₁ = s₂ = c₁ = c₂ = zero(S)
+        @inbounds for k = n:-1:1
+            αₖ, γₖ = muladd(A[k], x, B[k]), C[k+1]
+            sₖ, cₖ = w === nothing ? (M[k,js], M[k,jc]) : (w[k]*M[k,js], w[k]*M[k,jc])
+            s₁, s₂ = muladd(αₖ, s₁, sₖ - γₖ*s₂), s₁
+            c₁, c₂ = muladd(αₖ, c₁, cₖ - γₖ*c₂), c₁
+        end
+        ret += rᵐ * (iszero(m) ? c₁ * angular(0, θ) : s₁ * angular(-m, θ) + c₁ * angular(m, θ))
+        rᵐ *= r
+    end
+    ret
+end
+
+# The non-zero coefficients as a ModalTrav. This is free when they are a padded ModalTrav (possibly wrapped in a
+# BlockedVector), as produced by the transforms, and otherwise costs an O(N^2) copy of the first N blocks.
+const PaddedModalTrav = PaddedVector{<:Any,<:ModalTrav}
+_modaltravdata(Z, c::PaddedModalTrav) = c.args[2]
+_modaltravdata(Z, c::BlockedVector{<:Any,<:PaddedModalTrav}) = _modaltravdata(Z, c.blocks)
+function _modaltravdata(Z, c::AbstractVector)
+    kr = colsupport(c)
+    N = isempty(kr) ? 1 : Int(findblock(axes(Z,2), last(kr)))
+    ModalTrav(Vector(c[1:sum(1:N)]))
+end
+
+Base.@propagate_inbounds function getindex(f::Mul{<:Any,<:AbstractPaddedLayout,<:ZernikeBases}, rθ::RadialCoordinate)
+    @boundscheck checkbounds(f.A, rθ, 1)
+    _zernike_clenshaw(f.A, _modaltravdata(f.A, f.B).matrix, rθ)
+end
+
+###
 # Normalization constants
 ###
 
