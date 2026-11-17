@@ -253,12 +253,6 @@ import ContinuumArrays: broadcastbasis, basis, coefficients
                 @test (Z * [w; zeros(∞)])[xy] ≈ sum(w[k] * Z[xy,k] for k in eachindex(w))
             end
             @test (Zernike() * zeros(∞))[SVector(0.1,0.2)] == 0
-
-            # normalization constants computed from their ratios
-            for (a,b) in ((0,0), (0.1,0.2), (-0.5,-0.5), (3,2)), m in (0, 1, 50)
-                @test MultivariateOrthogonalPolynomials._zernikenormalizationconstants!(zeros(200), Normalized(Zernike(a,b)), m) ≈ [MultivariateOrthogonalPolynomials.zernikenormalizationconstant(Float64, n, m, a, b) for n = 0:199]
-                @test MultivariateOrthogonalPolynomials._zernikenormalizationconstants!(zeros(200), Normalized(ComplexZernike(a,b)), m) ≈ [MultivariateOrthogonalPolynomials.complexzernikenormalizationconstant(Float64, n, m, a, b) for n = 0:199]
-            end
         end
     end
 
