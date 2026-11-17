@@ -122,6 +122,33 @@ import ContinuumArrays: broadcastbasis, basis, coefficients
         @test zerniker(5, 0, norm(xy)) ≈ zernikez(5, 0, xy)
         @test zerniker(5, 1, 0.3, 0.2, r) ≈ r * jacobip(2, 0.2, 1.3, 2r^2-1)
 
+        @testset "first N blocks via recurrence" begin
+            N = 20
+            n = sum(1:N)
+            for Z in (Zernike(), Zernike(0.1,0.2), ComplexZernike(), ComplexZernike(0.1,0.2)), 𝐱 in (xy, SVector(0.0,0.0), SVector(-0.6,0.8))
+                v = Z[𝐱,Block.(Base.OneTo(N))]
+                @test v isa ModalTrav{eltype(Z)}
+                @test blockisequal(axes(v,1), blockedrange(1:N))
+                # compare with evaluating entry-by-entry
+                @test v ≈ [Z[𝐱,Block(J)[k]] for J in 1:N for k in 1:J]
+                # other points and ranges reduce to the first N blocks
+                @test Z[𝐱,Block.(1:N)] == Z[Tuple(𝐱),Block.(1:N)] == Z[RadialCoordinate(𝐱),Block.(1:N)] == v
+                @test Z[𝐱,Block.(3:N)] == Z[Tuple(𝐱),Block.(3:N)] == v[Block.(3:N)]
+                @test Z[𝐱,1:n] == Z[Tuple(𝐱),1:n] == v
+                @test Z[𝐱,5:n-3] == v[5:n-3]
+                @test Z[Tuple(𝐱),Block(N)] == v[Block(N)]
+                @test Z[𝐱,n] == Z[Tuple(𝐱),n] ≈ v[n]
+            end
+            @test Zernike()[SVector(0.1f0,0.2f0),Block.(Base.OneTo(3))] ≈ Zernike()[SVector(0.1,0.2),Block.(Base.OneTo(3))] atol=1E-6
+            @test Zernike()[SVector(big(1)/10,big(2)/10),Block.(Base.OneTo(N))] isa AbstractVector{BigFloat}
+            @test Zernike()[SVector(big(1)/10,big(2)/10),Block.(Base.OneTo(N))] ≈ Zernike()[SVector(0.1,0.2),Block.(Base.OneTo(N))]
+
+            @test_throws BoundsError Zernike()[(2.0,0.0),Block.(1:3)]
+            @test_throws BoundsError Zernike()[SVector(2.0,0.0),1:3]
+            @test_throws BoundsError Zernike()[(2.0,0.0),1]
+            @test_throws BoundsError Zernike()[(0.1,0.2),0:3]
+        end
+
         Q = Normalized(Zernike())
         @test Q[rθ,1] ≈ Q[xy,1] ≈ inv(sqrt(π)) ≈ normalizedzernikez(0, 0, rθ)
         @test Q[rθ,Block(1)] ≈ Q[xy,Block(1)] ≈ [inv(sqrt(π))]
@@ -172,6 +199,25 @@ import ContinuumArrays: broadcastbasis, basis, coefficients
                 @test ModalTrav(v) == v
             end
         end
+
+        @testset "block indexing" begin
+            v = ModalTrav(BlockedArray(1:sum(1:7),1:7)) # 7 blocks
+            @test [v[Block(K)[j]] for K = 1:7 for j = 1:K] == 1:28
+            @test v[Block.(Base.OneTo(4))] isa ModalTrav{Int}
+            @test v[Block.(Base.OneTo(4))] == 1:10
+            @test v[Block.(Base.OneTo(4))].matrix == [1 2 3 5 6 9 10; 4 7 8 0 0 0 0]
+            @test v[Block.(Base.OneTo(7))] == v
+            for N = 1:7 # entries of higher blocks are zeroed
+                @test v[Block.(Base.OneTo(N))].matrix == ModalTrav(BlockedArray(1:sum(1:N),1:N)).matrix[1:(N+1)÷2,1:2N-1]
+            end
+            @test v[Block.(3:5)] == 4:15
+            @test blockisequal(axes(v[Block.(3:5)],1), blockedrange(3:5))
+            @test v[5:20] == 5:20
+            @test_throws BoundsError v[Block(8)[1]]
+            @test_throws BoundsError v[Block(3)[4]]
+            @test_throws BlockBoundsError v[Block.(Base.OneTo(8))]
+            @test_throws BlockBoundsError v[Block.(2:8)]
+        end
     end
     
     @testset "expand" begin
@@ -180,6 +226,34 @@ import ContinuumArrays: broadcastbasis, basis, coefficients
         @test expand(Normalized(Zernike()), splat((x,y) -> exp(x*cos(y))))[SVector(0.1,0.2)] ≈ exp(0.1cos(0.2))
         @test expand(Normalized(Zernike()), splat((x,y) -> exp(x*cos(y)+im*y)))[SVector(0.1,0.2)] ≈ exp(0.1cos(0.2)+im*0.2)
         @test expand(Zernike(0.1,0.2), splat((x,y) -> exp(x*cos(y)+im*y)))[SVector(0.1,0.2)] ≈ exp(0.1cos(0.2)+im*0.2)
+
+        @testset "evaluation via Clenshaw" begin
+            g = (x,y) -> exp(x - 2y) + x*y^3
+            for B in (Zernike(), Zernike(0.5,1.5), ComplexZernike(), ComplexZernike(1,0.5), Normalized(Zernike()), Normalized(Zernike(0.1,0.2)), Normalized(ComplexZernike()), Normalized(ComplexZernike(1,0.5)))
+                f = expand(B, splat(g))
+                c = coefficients(f)
+                N = Int(findblock(axes(B,2), last(LazyArrays.colsupport(c))))
+                for xy in (SVector(0.1,0.2), SVector(0.0,0.0), SVector(-0.6,0.8), SVector(0.3,-0.9))
+                    @test f[xy] isa eltype(f)
+                    @test f[xy] ≈ g(xy...)
+                    # compare with summing the coefficients times the basis evaluated entry-by-entry
+                    @test f[xy] ≈ sum(c[k] * B[xy,k] for k = 1:sum(1:N))
+                    @test f[Tuple(xy)] == f[RadialCoordinate(xy)] == f[xy]
+                end
+                @test_throws BoundsError f[(2.0,0.0)]
+                @test_throws BoundsError f[SVector(0.8,0.8)]
+            end
+            f = expand(cos(exp(10x*y^2)) for (x,y) in UnitDisk())
+            @test f[(0.1,0.2)] ≈ cos(exp(10*0.1*0.2^2))
+
+            # coefficients that are not a ModalTrav, including ones whose last block is incomplete
+            for N in (2, 3, 4, 7), Z in (Zernike(0.1,0.2), ComplexZernike(), Normalized(Zernike()))
+                w = randn(sum(1:N)-1)
+                xy = SVector(0.3,-0.4)
+                @test (Z * [w; zeros(∞)])[xy] ≈ sum(w[k] * Z[xy,k] for k in eachindex(w))
+            end
+            @test (Zernike() * zeros(∞))[SVector(0.1,0.2)] == 0
+        end
     end
 
     @testset "Jacobi matrices" begin
