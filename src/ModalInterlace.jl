@@ -95,6 +95,44 @@ function _modaltravgetindex(::AbstractStridedLayout, mat, K::Block{1})
     end
 end
 
+
+# Block(K)[j] has Fourier mode m and degree ℓ = K-1 = m + 2(row-1). The sin(m*θ) terms (and m = 0)
+# are stored in column 2m (or 1) and the cos(m*θ) terms in column 2m+1.
+function _modaltravrowcol(K::Int, j::Int)
+    ℓ = K-1
+    m = iseven(ℓ) ? j-isodd(j) : j-iseven(j)
+    (ℓ-m) ÷ 2 + 1, 2m + isodd(j+ℓ)
+end
+
+Base.@propagate_inbounds function getindex(A::ModalTrav, Kk::BlockIndex{1})
+    @boundscheck checkbounds(A, Kk)
+    A.matrix[_modaltravrowcol(Int(block(Kk)), blockindex(Kk))...]
+end
+
+# The first N blocks are the ModalTrav of the top-left corner of the matrix, after zeroing the entries
+# of higher blocks. Column j has Fourier mode m = j ÷ 2 so its first (N-m+1) ÷ 2 rows are in the first N blocks.
+Base.@propagate_inbounds function getindex(A::ModalTrav, KR::BlockOneTo)
+    @boundscheck checkbounds(A, KR)
+    N = length(KR)
+    M = A.matrix[1:(N+1)÷2, 1:2N-1]
+    for j in axes(M,2)
+        M[(N-j÷2+1)÷2+1:end, j] .= zero(eltype(M))
+    end
+    ModalTrav(M)
+end
+
+# Gather directly from the matrix as the generic fallback for ranges of blocks is very slow
+Base.@propagate_inbounds function getindex(A::ModalTrav{T}, KR::BlockRange{1}) where T
+    @boundscheck checkbounds(A, KR)
+    Ks = Int.(KR)
+    ret = BlockedVector{T}(undef, Ks)
+    k = 0
+    @inbounds for K in Ks, j in 1:K
+        ret.blocks[k += 1] = A.matrix[_modaltravrowcol(K, j)...]
+    end
+    ret
+end
+
 getindex(A::ModalTrav, k::Int) = A[findblockindex(axes(A,1), k)]
 function setindex!(A::ModalTrav, v, k::Int)
     Kk = findblockindex(axes(A,1), k)

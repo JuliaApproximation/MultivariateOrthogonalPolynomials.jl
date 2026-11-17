@@ -169,7 +169,93 @@ getindex(Q::Union{NormalizedZernike,NormalizedComplexZernike}, xy::StaticVector{
 
 getindex(Z::AbstractZernike, xy::StaticVector{2}, B::BlockIndex{1}) = Z[RadialCoordinate(xy), B]
 getindex(Z::AbstractZernike, xy::StaticVector{2}, B::Block{1}) = [Z[xy, B[j]] for j=1:Int(B)]
-getindex(Z::AbstractZernike, xy::StaticVector{2}, JR::BlockOneTo) = mortar([Z[xy,Block(J)] for J = 1:Int(JR[end])])
+
+# The first N blocks. Evaluating entry-by-entry redoes the recurrence for every entry which costs O(N^3) operations.
+# Instead we use that the radial parts zerniker(m+2n, m, a, b, r) for n = 0,1,… are r^m times the Jacobi polynomials
+# with the same parameters, so for each Fourier mode m one forward recurrence fills a whole column of the ModalTrav
+# matrix, giving the optimal O(N^2) operations.
+function _zernike_getindex(angular, a, b, rθ::RadialCoordinate, N::Int)
+    r, θ = rθ.r, rθ.θ
+    R = polynomialtype(promote_type(typeof(a), typeof(b)), typeof(r))
+    M = zeros(promote_type(R, typeof(angular(0, θ))), (N+1) ÷ 2, 2N-1) # ModalTrav matrix with N blocks
+    x = 2r^2-1
+    for m = 0:N-1
+        n = (N-m+1) ÷ 2
+        s = view(M, 1:n, max(1, 2m)) # sin(m*θ) for m > 0, the m = 0 term otherwise
+        copyto!(s, view(Jacobi{R}(b, m+a), x, oneto(n)))
+        lmul!(r^m, s)
+        if m > 0
+            view(M, 1:n, 2m+1) .= s .* angular(m, θ)
+            s .*= angular(-m, θ)
+        end
+    end
+    ModalTrav(M)
+end
+
+getindex(Z::Zernike, xy::StaticVector{2}, JR::BlockOneTo) = _zernike_getindex(_zernikeangular, Z.a, Z.b, RadialCoordinate(xy), length(JR))
+getindex(Z::ComplexZernike, xy::StaticVector{2}, JR::BlockOneTo) = _zernike_getindex(_complexzernikeangular, Z.a, Z.b, RadialCoordinate(xy), length(JR))
+
+# Points that are not a RadialCoordinate are converted first, so that indexing by ranges of blocks/entries
+# uses the evaluation of the first N blocks above, instead of falling back to evaluating entry-by-entry.
+Base.@propagate_inbounds function _getindex(::Type{Tuple{IND1,IND2}}, Z::AbstractZernike, (xy,J)::Tuple{Union{Tuple,SVector{2}},Any}) where {IND1<:RadialCoordinate,IND2}
+    rθ = convert(IND1, xy)
+    @boundscheck checkbounds(Z, to_indices(Z, (rθ, J))...)
+    Z[rθ, J]
+end
+
+###
+# Evaluation of expansions
+###
+
+_zernikeangular(::Union{Zernike,NormalizedZernike}) = _zernikeangular
+_zernikeangular(::Union{ComplexZernike,NormalizedComplexZernike}) = _complexzernikeangular
+
+# The radial parts of Fourier mode m are c * r^m * p_n(2r^2-1) for n = 0,1,…, where p_n satisfy the three-term
+# recurrence with p_0 = 1 for Jacobi(b, m+a) (or its normalized version). Returns the recurrence coefficients and c.
+_zernikeradial(Z::AbstractZernike, ::Type{R}, m) where R = recurrencecoefficients(Jacobi{R}(Z.b, m+Z.a)), one(R)
+_zernikeradial(Q::NormalizedZernike, ::Type{R}, m) where R =
+    recurrencecoefficients(Normalized(Jacobi{R}(Q.P.b, m+Q.P.a))), zernikenormalizationconstant(R, 0, m, Q.P.a, Q.P.b)
+_zernikeradial(Q::NormalizedComplexZernike, ::Type{R}, m) where R =
+    recurrencecoefficients(Normalized(Jacobi{R}(Q.P.b, m+Q.P.a))), complexzernikenormalizationconstant(R, 0, m, Q.P.a, Q.P.b)
+
+const ZernikeBases = Union{AbstractZernike,NormalizedZernike,NormalizedComplexZernike}
+
+# Evaluate the expansion with coefficients stored as the matrix M of a ModalTrav, where the coefficients of
+# sin(m*θ) and cos(m*θ) are in columns 2m and 2m+1. For each Fourier mode m we sum the radial parts of both columns
+# using Clenshaw's algorithm, which costs O(N^2) operations for N blocks.
+function _zernike_clenshaw(Z, M::AbstractMatrix, rθ::RadialCoordinate)
+    r, θ = rθ.r, rθ.θ
+    x = 2r^2-1
+    R = polynomialtype(real(eltype(Z)), typeof(r))
+    angular = _zernikeangular(Z)
+    N = (size(M,2)+1) ÷ 2 # number of blocks
+    ret = zero(promote_type(eltype(M), R, typeof(angular(0, θ))))
+    rᵐ = one(r)
+    for m = 0:N-1
+        n = min(size(M,1), (N-m+1) ÷ 2)
+        rec, c = _zernikeradial(Z, R, m)
+        cosm = clenshaw(view(M, 1:n, 2m+1), rec..., x) # the m = 0 column if m = 0
+        ret += c * rᵐ * (iszero(m) ? cosm * angular(0, θ) : clenshaw(view(M, 1:n, 2m), rec..., x) * angular(-m, θ) + cosm * angular(m, θ))
+        rᵐ *= r
+    end
+    ret
+end
+
+# The non-zero coefficients as a ModalTrav. This is free when they are a padded ModalTrav (possibly wrapped in a
+# BlockedVector), as produced by the transforms, and otherwise costs an O(N^2) copy of the first N blocks.
+const PaddedModalTrav = PaddedVector{<:Any,<:ModalTrav}
+_modaltravdata(Z, c::PaddedModalTrav) = c.args[2]
+_modaltravdata(Z, c::BlockedVector{<:Any,<:PaddedModalTrav}) = _modaltravdata(Z, c.blocks)
+function _modaltravdata(Z, c::AbstractVector)
+    kr = colsupport(c)
+    N = isempty(kr) ? 1 : Int(findblock(axes(Z,2), last(kr)))
+    ModalTrav(Vector(c[1:sum(1:N)]))
+end
+
+Base.@propagate_inbounds function getindex(f::Mul{<:Any,<:AbstractPaddedLayout,<:ZernikeBases}, rθ::RadialCoordinate)
+    @boundscheck checkbounds(f.A, rθ, 1)
+    _zernike_clenshaw(f.A, _modaltravdata(f.A, f.B).matrix, rθ)
+end
 
 ###
 # Normalization constants
