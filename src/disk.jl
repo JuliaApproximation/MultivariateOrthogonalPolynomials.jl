@@ -222,7 +222,8 @@ const ZernikeBases = Union{AbstractZernike,NormalizedZernike,NormalizedComplexZe
 
 # Evaluate the expansion with coefficients stored as the matrix M of a ModalTrav, where the coefficients of
 # sin(m*θ) and cos(m*θ) are in columns 2m and 2m+1. For each Fourier mode m we sum the radial parts of both columns
-# using Clenshaw's algorithm, which costs O(N^2) operations for N blocks.
+# using Clenshaw's algorithm, which costs O(N^2) operations for N blocks. Choosing the columns with an SVector
+# means the recurrence coefficients are only computed once for both, without allocating.
 function _zernike_clenshaw(Z, M::AbstractMatrix, rθ::RadialCoordinate)
     r, θ = rθ.r, rθ.θ
     x = 2r^2-1
@@ -234,8 +235,12 @@ function _zernike_clenshaw(Z, M::AbstractMatrix, rθ::RadialCoordinate)
     for m = 0:N-1
         n = min(size(M,1), (N-m+1) ÷ 2)
         rec, c = _zernikeradial(Z, R, m)
-        cosm = clenshaw(view(M, 1:n, 2m+1), rec..., x) # the m = 0 column if m = 0
-        ret += c * rᵐ * (iszero(m) ? cosm * angular(0, θ) : clenshaw(view(M, 1:n, 2m), rec..., x) * angular(-m, θ) + cosm * angular(m, θ))
+        if iszero(m)
+            ret += c * clenshaw(view(M, 1:n, 1), rec..., x) * angular(0, θ)
+        else
+            sinm, cosm = clenshaw(view(M, 1:n, SVector(2m, 2m+1)), rec..., x; dims=1)
+            ret += c * rᵐ * (sinm * angular(-m, θ) + cosm * angular(m, θ))
+        end
         rᵐ *= r
     end
     ret
