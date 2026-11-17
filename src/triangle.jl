@@ -721,47 +721,78 @@ end
 
 
 
-getindex(P::JacobiTriangle, xy::SVector{2}, JR::BlockOneTo) =
-    tri_forwardrecurrence(Int(JR[end]), jacobimatrix(Val(1), P), jacobimatrix(Val(2), P), xy...)
+###
+# Evaluation
+###
+
+# Block(n+1)[k+1] of JacobiTriangle(a,b,c) is P_{n-k}^{(2k+b+c+1,a)}(2x-1) * Q_k(x,y) where
+# Q_k(x,y) = (1-x)^k * P_k^{(c,b)}(2y/(1-x)-1). These are stored as the entry [n-k+1,k+1] of the matrix of a DiagTrav.
+# On the triangle 2y/(1-x)-1 is in [-1,1], except at the corner x = 1 (where y = 0) where Q_0 = 1 and Q_k = 0 for k > 0.
+
+# The first N blocks: one forward recurrence for the Q_k and one for each column, costing O(N^2) operations.
+function getindex(P::JacobiTriangle{T}, xy::SVector{2}, JR::BlockOneTo) where T
+    x, y = xy
+    N = length(JR)
+    R = polynomialtype(T, eltype(xy))
+    M = zeros(R, N, N)
+    N == 0 && return DiagTrav(M)
+    # Q_k in the first row
+    W = 1-x
+    if iszero(W)
+        M[1,1] = one(R)
+    else
+        copyto!(view(M, 1, :), view(Jacobi{R}(P.c, P.b), 2y/W-1, oneto(N)))
+        view(M, 1, :) .*= W .^ (0:N-1)
+    end
+    for k = 0:N-1
+        Qₖ = M[1,k+1]
+        col = view(M, 1:N-k, k+1)
+        copyto!(col, view(Jacobi{R}(2k+P.b+P.c+1, P.a), 2x-1, oneto(N-k)))
+        lmul!(Qₖ, col)
+    end
+    DiagTrav(M)
+end
+
+# Points given as tuples are converted first, so that indexing by ranges of blocks/entries uses the evaluation of
+# the first N blocks above, instead of falling back to evaluating entry-by-entry.
+Base.@propagate_inbounds function _getindex(::Type{Tuple{IND1,IND2}}, P::JacobiTriangle, (xy,J)::Tuple{Tuple,Any}) where {IND1<:SVector{2},IND2}
+    𝐱 = convert(IND1, xy)
+    @boundscheck checkbounds(P, to_indices(P, (𝐱, J))...)
+    P[𝐱, J]
+end
 
 ###
 # Clenshaw
 ###
 
-function getindex(f::ApplyQuasiVector{T,typeof(*),<:Tuple{JacobiTriangle,AbstractVector}}, xy::SVector{2})::T where T
-    P,c = arguments(f)
-    N = Int(last(blockcolsupport(c,1)))
-
-    N == 1 && return c[1]
-    X = jacobimatrix(Val(1), P)
-    Y = jacobimatrix(Val(2), P)
-    X_N = X[Block.(1:N), Block.(1:N-1)]
-    Y_N = Y[Block.(1:N), Block.(1:N-1)]
-    γ1 = Array{T}(undef, N-1)
-    γ2 = Array{T}(undef, N)
-    A = TriangleRecurrenceA(N-1, X_N, Y_N)
-    B = TriangleRecurrenceB(N-1, X_N, Y_N)
-    copyto!(γ2, view(c,Block(N)))
-    copyto!(γ1, view(c,Block(N-1)))
-    muladd!(one(T), B', γ2, one(T), γ1)
-    xy_muladd!(xy, A', γ2, one(T), γ1)
-
-    for n = N-2:-1:1
-        # P[n+1,xy] == (A[n]*[x*Eye(n); y*Eye(n)] + B[n])*P[n,xy] - C[n]*P[n-1,xy]
-        A,B,C = TriangleRecurrenceA(n, X_N, Y_N),TriangleRecurrenceB(n, X_N, Y_N),TriangleRecurrenceC(n+1, X_N, Y_N)
-        # some magic! C can be done in-place, otherwise
-        # we would need a secondary buffer.
-        # this also resizes γ2
-        lmul!(C', γ2)
-        # Need to swap sign since it should have been -C
-        γ2 .= (-).(γ2) .+ c[Block(n)]
-        γ2,γ1 = γ1,γ2
-        muladd!(one(T), B', γ2, one(T), γ1)
-        xy_muladd!(xy, A', γ2, one(T), γ1)
+# The coefficients as the matrix of a DiagTrav. This is free when they are a DiagTrav of a padded matrix, as
+# produced by the transform, and otherwise costs a copy of the first N blocks.
+function _diagtravdata(P, c::AbstractVector)
+    c isa DiagTrav && MemoryLayout(c.array) isa AbstractPaddedLayout && return paddeddata(c.array)
+    kr = colsupport(c)
+    N = isempty(kr) ? 1 : Int(findblock(axes(P,2), last(kr)))
+    v = c[1:sum(1:N)]
+    M = zeros(eltype(c), N, N)
+    for n = 0:N-1, k = 0:n
+        M[n-k+1,k+1] = v[sum(1:n)+k+1]
     end
-
-    γ1[1]
+    M
 end
+
+# Evaluate the expansion with coefficients in the matrix M of a DiagTrav: for each k we sum column k+1 against
+# P_j^{(2k+b+c+1,a)}(2x-1) using Clenshaw's algorithm, giving the coefficient g_k of Q_k, and then sum these against
+# Q_k = (1-x)^k * P_k^{(c,b)}(2y/(1-x)-1) using Clenshaw's algorithm again. This costs O(N^2) operations.
+function _triangle_clenshaw(P::JacobiTriangle{T}, M::AbstractMatrix, xy::SVector{2}) where T
+    x, y = xy
+    R = polynomialtype(T, eltype(xy))
+    g(k) = clenshaw(view(M, :, k+1), recurrencecoefficients(Jacobi{R}(2k+P.b+P.c+1, P.a))..., 2x-1)
+    W = 1-x
+    iszero(W) && return g(0)
+    clenshaw(BroadcastVector(k -> W^(k-1) * g(k-1), oneto(size(M,2))), recurrencecoefficients(Jacobi{R}(P.c, P.b))..., 2y/W-1)
+end
+
+getindex(f::ApplyQuasiVector{T,typeof(*),<:Tuple{JacobiTriangle,AbstractVector}}, xy::SVector{2}) where T =
+    convert(T, _triangle_clenshaw(f.args[1], _diagtravdata(f.args...), xy))::T
 
 getindex(f::ApplyQuasiVector{T,typeof(*),<:Tuple{JacobiTriangle,AbstractVector}}, xys::AbstractArray{<:SVector{2}}) where T =
     [f[xy] for xy in xys]
