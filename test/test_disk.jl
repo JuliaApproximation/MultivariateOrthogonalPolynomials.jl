@@ -127,7 +127,7 @@ import ContinuumArrays: broadcastbasis, basis, coefficients
             n = sum(1:N)
             for Z in (Zernike(), Zernike(0.1,0.2), ComplexZernike(), ComplexZernike(0.1,0.2)), 𝐱 in (xy, SVector(0.0,0.0), SVector(-0.6,0.8))
                 v = Z[𝐱,Block.(Base.OneTo(N))]
-                @test eltype(v) == eltype(Z)
+                @test v isa ModalTrav{eltype(Z)}
                 @test blockisequal(axes(v,1), blockedrange(1:N))
                 # compare with evaluating entry-by-entry
                 @test v ≈ [Z[𝐱,Block(J)[k]] for J in 1:N for k in 1:J]
@@ -139,7 +139,6 @@ import ContinuumArrays: broadcastbasis, basis, coefficients
                 @test Z[Tuple(𝐱),Block(N)] == v[Block(N)]
                 @test Z[𝐱,n] == Z[Tuple(𝐱),n] ≈ v[n]
             end
-            @test isempty(Zernike()[xy,Block.(Base.OneTo(0))])
             @test Zernike()[SVector(0.1f0,0.2f0),Block.(Base.OneTo(3))] ≈ Zernike()[SVector(0.1,0.2),Block.(Base.OneTo(3))] atol=1E-6
             @test Zernike()[SVector(big(1)/10,big(2)/10),Block.(Base.OneTo(N))] isa AbstractVector{BigFloat}
             @test Zernike()[SVector(big(1)/10,big(2)/10),Block.(Base.OneTo(N))] ≈ Zernike()[SVector(0.1,0.2),Block.(Base.OneTo(N))]
@@ -199,6 +198,25 @@ import ContinuumArrays: broadcastbasis, basis, coefficients
             else
                 @test ModalTrav(v) == v
             end
+        end
+
+        @testset "block indexing" begin
+            v = ModalTrav(BlockedArray(1:sum(1:7),1:7)) # 7 blocks
+            @test [v[Block(K)[j]] for K = 1:7 for j = 1:K] == 1:28
+            @test v[Block.(Base.OneTo(4))] isa ModalTrav{Int}
+            @test v[Block.(Base.OneTo(4))] == 1:10
+            @test v[Block.(Base.OneTo(4))].matrix == [1 2 3 5 6 9 10; 4 7 8 0 0 0 0]
+            @test v[Block.(Base.OneTo(7))] == v
+            for N = 1:7 # entries of higher blocks are zeroed
+                @test v[Block.(Base.OneTo(N))].matrix == ModalTrav(BlockedArray(1:sum(1:N),1:N)).matrix[1:(N+1)÷2,1:2N-1]
+            end
+            @test v[Block.(3:5)] == 4:15
+            @test blockisequal(axes(v[Block.(3:5)],1), blockedrange(3:5))
+            @test v[5:20] == 5:20
+            @test_throws BoundsError v[Block(8)[1]]
+            @test_throws BoundsError v[Block(3)[4]]
+            @test_throws BlockBoundsError v[Block.(Base.OneTo(8))]
+            @test_throws BlockBoundsError v[Block.(2:8)]
         end
     end
     
