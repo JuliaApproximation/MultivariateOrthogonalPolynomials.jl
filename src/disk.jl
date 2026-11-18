@@ -51,15 +51,15 @@ the entry of degree `ℓ` and Fourier mode `m` is
 
 Use `Normalized(Zernike(a, b))` for the orthonormal polynomials.
 """
-struct Zernike{T} <: AbstractZernike{T}
-    a::T
-    b::T
-    Zernike{T}(a::T, b::T) where T = new{T}(a, b)
+struct Zernike{T,V} <: AbstractZernike{T}
+    a::V
+    b::V
+    Zernike{T,V}(a::V, b::V) where {T,V} = new{T,V}(a, b)
 end
-Zernike{T}(a, b) where T = Zernike{T}(convert(T,a), convert(T,b))
+Zernike{T}(a, b) where T = Zernike{T,real(T)}(convert(real(T),a), convert(real(T),b))
 Zernike(a::T, b::V) where {T,V} = Zernike{float(promote_type(T,V))}(a, b)
 Zernike{T}(b) where T = Zernike{T}(zero(b), b)
-Zernike{T}() where T = Zernike{T}(zero(T))
+Zernike{T}() where T = Zernike{T}(zero(real(T)))
 
 AbstractQuasiArray{T}(Z::Zernike) where T = Zernike{T}(Z.a, Z.b)
 AbstractQuasiMatrix{T}(Z::Zernike) where T = Zernike{T}(Z.a, Z.b)
@@ -158,7 +158,7 @@ function _zernikelm(B::BlockIndex{1})
     ℓ, (isodd(k+ℓ) ? 1 : -1) * m
 end
 
-const NormalizedZernike{T} = Normalized{T,Zernike{T}}
+const NormalizedZernike{T} = Normalized{T,<:Zernike{T}}
 const NormalizedComplexZernike{T} = Normalized{T,<:ComplexZernike{T}}
 
 getindex(Z::Zernike, rθ::RadialCoordinate, B::BlockIndex{1}) = zernikez(_zernikelm(B)..., Z.a, Z.b, rθ)
@@ -616,11 +616,11 @@ for (Trans, ITrans) in ((:NormalizedZernikeTransform, :NormalizedZernikeITransfo
     @eval begin
         function $Trans{T}(N::Int, a::Number=0, b::Number=0) where T<:Real
             Ñ = N ÷ 2 + 1
-            $Trans{T}(N, a, b, plan_disk2cxf(T, Ñ, a, b), plan_disk_analysis(T, Ñ, 4Ñ-3))
+            $Trans{T}(N, a, b, plan_disk2cxf(T, Ñ, a, b > -1 ? b : zero(b)), plan_disk_analysis(T, Ñ, 4Ñ-3))
         end
         function $ITrans{T}(N::Int, a::Number=0, b::Number=0) where T<:Real
             Ñ = N ÷ 2 + 1
-            $ITrans{T}(N, a, b, plan_disk2cxf(T, Ñ, a, b), plan_disk_synthesis(T, Ñ, 4Ñ-3))
+            $ITrans{T}(N, a, b, plan_disk2cxf(T, Ñ, a, b > -1 ? b : zero(b)), plan_disk_synthesis(T, Ñ, 4Ñ-3))
         end
         inv(P::$Trans) = $ITrans(P.N, P.a, P.b, P.disk2cxf, inv(P.analysis))
         inv(P::$ITrans) = $Trans(P.N, P.a, P.b, P.disk2cxf, inv(P.synthesis))
@@ -650,8 +650,44 @@ deduceeltype(T, f) = all(isreal, f) ? T : Complex{T}
 *(P::NormalizedZernikeITransform{T}, f::Matrix{Complex{T}}) where T = (P.synthesis * (P.disk2cxf * real(f))) + im * (P.synthesis * (P.disk2cxf * imag(f)))
 *(P::NormalizedZernikeITransform{T}, f::Matrix{T}) where T = P.synthesis * (P.disk2cxf * f)
 
+"""
+    zernikelower!(ret, a, b)
+
+converts in-place the coefficients in `Zernike(a, b+1)`, stored as the matrix of a ModalTrav,
+to coefficients in `Zernike(a, b)`. Only `(a, b) == (0, -1)` is currently supported.
+
+The radial parts of Fourier mode `m` are `r^m * P_n^{(b,m)}(2r^2-1)`, and for `b == -1` we have
+(DLMF 18.9.5)
+
+    P_n^{(0,m)} - P_{n-1}^{(0,m)} == (2n+m)/(n+m) * P_n^{(-1,m)}
+
+(with `P_0^{(0,0)} == P_0^{(-1,0)}`). Thus `P_n^{(0,m)} == Σ_{k ≤ n} λ_k * P_k^{(-1,m)}` and the coefficients
+are converted by a reverse cumulative sum followed by multiplication by `λ_k`, costing O(N^2) operations for N blocks.
+"""
+function zernikelower!(ret::AbstractMatrix, a, b)
+    @assert (a,b) == (0,-1)
+    N = (size(ret,2)+1) ÷ 2 # number of blocks
+    for j in axes(ret,2)
+        m = j ÷ 2 # Fourier mode of the column
+        s = zero(eltype(ret))
+        for k = min(size(ret,1), (N-m+1) ÷ 2):-1:1
+            n = k-1
+            s += ret[k,j]
+            ret[k,j] = iszero(n) ? s : s * (2n+m) / (n+m)
+        end
+    end
+    ret
+end
+
 # transforms for Zernike(a,b) rescale those for Normalized(Zernike(a,b))
-*(P::ZernikeTransform, f::AbstractArray) = _normalized2zernike(P.a, P.b, NormalizedZernikeTransform(P) * f)
+function *(P::ZernikeTransform, f::AbstractArray)
+    if P.b > -1
+        _normalized2zernike(P.a, P.b, NormalizedZernikeTransform(P) * f)
+    else
+        ret = _normalized2zernike(P.a, zero(P.b), NormalizedZernikeTransform(P) * f)
+        zernikelower!(ret, P.a, P.b)
+    end
+end
 *(P::ZernikeITransform, f::AbstractMatrix) = NormalizedZernikeITransform(P) * _zernike2normalized(P.a, P.b, f)
 
 # transforms for ComplexZernike(a,b) mix the Fourier modes of those for Zernike(a,b)

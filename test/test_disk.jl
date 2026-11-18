@@ -2,7 +2,7 @@ using MultivariateOrthogonalPolynomials, ClassicalOrthogonalPolynomials, StaticA
 using RecipesBase
 import MultivariateOrthogonalPolynomials: ModalTrav, grid, ZernikeTransform, ZernikeITransform, NormalizedZernikeTransform, NormalizedZernikeITransform,
                                           ComplexZernikeTransform, ComplexZernikeITransform, NormalizedComplexZernikeTransform, NormalizedComplexZernikeITransform, *, ModalInterlace,
-                                          RadialUnitDisk, zernikegrid, pointchoice, checkpoints
+                                          RadialUnitDisk, zernikegrid, pointchoice, checkpoints, zernikelower!
 import ClassicalOrthogonalPolynomials: HalfWeighted, expand
 import ForwardDiff: hessian
 import ContinuumArrays: broadcastbasis, basis, coefficients
@@ -74,6 +74,27 @@ import ContinuumArrays: broadcastbasis, basis, coefficients
                 g = grid(Zernike(), Block(n))
                 C = ModalTrav(BlockedArray(randn(sum(1:n)), 1:n)).matrix
                 @test size(P) == size(Pi) == size(g) == size(C) == size(P * randn(size(g))) == size(Pi * C)
+            end
+        end
+
+        @testset "Zernike(0,-1)" begin
+            # converting coefficients in Zernike(0,0) to Zernike(0,-1) is exact
+            n = 9
+            C = ModalTrav(BlockedArray(randn(sum(1:n)), 1:n)).matrix
+            D = zernikelower!(copy(C), 0, -1)
+            for 𝐱 in (SVector(0.3,-0.4), SVector(0.0,0.0), SVector(0.6,0.8))
+                @test dot(Zernike(0,-1)[𝐱, Block.(1:n)], ModalTrav(D)) ≈ dot(Zernike()[𝐱, Block.(1:n)], ModalTrav(C))
+            end
+            @test zernikelower!(big.(C), 0, -1) ≈ D
+            @test zernikelower!(C + im*C, 0, -1) ≈ (1+im)*D
+
+            # the transform for Zernike(0,-1)
+            f = (x,y) -> exp(x*cos(y)) + x^3*y
+            for n in (20, 21)
+                C = ZernikeTransform(n, 0, -1) * [f(𝐱...) for 𝐱 in SVector.(grid(Zernike(), Block(n)))]
+                N = (size(C,2)+1) ÷ 2
+                𝐱 = SVector(0.1, 0.2)
+                @test dot(Zernike(0,-1)[𝐱, Block.(1:N)], ModalTrav(C)) ≈ f(𝐱...)
             end
         end
     end
