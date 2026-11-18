@@ -10,8 +10,8 @@ import ContinuumArrays: broadcastbasis, basis, coefficients
 @testset "Disk" begin
     @testset "Transform" begin
         N = 5
-        T = ZernikeTransform{Float64}(N, 0, 0)
-        Ti = ZernikeITransform{Float64}(N, 0, 0)
+        T = ZernikeTransform{Float64}(N, 0)
+        Ti = ZernikeITransform{Float64}(N, 0)
 
         v = BlockedArray(randn(sum(1:N)),1:N)
         V = (Ti * v)
@@ -28,17 +28,17 @@ import ContinuumArrays: broadcastbasis, basis, coefficients
         @test_throws MethodError T * randn(15)
 
         @testset "matrix-output transforms" begin
-            for (a,b) in ((0,0), (0.1,0.2), (0,1)),
-                (Z, Trans, ITrans) in ((Zernike(a,b), ZernikeTransform, ZernikeITransform),
-                                       (Normalized(Zernike(a,b)), NormalizedZernikeTransform, NormalizedZernikeITransform),
-                                       (ComplexZernike(a,b), ComplexZernikeTransform, ComplexZernikeITransform),
-                                       (Normalized(ComplexZernike(a,b)), NormalizedComplexZernikeTransform, NormalizedComplexZernikeITransform))
-                P = Trans{Float64}(N, a, b)
-                Pi = ITrans{Float64}(N, a, b)
+            for b in (0, 0.2, 1),
+                (Z, Trans, ITrans) in ((Zernike(b), ZernikeTransform, ZernikeITransform),
+                                       (Normalized(Zernike(b)), NormalizedZernikeTransform, NormalizedZernikeITransform),
+                                       (ComplexZernike(b), ComplexZernikeTransform, ComplexZernikeITransform),
+                                       (Normalized(ComplexZernike(b)), NormalizedComplexZernikeTransform, NormalizedComplexZernikeITransform))
+                P = Trans{Float64}(N, b)
+                Pi = ITrans{Float64}(N, b)
                 @test inv(P) isa ITrans
                 @test inv(Pi) isa Trans
-                @test Trans(N, a, b) isa Trans{Float64}
-                @test ITrans(N, a, b) isa ITrans{Float64}
+                @test Trans(N, b) isa Trans{Float64}
+                @test ITrans(N, b) isa ITrans{Float64}
                 @test size(P) == size(Pi) == size(grid(Z, Block(N))) == (3,9)
                 @test size(P,1) == size(Pi,1) == 3
                 @test size(P,2) == size(Pi,2) == 9
@@ -53,7 +53,7 @@ import ContinuumArrays: broadcastbasis, basis, coefficients
                 end
             end
             # generic matrices are converted before synthesis
-            Pi = NormalizedZernikeITransform{Float64}(N, 0, 0)
+            Pi = NormalizedZernikeITransform{Float64}(N, 0)
             C = ModalTrav(BlockedArray(1:sum(1:N), 1:N)).matrix
             @test C isa Matrix{Int}
             @test Pi * C ≈ Pi * Matrix{Float64}(C)
@@ -70,31 +70,31 @@ import ContinuumArrays: broadcastbasis, basis, coefficients
 
         @testset "size" begin
             for n in 1:6
-                P, Pi = ZernikeTransform{Float64}(n, 0, 0), ZernikeITransform{Float64}(n, 0, 0)
+                P, Pi = ZernikeTransform{Float64}(n, 0), ZernikeITransform{Float64}(n, 0)
                 g = grid(Zernike(), Block(n))
                 C = ModalTrav(BlockedArray(randn(sum(1:n)), 1:n)).matrix
                 @test size(P) == size(Pi) == size(g) == size(C) == size(P * randn(size(g))) == size(Pi * C)
             end
         end
 
-        @testset "Zernike(0,-1)" begin
-            # converting coefficients in Zernike(0,0) to Zernike(0,-1) is exact
+        @testset "Zernike(-1)" begin
+            # converting coefficients in Zernike(0) to Zernike(-1) is exact
             n = 9
             C = ModalTrav(BlockedArray(randn(sum(1:n)), 1:n)).matrix
-            D = zernikelower!(copy(C), 0, -1)
+            D = zernikelower!(copy(C), -1)
             for 𝐱 in (SVector(0.3,-0.4), SVector(0.0,0.0), SVector(0.6,0.8))
-                @test dot(Zernike(0,-1)[𝐱, Block.(1:n)], ModalTrav(D)) ≈ dot(Zernike()[𝐱, Block.(1:n)], ModalTrav(C))
+                @test dot(Zernike(-1)[𝐱, Block.(1:n)], ModalTrav(D)) ≈ dot(Zernike()[𝐱, Block.(1:n)], ModalTrav(C))
             end
-            @test zernikelower!(big.(C), 0, -1) ≈ D
-            @test zernikelower!(C + im*C, 0, -1) ≈ (1+im)*D
+            @test zernikelower!(big.(C), -1) ≈ D
+            @test zernikelower!(C + im*C, -1) ≈ (1+im)*D
 
-            # the transform for Zernike(0,-1)
+            # the transform for Zernike(-1)
             f = (x,y) -> exp(x*cos(y)) + x^3*y
             for n in (20, 21)
-                C = ZernikeTransform(n, 0, -1) * [f(𝐱...) for 𝐱 in SVector.(grid(Zernike(), Block(n)))]
+                C = ZernikeTransform(n, -1) * [f(𝐱...) for 𝐱 in SVector.(grid(Zernike(), Block(n)))]
                 N = (size(C,2)+1) ÷ 2
                 𝐱 = SVector(0.1, 0.2)
-                @test dot(Zernike(0,-1)[𝐱, Block.(1:N)], ModalTrav(C)) ≈ f(𝐱...)
+                @test dot(Zernike(-1)[𝐱, Block.(1:N)], ModalTrav(C)) ≈ f(𝐱...)
             end
         end
     end
@@ -111,17 +111,16 @@ import ContinuumArrays: broadcastbasis, basis, coefficients
         @test Zernike(1) ≠ Zernike()
         @test Zernike() ≡ copy(Zernike())
 
-        @test ZernikeWeight() == ZernikeWeight() == ZernikeWeight(0,0) ==
-                ZernikeWeight(0) == ZernikeWeight{Float64}() ==
-                ZernikeWeight{Float64}(0) == ZernikeWeight{Float64}(0, 0)
+        @test ZernikeWeight() == ZernikeWeight() == ZernikeWeight(0) ==
+                ZernikeWeight{Float64}() == ZernikeWeight{Float64}(0)
         @test ZernikeWeight(1) ≠ ZernikeWeight()
         @test ZernikeWeight() ≡ copy(ZernikeWeight())
 
         @test AbstractQuasiArray{ComplexF64}(Zernike()) ≡ AbstractQuasiMatrix{ComplexF64}(Zernike()) ≡ Zernike{ComplexF64}()
-        @test AbstractQuasiArray{ComplexF64}(Zernike(0.1,0.2)) ≡ AbstractQuasiMatrix{ComplexF64}(Zernike(0.1,0.2)) ≡ Zernike{ComplexF64}(0.1,0.2)
+        @test AbstractQuasiArray{ComplexF64}(Zernike(0.2)) ≡ AbstractQuasiMatrix{ComplexF64}(Zernike(0.2)) ≡ Zernike{ComplexF64}(0.2)
 
         # lazy diagonal scalings broadcast lazily
-        @test Base.BroadcastStyle(typeof(Diagonal(MultivariateOrthogonalPolynomials.ZernikeNormalizationConstant{Float64}(0,0)))) == LazyArrays.LazyArrayStyle{2}()
+        @test Base.BroadcastStyle(typeof(Diagonal(MultivariateOrthogonalPolynomials.ZernikeNormalizationConstant{Float64}(0)))) == LazyArrays.LazyArrayStyle{2}()
         @test Base.BroadcastStyle(typeof(Diagonal(MultivariateOrthogonalPolynomials.WeightedZernikeFractionalLaplacianDiag{Float64}(0.5)))) == LazyArrays.LazyArrayStyle{2}()
     end
 
@@ -134,7 +133,7 @@ import ContinuumArrays: broadcastbasis, basis, coefficients
         @test Zernike()[rθ,Block(2)] ≈ [r*sin(θ), r*cos(θ)] ≈ [zernikez(1, -1, rθ), zernikez(1, 1, rθ)]
         @test Zernike()[rθ,Block(3)] ≈ [2r^2-1, r^2*sin(2θ), r^2*cos(2θ)] ≈ [zernikez(2, 0, rθ), zernikez(2, -2, rθ), zernikez(2, 2, rθ)]
         @test Zernike()[rθ,Block(4)] ≈ [zernikez(3, -1, rθ), zernikez(3, 1, rθ), zernikez(3, -3, rθ), zernikez(3, 3, rθ)]
-        for Z in (Zernike(), Zernike(0.1,0.2), ComplexZernike())
+        for Z in (Zernike(), Zernike(0.2), ComplexZernike())
             v = Z[xy,Block.(Base.OneTo(5))]
             @test v ≈ [Z[xy,k] for k in 1:15]
             @test blockisequal(axes(v,1), blockedrange(1:5))
@@ -146,7 +145,7 @@ import ContinuumArrays: broadcastbasis, basis, coefficients
         @testset "first N blocks via recurrence" begin
             N = 20
             n = sum(1:N)
-            for Z in (Zernike(), Zernike(0.1,0.2), ComplexZernike(), ComplexZernike(0.1,0.2)), 𝐱 in (xy, SVector(0.0,0.0), SVector(-0.6,0.8))
+            for Z in (Zernike(), Zernike(0.2), ComplexZernike(), ComplexZernike(0.2)), 𝐱 in (xy, SVector(0.0,0.0), SVector(-0.6,0.8))
                 v = Z[𝐱,Block.(Base.OneTo(N))]
                 @test v isa ModalTrav{eltype(Z)}
                 @test blockisequal(axes(v,1), blockedrange(1:N))
@@ -184,8 +183,8 @@ import ContinuumArrays: broadcastbasis, basis, coefficients
 
     @testset "Normalized" begin
         xy = SVector(0.1,0.2)
-        for (a,b) in ((0,0), (0.1,0.2), (0,1))
-            Z = Zernike(a,b)
+        for b in (0, 0.2, 1)
+            Z = Zernike(b)
             Q = Normalized(Z)
             @test Q[xy,Block.(1:10)] ≈ Z[xy,Block.(1:10)] .* Q.scaling[1:55]
         end
@@ -194,7 +193,7 @@ import ContinuumArrays: broadcastbasis, basis, coefficients
         @test Normalized(Zernike()) ≠ Zernike()
         @test Zernike() ≠ Normalized(Zernike())
         @test copy(Normalized(Zernike())) ≡ Normalized(Zernike())
-        @test stringmime("text/plain", Normalized(Zernike(1))) == "Normalized(Zernike(0.0, 1.0))"
+        @test stringmime("text/plain", Normalized(Zernike(1))) == "Normalized(Zernike(1.0))"
     end
 
     @testset "ModalTrav" begin
@@ -246,11 +245,11 @@ import ContinuumArrays: broadcastbasis, basis, coefficients
         @test expand(Zernike{ComplexF64}(), splat((x,y) -> exp(x*cos(y)+im*y)))[SVector(0.1,0.2)] ≈ expand(Zernike(), splat((x,y) -> exp(x*cos(y)+im*y)))[SVector(0.1,0.2)] ≈ exp(0.1cos(0.2)+im*0.2)
         @test expand(Normalized(Zernike()), splat((x,y) -> exp(x*cos(y))))[SVector(0.1,0.2)] ≈ exp(0.1cos(0.2))
         @test expand(Normalized(Zernike()), splat((x,y) -> exp(x*cos(y)+im*y)))[SVector(0.1,0.2)] ≈ exp(0.1cos(0.2)+im*0.2)
-        @test expand(Zernike(0.1,0.2), splat((x,y) -> exp(x*cos(y)+im*y)))[SVector(0.1,0.2)] ≈ exp(0.1cos(0.2)+im*0.2)
+        @test expand(Zernike(0.2), splat((x,y) -> exp(x*cos(y)+im*y)))[SVector(0.1,0.2)] ≈ exp(0.1cos(0.2)+im*0.2)
 
         @testset "evaluation via Clenshaw" begin
             g = (x,y) -> exp(x - 2y) + x*y^3
-            for B in (Zernike(), Zernike(0.5,1.5), ComplexZernike(), ComplexZernike(1,0.5), Normalized(Zernike()), Normalized(Zernike(0.1,0.2)), Normalized(ComplexZernike()), Normalized(ComplexZernike(1,0.5)))
+            for B in (Zernike(), Zernike(1.5), ComplexZernike(), ComplexZernike(0.5), Normalized(Zernike()), Normalized(Zernike(0.2)), Normalized(ComplexZernike()), Normalized(ComplexZernike(0.5)))
                 f = expand(B, splat(g))
                 c = coefficients(f)
                 N = Int(findblock(axes(B,2), last(LazyArrays.colsupport(c))))
@@ -268,7 +267,7 @@ import ContinuumArrays: broadcastbasis, basis, coefficients
             @test f[(0.1,0.2)] ≈ cos(exp(10*0.1*0.2^2))
 
             # coefficients that are not a ModalTrav, including ones whose last block is incomplete
-            for N in (2, 3, 4, 7), Z in (Zernike(0.1,0.2), ComplexZernike(), Normalized(Zernike()))
+            for N in (2, 3, 4, 7), Z in (Zernike(0.2), ComplexZernike(), Normalized(Zernike()))
                 w = randn(sum(1:N)-1)
                 xy = SVector(0.3,-0.4)
                 @test (Z * [w; zeros(∞)])[xy] ≈ sum(w[k] * Z[xy,k] for k in eachindex(w))
@@ -323,14 +322,10 @@ import ContinuumArrays: broadcastbasis, basis, coefficients
             @test (Y+Y)[Block.(1:6),Block.(1:6)] ≈ Y[Block.(1:6),Block.(1:6)]+Y[Block.(1:6),Block.(1:6)]
         end
 
-        # for now, reject non-zero first parameter options
-        @test_throws ErrorException("Implement for non-zero first basis parameter.") jacobimatrix(Val(1),Zernike(1,1))  
-        @test_throws ErrorException("Implement for non-zero first basis parameter.") jacobimatrix(Val(2),Zernike(1,1))
-        @test_throws ErrorException("Implement for non-zero first basis parameter.") jacobimatrix(Val(1),Normalized(Zernike(1,1)))
     end
 
     @testset "Transform" begin
-        for (a,b) in ((0,0), (0.1, 0.2), (0,1)), Z in (Zernike(a,b), Normalized(Zernike(a,b)))
+        for b in (0, 0.2, 1), Z in (Zernike(b), Normalized(Zernike(b)))
             Zn = Z[:,Block.(Base.OneTo(3))]
             for k = 1:6
                 @test factorize(Zn) \ Z[:,k] ≈ [zeros(k-1); 1; zeros(6-k)]
@@ -342,7 +337,7 @@ import ContinuumArrays: broadcastbasis, basis, coefficients
         end
 
         # coefficients differ by the normalization constants
-        Z = Zernike(0.1, 0.2)
+        Z = Zernike(0.2)
         x,y = coordinates(Z)
         f = exp.(x .* cos.(y))
         @test (Z \ f)[1:55] ≈ Normalized(Z).scaling[1:55] .* (Normalized(Z) \ f)[1:55]
@@ -502,7 +497,7 @@ import ContinuumArrays: broadcastbasis, basis, coefficients
         R = Zernike(1) \ Zernike()
         @test R[Block.(Base.OneTo(6)), Block.(Base.OneTo(7))] == R[Block.(1:6), Block.(1:7)]
 
-        for (A,B) in ((Zernike(1), Zernike()), (Zernike(2), Zernike()), (Zernike(0.1,1.2), Zernike(0.1,0.2)),
+        for (A,B) in ((Zernike(1), Zernike()), (Zernike(2), Zernike()), (Zernike(1.2), Zernike(0.2)),
                       (Normalized(Zernike(1)), Normalized(Zernike())), (Normalized(Zernike(2)), Normalized(Zernike())),
                       (Zernike(), Normalized(Zernike())), (Normalized(Zernike()), Zernike()),
                       (Zernike(1), Normalized(Zernike())), (Normalized(Zernike(2)), Zernike()))
@@ -570,7 +565,7 @@ import ContinuumArrays: broadcastbasis, basis, coefficients
         c = [1; 2; 3; zeros(∞)]
         A,B = Zernike(), Zernike(1)
         @test broadcastbasis(+, A, B) == broadcastbasis(+, B, A) == B
-        @test broadcastbasis(+, Zernike(1,0), Zernike(0,2)) == Zernike(1,2)
+        @test broadcastbasis(+, Zernike(0.5), Zernike(2)) == Zernike(2)
         f,g = A*c, B*c
         @test basis(f+g) == B
         @test (f+g)[𝐱] ≈ (g+f)[𝐱] ≈ f[𝐱] + g[𝐱]
@@ -617,7 +612,7 @@ import ContinuumArrays: broadcastbasis, basis, coefficients
     end
 
     @testset "Show" begin
-        @test stringmime("text/plain", Zernike()) == "Zernike(0.0, 0.0)"
+        @test stringmime("text/plain", Zernike()) == "Zernike(0.0)"
     end
 end
 
@@ -628,17 +623,17 @@ end
 
     @testset "Basics" begin
         C = ComplexZernike()
-        @test C == ComplexZernike(0,0) == ComplexZernike{ComplexF64}() == ComplexZernike{ComplexF64}(0) == ComplexZernike{ComplexF64}(0,0)
+        @test C == ComplexZernike(0) == ComplexZernike{ComplexF64}() == ComplexZernike{ComplexF64}(0)
         @test C ≠ ComplexZernike(1)
         @test C ≠ Zernike() && Zernike() ≠ C
         @test C ≡ copy(C)
         @test eltype(C) == ComplexF64
         @test eltype(ComplexZernike(1f0)) == ComplexF32
         @test axes(C) == axes(Zernike())
-        @test ClassicalOrthogonalPolynomials.orthogonalityweight(ComplexZernike(0.1,0.2)) == ZernikeWeight(0.1,0.2)
+        @test ClassicalOrthogonalPolynomials.orthogonalityweight(ComplexZernike(0.2)) == ZernikeWeight(0.2)
         @test AbstractQuasiArray{ComplexF32}(ComplexZernike(1)) ≡ AbstractQuasiMatrix{ComplexF32}(ComplexZernike(1)) ≡ ComplexZernike{ComplexF32}(1)
-        @test stringmime("text/plain", ComplexZernike()) == "ComplexZernike(0.0, 0.0)"
-        @test stringmime("text/plain", Normalized(ComplexZernike(1))) == "Normalized(ComplexZernike(0.0, 1.0))"
+        @test stringmime("text/plain", ComplexZernike()) == "ComplexZernike(0.0)"
+        @test stringmime("text/plain", Normalized(ComplexZernike(1))) == "Normalized(ComplexZernike(1.0))"
     end
 
     @testset "Evaluation" begin
@@ -659,8 +654,8 @@ end
         @test Q[xy,Block(2)] ≈ [sqrt(2/π)*r*exp(-im*θ), sqrt(2/π)*r*exp(im*θ)]
         @test Q[xy,Block(4)] ≈ [normalizedcomplexzernikez(3, -1, rθ), normalizedcomplexzernikez(3, 1, rθ), normalizedcomplexzernikez(3, -3, rθ), normalizedcomplexzernikez(3, 3, rθ)]
         @test Q[rθ,Block(4)[3]] ≈ Q[xy,Block(4)[3]] ≈ normalizedcomplexzernikez(3, -3, rθ)
-        for (a,b) in ((0,0), (0.1,0.2), (0,1))
-            C = ComplexZernike(a,b)
+        for b in (0, 0.2, 1)
+            C = ComplexZernike(b)
             @test Normalized(C)[xy,Block.(1:10)] ≈ C[xy,Block.(1:10)] .* Normalized(C).scaling[1:55]
         end
     end
@@ -673,8 +668,8 @@ end
     end
 
     @testset "Zernike conversion" begin
-        for (a,b) in ((0,0), (0.1,0.2)), normalize in (identity, Normalized)
-            Z, C = normalize(Zernike(a,b)), normalize(ComplexZernike(a,b))
+        for b in (0, 0.2), normalize in (identity, Normalized)
+            Z, C = normalize(Zernike(b)), normalize(ComplexZernike(b))
             R = C \ Z
             @test transpose(Z[xy,Block.(1:6)]) ≈ transpose(C[xy,Block.(1:6)])*R[Block.(1:6),Block.(1:6)]
             R = Z \ C
@@ -711,7 +706,7 @@ end
 
     @testset "Conversion and lowering" begin
         w = 1 - r^2
-        for (A,B) in ((ComplexZernike(1), ComplexZernike()), (ComplexZernike(0.1,1.2), ComplexZernike(0.1,0.2)),
+        for (A,B) in ((ComplexZernike(1), ComplexZernike()), (ComplexZernike(1.2), ComplexZernike(0.2)),
                       (Normalized(ComplexZernike(1)), Normalized(ComplexZernike())), (ComplexZernike(), Normalized(ComplexZernike())))
             R = A \ B
             @test transpose(B[xy,Block.(1:6)]) ≈ transpose(A[xy,Block.(1:6)])*R[Block.(1:6),Block.(1:6)]
@@ -727,14 +722,14 @@ end
     end
 
     @testset "expand" begin
-        for C in (ComplexZernike(), ComplexZernike(0.1,0.2), Normalized(ComplexZernike()))
+        for C in (ComplexZernike(), ComplexZernike(0.2), Normalized(ComplexZernike()))
             @test expand(C, splat((x,y) -> exp(x*cos(y))))[xy] ≈ exp(0.1cos(0.2))
             @test expand(C, splat((x,y) -> exp(x*cos(y)+im*y)))[xy] ≈ exp(0.1cos(0.2)+im*0.2)
             @test expand(C, splat((x,y) -> exp(x+2im*y)))[xy] ≈ exp(0.1+0.4im)
         end
 
         # coefficients of Zernike and ComplexZernike are related by the conversion
-        Z, C = Zernike(0.1, 0.2), ComplexZernike(0.1, 0.2)
+        Z, C = Zernike(0.2), ComplexZernike(0.2)
         x,y = coordinates(C)
         f = exp.(x .* cos.(y) .+ im .* y)
         @test (C \ f)[1:55] ≈ (C \ Z)[1:55,1:55] * (Z \ f)[1:55]
