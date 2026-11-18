@@ -50,6 +50,24 @@ import ContinuumArrays: broadcastbasis, basis, coefficients
             @test P[[SVector(0.1,0.2),SVector(0.2,0.3)],Block(2)] ≈ [P[SVector(0.1,0.2),2] P[SVector(0.1,0.2),3];
                                                                     P[SVector(0.2,0.3),2] P[SVector(0.2,0.3),3]]
         end
+
+        @testset "first N blocks" begin
+            # including the corners and edges, where at x = 1 only k = 0 is non-zero
+            pts = (SVector(0.1,0.2), SVector(0.3,0.7), SVector(0.0,0.0), SVector(0.0,1.0), SVector(1.0,0.0), SVector(1-1E-7,1E-8))
+            for (a,b,c) in ((0,0,0), (1,0,0), (0,1,0), (0,0,1), (0.1,0.2,0.3)), 𝐱 in pts, N in (1, 2, 7)
+                P = JacobiTriangle(a,b,c)
+                v = P[𝐱, Block.(Base.OneTo(N))]
+                @test v isa MultivariateOrthogonalPolynomials.DiagTrav
+                @test blockisequal(axes(v,1), blockedrange(1:N))
+                @test v ≈ [𝐱[1] == 1 ? (k == 0)*jacobip(n,b+c+1,a,1.0) : p(n,k,a,b,c,𝐱...) for n = 0:N-1 for k = 0:n] atol=1E-13
+                @test P[𝐱, Block.(1:N)] == P[Tuple(𝐱), Block.(Base.OneTo(N))] == P[𝐱, 1:sum(1:N)] == v
+                N > 1 && @test P[𝐱, Block.(2:N)] == v[2:end]
+            end
+            @test JacobiTriangle{Float32}()[SVector(0.1f0,0.2f0), Block.(Base.OneTo(3))] isa MultivariateOrthogonalPolynomials.DiagTrav{Float32}
+            @test JacobiTriangle()[SVector(big(1)/10,big(2)/10), Block.(Base.OneTo(10))] ≈ JacobiTriangle()[SVector(0.1,0.2), Block.(Base.OneTo(10))]
+            @test_throws BoundsError JacobiTriangle()[(0.5,0.6), Block.(1:3)]
+        end
+
         @testset "function" begin
             P = JacobiTriangle()
             𝐱 = SVector(0.1,0.2)
@@ -83,6 +101,31 @@ import ContinuumArrays: broadcastbasis, basis, coefficients
                 f = P * [1:5; Zeros(∞)]
                 @test f.args[2][Block(2)] == 2:3
                 @test f[𝐱] ≈ P[𝐱,1:5]'*(1:5)
+            end
+
+            @testset "expansions via Clenshaw" begin
+                g = (x,y) -> cos(x*exp(y)) + x*y
+                pts = (SVector(0.1,0.2), SVector(0.3,0.7), SVector(0.0,0.0), SVector(0.0,1.0), SVector(1.0,0.0), SVector(1-1E-7,1E-8))
+                for (a,b,c) in ((0,0,0), (1,0,0), (0,1,0), (0,0,1), (0.1,0.2,0.3))
+                    P = JacobiTriangle(a,b,c)
+                    f = expand(P, splat(g))
+                    c = coefficients(f)
+                    N = Int(last(BlockArrays.blockcolsupport(c)))
+                    for 𝐱 in pts
+                        @test f[𝐱] ≈ g(𝐱...)
+                        # compare with summing the coefficients times the basis
+                        @test f[𝐱] ≈ dot(P[𝐱, Block.(Base.OneTo(N))], c[Block.(1:N)])
+                        @test f[Tuple(𝐱)] == f[𝐱]
+                    end
+                    @test_throws BoundsError f[(0.5,0.6)]
+                end
+                # evaluation does not allocate, which can only be tested without code coverage as the
+                # instrumentation stops allocations being optimized away
+                if Base.JLOptions().code_coverage == 0
+                    # measure inside a function specialized on the arguments to avoid dynamic dispatch
+                    evalallocated(f, 𝐱) = (f[𝐱]; @allocated f[𝐱])
+                    @test evalallocated(expand(JacobiTriangle(), splat(g)), SVector(0.1,0.2)) == 0
+                end
             end
         end
     end
