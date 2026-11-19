@@ -12,6 +12,17 @@ end
 Triangle() = Triangle(SVector(0,0), SVector(1,0), SVector(0,1))
 Triangle(a, b, c) = Triangle{promote_type(eltype(eltype(a)), eltype(eltype(b)), eltype(eltype(c)))}(a,b, c)
 Triangle{T}(d::Triangle) where T = Triangle{T}(d.a, d.b, d.c)
+"""
+    EquilateralTriangle([T=Float64])
+
+The equilateral triangle centred at the origin whose vertices are the cube roots of unity
+`(1,0)`, `(-1/2,√3/2)`, `(-1/2,-√3/2)` (i.e. `1, ω, ω²` for `ω = exp(2πi/3)`).
+"""
+function EquilateralTriangle(::Type{T}=Float64) where T
+    s = sqrt(T(3))/2
+    Triangle(SVector{2,T}(1,0), SVector{2,T}(-1/2,s), SVector{2,T}(-1/2,-s))
+end
+
 Triangle{T}(a, b, c) where T = Triangle{T}(convert(SVector{2,T}, a), convert(SVector{2,T}, b), convert(SVector{2,T}, c))
 
 ==(A::Triangle, B::Triangle) = A.a == B.a && A.b == B.b && A.c == B.c
