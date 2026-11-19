@@ -340,8 +340,8 @@ end
 # The block-diagonal matrix that mixes the entries with Fourier modes -|m| and |m| in each block, which
 # are adjacent with the negative mode first. A column with a negative mode has diagonal entry d₋ and
 # sub-diagonal entry l₋, a column with a positive mode has super-diagonal entry u₊ and diagonal entry d₊,
-# and the m == 0 entries are left unchanged.
-function _zernikemixing(::Type{T}, d₋, l₋, u₊, d₊) where T
+# and the m == 0 entries are scaled by d₀.
+function _zernikemixing(::Type{T}, d₋, l₋, u₊, d₊, d₀=one(T)) where T
     k = mortar(Base.OneTo.(oneto(∞)))     # k counts the entry in a block
     n = mortar(Fill.(oneto(∞),oneto(∞)))  # n counts the block number which corresponds to the order (+1)
     neg = isodd.(k .+ n)                  # entries with negative Fourier mode
@@ -349,7 +349,7 @@ function _zernikemixing(::Type{T}, d₋, l₋, u₊, d₊) where T
     # the bands are conjugated as they are stored as an adjoint
     # (copying a transpose of a BlockBroadcastArray conjugates its entries)
     du = pos .* conj(convert(T, u₊))
-    d = neg .* conj(convert(T, d₋)) .+ pos .* conj(convert(T, d₊)) .+ (1 .- neg .- pos) .* one(T)
+    d = neg .* conj(convert(T, d₋)) .+ pos .* conj(convert(T, d₊)) .+ (1 .- neg .- pos) .* conj(convert(T, d₀))
     dl = neg .* conj(convert(T, l₋))
     _BandedBlockBandedMatrix(BlockBroadcastArray(hcat, du, d, dl)', axes(n,1), (0,0), (1,1))
 end
@@ -370,6 +370,15 @@ function \(A::Zernike{T}, B::ComplexZernike{V}) where {T,V}
     M = _zernike2complexzernike(TV, one(real(TV)))
     A.b == B.b ? M : (A \ Zernike{real(TV)}(B.b)) * M
 end
+
+# real and imaginary parts of ComplexZernike(b) in terms of Zernike(b):
+#   real(exp(±im*m*θ)) == cos(m*θ) and imag(exp(±im*m*θ)) == ±sin(m*θ),
+# where the m == 0 entries are real.
+isreal(::ComplexZernike) = false
+real(Z::ComplexZernike{T}) where T = Zernike{real(T)}(Z.b) * _zernikemixing(real(T), 0, 1, 0, 1, 1)
+imag(Z::ComplexZernike{T}) where T = Zernike{real(T)}(Z.b) * _zernikemixing(real(T), -1, 0, 1, 0, 0)
+layout_broadcasted(::Tuple{AbstractBasisLayout}, ::typeof(real), Z::ComplexZernike) = real(Z)
+layout_broadcasted(::Tuple{AbstractBasisLayout}, ::typeof(imag), Z::ComplexZernike) = imag(Z)
 
 
 ###

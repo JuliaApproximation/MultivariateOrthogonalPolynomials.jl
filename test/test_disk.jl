@@ -706,6 +706,25 @@ end
         end
     end
 
+    @testset "real/imag" begin
+        for b in (0, 0.2)
+            Z = ComplexZernike(b)
+            @test !isreal(Z)
+            R, I = real(Z), imag(Z)
+            @test eltype(R) == eltype(I) == Float64
+            for 𝐱 in (xy, SVector(0.0,0.0), SVector(-0.6,0.3))
+                @test R[𝐱,1:30] ≈ real(Z[𝐱,1:30])
+                @test I[𝐱,1:30] ≈ imag(Z[𝐱,1:30])
+                @test real.(Z)[𝐱,Block.(1:5)] ≈ real(Z[𝐱,Block.(1:5)])
+                @test imag.(Z)[𝐱,Block.(1:5)] ≈ imag(Z[𝐱,Block.(1:5)])
+
+                f = Z * [1; 2im; 3-im; 4+2im; 5im; 6; zeros(∞)]
+                @test real(f)[𝐱] ≈ real(f[𝐱])
+                @test imag(f)[𝐱] ≈ imag(f[𝐱])
+            end
+        end
+    end
+
     @testset "broadcastbasis" begin
         𝐱 = SVector(0.1,0.2)
         c = [1; 2im; 3; zeros(∞)]
