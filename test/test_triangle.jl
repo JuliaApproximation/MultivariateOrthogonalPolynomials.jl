@@ -586,6 +586,40 @@ import ContinuumArrays: broadcastbasis, basis, coefficients
         @test affine(d, axes(P,1))[affine(axes(P,1), d)[𝐱]] ≈ 𝐱
     end
 
+    @testset "EquilateralTriangle" begin
+        d = EquilateralTriangle()
+        @test d isa Triangle{Float64}
+        @test EquilateralTriangle(BigFloat) isa Triangle{BigFloat}
+        s3 = sqrt(3)
+        @test d.a == SVector(1,0) && d.b ≈ SVector(-1/2, s3/2) && d.c ≈ SVector(-1/2, -s3/2)
+        # vertices are the cube roots of unity, so centroid is the origin and sides have length √3
+        ω = exp(2π*im/3)
+        @test complex(d.b...) ≈ ω && complex(d.c...) ≈ ω^2
+        @test (d.a + d.b + d.c) ≈ SVector(0,0) atol=1E-15
+        @test norm(d.b-d.a) ≈ norm(d.c-d.b) ≈ norm(d.a-d.c) ≈ s3
+        @test SVector(0,0) in d
+        @test SVector(0.5, 0.4) ∉ d
+        @test SVector(-0.4, 0.3) in d
+        @test SVector(-0.6, 0.3) ∉ d
+
+        a = affine(Triangle(), d)
+        @test a[SVector(0,0)] ≈ d.a
+        @test a[SVector(1,0)] ≈ d.b
+        @test a[SVector(0,1)] ≈ d.c
+        𝐱 = SVector(0.1,0.2)
+        @test affine(d, Triangle())[a[𝐱]] ≈ 𝐱
+        @test a[𝐱] ∈ d
+
+        P = JacobiTriangle()
+        Q = P[affine(d, axes(P,1)), :]
+        @test Q[a[𝐱], 1:6] ≈ P[𝐱, 1:6]
+
+        # expansion on the equilateral triangle
+        f = ((x,y),) -> exp(x)*cos(y)
+        c = P \ (𝐱 -> f(a[𝐱])).(axes(P,1))
+        @test (Q*c)[a[𝐱]] ≈ f(a[𝐱])
+    end
+
     @testset "Weighted derivatives" begin
         for a in (0.001, 0.1, 0.2, 1.0)
             for b in (0.001, 0.1, 0.2, 1.0)
