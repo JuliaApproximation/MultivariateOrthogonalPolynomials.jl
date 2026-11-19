@@ -177,6 +177,50 @@ function diff(P::JacobiTriangle{T}, ::Val{(0,1)}; dims=1) where T
     JacobiTriangle(a,b+1,c+1) * _BandedBlockBandedMatrix((k .+ convert(T, b+c))', axes(k,1), (-1,1), (-1,1))
 end
 
+###
+# Affinely mapped Koornwinder bases
+#
+# If `kr = affine(d, UnitTriangle())` then `Q = P[kr, :]` is `P` composed with the map `u = kr(x)`.
+# With `J = ∂u/∂x` constant, the chain rule gives ∂Q/∂xⱼ = Σᵢ J[i,j] (∂P/∂uᵢ)∘kr and
+# ∫_d Q dx = ∫_{unit} P du / |det J|.
+###
+
+const TriangleDomain = Union{Triangle,UnitTriangle}
+const TriangleMap = ContinuumArrays.AffineMap{<:Any,<:Inclusion{<:Any,<:TriangleDomain},<:Inclusion{<:Any,<:TriangleDomain}}
+const TriangleMappedBasis = SubQuasiArray{<:Any,2,<:Any,<:Tuple{TriangleMap,Base.Slice}}
+
+_vertices(d::Triangle) = (d.a, d.b, d.c)
+_vertices(::UnitTriangle{T}) where T = (SVector{2,T}(0,0), SVector{2,T}(1,0), SVector{2,T}(0,1))
+function _edgematrix(d)
+    a,b,c = _vertices(d)
+    [b-a c-a]
+end
+
+# the (constant) Jacobian ∂(range)/∂(domain) of an affine map between triangles
+triangle_jacobian(kr::TriangleMap) = _edgematrix(kr.range.domain) / _edgematrix(kr.domain.domain)
+
+function diff_layout(::MappedBasisLayouts, V::TriangleMappedBasis, (k,j)::NTuple{2,Int}; dims...)
+    (k < 0 || j < 0) && throw(ArgumentError("order must be non-negative"))
+    k == j == 0 && return V
+    if k + j == 1
+        P = demap(V)
+        P isa JacobiTriangle || error("Derivatives of affinely mapped weighted triangle bases are not implemented")
+        J = triangle_jacobian(basismap(V))
+        i = k == 1 ? 1 : 2 # differentiate with respect to xᵢ
+        Pu, Mu = arguments(diff(P, Val((1,0))))
+        Pv, Mv = arguments(diff(P, Val((0,1))))
+        # ∂ˣ and ∂ʸ land in different bases so convert both to a common one
+        Pc = JacobiTriangle(P.a+1, P.b+1, P.c+1)
+        return Pc[basismap(V), :] * (J[1,i] * (Pc \ Pu) * Mu + J[2,i] * (Pc \ Pv) * Mv)
+    end
+    k ≥ j && return diff(diff(V, (1,0)), (k-1,j))
+    diff(diff(V, (0,1)), (k,j-1))
+end
+
+function sum_layout(::MappedBasisLayouts, V::TriangleMappedBasis, dims)
+    sum(demap(V); dims=dims) / abs(det(triangle_jacobian(basismap(V))))
+end
+
 # The weighted derivative formulae lower the parameters, which is only valid if the
 # weight vanishes on the relevant edges. Otherwise we avoid negative parameters by
 # converting to JacobiTriangle(0,0,0) and then differentiating.
