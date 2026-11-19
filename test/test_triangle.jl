@@ -610,6 +610,7 @@ import ContinuumArrays: broadcastbasis, basis, coefficients
         @test affine(d, Triangle())[a[𝐱]] ≈ 𝐱
         @test a[𝐱] ∈ d
 
+        # translate the Koornwinder polynomials to an EquilateralTriangle domain
         P = JacobiTriangle()
         Q = P[affine(d, axes(P,1)), :]
         @test Q[a[𝐱], 1:6] ≈ P[𝐱, 1:6]
