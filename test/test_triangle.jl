@@ -1,5 +1,5 @@
 using MultivariateOrthogonalPolynomials, StaticArrays, BlockArrays, BlockBandedMatrices, ArrayLayouts,
-        QuasiArrays, Test, ClassicalOrthogonalPolynomials, BandedMatrices, FastTransforms, LinearAlgebra, ContinuumArrays, ForwardDiff
+        QuasiArrays, Test, ClassicalOrthogonalPolynomials, BandedMatrices, FastTransforms, LinearAlgebra, ContinuumArrays, ForwardDiff, LazyArrays, Base64
 import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleRecurrenceA, TriangleRecurrenceB, TriangleRecurrenceC, xy_muladd!, ExpansionLayout, Triangle, ApplyBandedBlockBandedLayout, weightedgrammatrix
 
 import ContinuumArrays: broadcastbasis, basis, coefficients
@@ -643,7 +643,7 @@ import ContinuumArrays: broadcastbasis, basis, coefficients
             @test (diff(Q,(1,1))*c)[𝐲] ≈ fxy(𝐲)
             @test (diff(Q,(0,2))*c)[𝐲] ≈ fyy(𝐲)
             @test ((Laplacian(x)*Q)*c)[𝐲] ≈ fxx(𝐲) + fyy(𝐲)
-            @test diff(Q,(0,0)) == Q
+            @test diff(Q,(0,0)) === Q
 
             # integrals scale by |det| of the map
             area = abs(det([d.b-d.a d.c-d.a]))/2
