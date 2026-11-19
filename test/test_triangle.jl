@@ -621,6 +621,55 @@ import ContinuumArrays: broadcastbasis, basis, coefficients
         @test (Q*c)[a[𝐱]] ≈ f(a[𝐱])
     end
 
+    @testset "Derivatives and integrals on mapped triangles" begin
+        # ∇ is chain-ruled through A⁻ᵀ, so check against exact derivatives on non-trivial triangles
+        f = ((x,y),) -> exp(x)*cos(y) + x*y^2
+        fx = ((x,y),) -> exp(x)*cos(y) + y^2
+        fy = ((x,y),) -> -exp(x)*sin(y) + 2x*y
+        fxx = ((x,y),) -> exp(x)*cos(y)
+        fxy = ((x,y),) -> -exp(x)*sin(y) + 2y
+        fyy = ((x,y),) -> -exp(x)*cos(y) + 2x
+        for d in (EquilateralTriangle(), Triangle(SVector(1,0), SVector(0,1), SVector(1,1)), 2*EquilateralTriangle() - SVector(0.3,0.1))
+            P = JacobiTriangle()
+            Q = P[affine(d, axes(P,1)), :]
+            x = axes(Q,1)
+            c = Q \ f.(x)
+            𝐱 = SVector(0.1,0.2) # mapped into d below
+            𝐲 = affine(Triangle(), d)[𝐱]
+            @test (Q*c)[𝐲] ≈ f(𝐲)
+            @test (diff(Q,(1,0))*c)[𝐲] ≈ fx(𝐲)
+            @test (diff(Q,(0,1))*c)[𝐲] ≈ fy(𝐲)
+            @test (diff(Q,(2,0))*c)[𝐲] ≈ fxx(𝐲)
+            @test (diff(Q,(1,1))*c)[𝐲] ≈ fxy(𝐲)
+            @test (diff(Q,(0,2))*c)[𝐲] ≈ fyy(𝐲)
+            @test ((Laplacian(x)*Q)*c)[𝐲] ≈ fxx(𝐲) + fyy(𝐲)
+            @test diff(Q,(0,0)) == Q
+
+            # integrals scale by |det| of the map
+            area = abs(det([d.b-d.a d.c-d.a]))/2
+            @test sum(Q; dims=1)[1] ≈ area
+        end
+
+        # exact integrals over the equilateral triangle: ∫x² = ∫y² = area/8 (polar moment area·s²/12 with s² = 3)
+        d = EquilateralTriangle()
+        P = JacobiTriangle()
+        Q = P[affine(d, axes(P,1)), :]
+        x = axes(Q,1)
+        area = 3sqrt(3)/4
+        for g in (((x,y),) -> x^2, ((x,y),) -> y^2)
+            @test (sum(Q; dims=1) * (Q \ g.(x)))[1] ≈ area/8
+        end
+
+        # conversion between mapped bases with the same map
+        kr = affine(d, axes(P,1))
+        R = JacobiTriangle(1,1,1)[kr,:]
+        @test (R \ Q)[Block(1),Block(1)] ≈ (JacobiTriangle(1,1,1) \ P)[Block(1),Block(1)]
+
+        # weighted derivatives are not (yet) supported
+        W = Weighted(JacobiTriangle(1,1,1))[kr,:]
+        @test_throws ErrorException diff(W,(1,0))
+    end
+
     @testset "Weighted derivatives" begin
         for a in (0.001, 0.1, 0.2, 1.0)
             for b in (0.001, 0.1, 0.2, 1.0)
