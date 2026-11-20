@@ -12,6 +12,17 @@ end
 Triangle() = Triangle(SVector(0,0), SVector(1,0), SVector(0,1))
 Triangle(a, b, c) = Triangle{promote_type(eltype(eltype(a)), eltype(eltype(b)), eltype(eltype(c)))}(a,b, c)
 Triangle{T}(d::Triangle) where T = Triangle{T}(d.a, d.b, d.c)
+"""
+    EquilateralTriangle([T=Float64])
+
+The equilateral triangle centred at the origin whose vertices are the cube roots of unity
+`(1,0)`, `(-1/2,√3/2)`, `(-1/2,-√3/2)` (i.e. `1, ω, ω²` for `ω = exp(2πi/3)`).
+"""
+function EquilateralTriangle(::Type{T}=Float64) where T
+    s = sqrt(T(3))/2
+    Triangle(SVector{2,T}(1,0), SVector{2,T}(-1/2,s), SVector{2,T}(-1/2,-s))
+end
+
 Triangle{T}(a, b, c) where T = Triangle{T}(convert(SVector{2,T}, a), convert(SVector{2,T}, b), convert(SVector{2,T}, c))
 
 ==(A::Triangle, B::Triangle) = A.a == B.a && A.b == B.b && A.c == B.c
@@ -164,6 +175,50 @@ function diff(P::JacobiTriangle{T}, ::Val{(0,1)}; dims=1) where T
     a,b,c = P.a,P.b,P.c
     k = mortar(Base.OneTo.(oneto(∞)))
     JacobiTriangle(a,b+1,c+1) * _BandedBlockBandedMatrix((k .+ convert(T, b+c))', axes(k,1), (-1,1), (-1,1))
+end
+
+###
+# Affinely mapped Koornwinder bases
+#
+# If `kr = affine(d, UnitTriangle())` then `Q = P[kr, :]` is `P` composed with the map `u = kr(x)`.
+# With `J = ∂u/∂x` constant, the chain rule gives ∂Q/∂xⱼ = Σᵢ J[i,j] (∂P/∂uᵢ)∘kr and
+# ∫_d Q dx = ∫_{unit} P du / |det J|.
+###
+
+const TriangleDomain = Union{Triangle,UnitTriangle}
+const TriangleMap = ContinuumArrays.AffineMap{<:Any,<:Inclusion{<:Any,<:TriangleDomain},<:Inclusion{<:Any,<:TriangleDomain}}
+const TriangleMappedBasis = SubQuasiArray{<:Any,2,<:Any,<:Tuple{TriangleMap,Base.Slice}}
+
+_vertices(d::Triangle) = (d.a, d.b, d.c)
+_vertices(::UnitTriangle{T}) where T = (SVector{2,T}(0,0), SVector{2,T}(1,0), SVector{2,T}(0,1))
+function _edgematrix(d)
+    a,b,c = _vertices(d)
+    [b-a c-a]
+end
+
+# the (constant) Jacobian ∂(range)/∂(domain) of an affine map between triangles
+triangle_jacobian(kr::TriangleMap) = _edgematrix(kr.range.domain) / _edgematrix(kr.domain.domain)
+
+function diff_layout(::MappedBasisLayouts, V::TriangleMappedBasis, (k,j)::NTuple{2,Int}; dims...)
+    (k < 0 || j < 0) && throw(ArgumentError("order must be non-negative"))
+    k == j == 0 && return V
+    if k + j == 1
+        P = demap(V)
+        P isa JacobiTriangle || error("Derivatives of affinely mapped weighted triangle bases are not implemented")
+        J = triangle_jacobian(basismap(V))
+        i = k == 1 ? 1 : 2 # differentiate with respect to xᵢ
+        Pu, Mu = arguments(diff(P, Val((1,0))))
+        Pv, Mv = arguments(diff(P, Val((0,1))))
+        # ∂ˣ and ∂ʸ land in different bases so convert both to a common one
+        Pc = JacobiTriangle(P.a+1, P.b+1, P.c+1)
+        return Pc[basismap(V), :] * (J[1,i] * (Pc \ Pu) * Mu + J[2,i] * (Pc \ Pv) * Mv)
+    end
+    k ≥ j && return diff(diff(V, (1,0)), (k-1,j))
+    diff(diff(V, (0,1)), (k,j-1))
+end
+
+function sum_layout(::MappedBasisLayouts, V::TriangleMappedBasis, dims)
+    sum(demap(V); dims=dims) / abs(det(triangle_jacobian(basismap(V))))
 end
 
 # The weighted derivative formulae lower the parameters, which is only valid if the
