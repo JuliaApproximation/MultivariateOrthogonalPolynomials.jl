@@ -651,6 +651,34 @@ function zernikelower!(ret::AbstractMatrix, b)
     ret
 end
 
+"""
+    zernikeraise!(ret, b)
+
+converts in-place the coefficients in `Zernike(b)`, stored as the matrix of a ModalTrav,
+to coefficients in `Zernike(b+1)`, inverting `zernikelower!`. Only `b == -1` is currently supported.
+
+As `P_n^{(-1,m)} == (n+m)/(2n+m) * (P_n^{(0,m)} - P_{n-1}^{(0,m)})`, the coefficients are converted by
+division by `λ_k` followed by a backward difference, costing O(N^2) operations for N blocks.
+"""
+function zernikeraise!(ret::AbstractMatrix, b)
+    @assert b == -1
+    N = (size(ret,2)+1) ÷ 2 # number of blocks
+    for j in axes(ret,2)
+        m = j ÷ 2 # Fourier mode of the column
+        K = min(size(ret,1), (N-m+1) ÷ 2)
+        for k = 1:K
+            n = k-1
+            if !iszero(n)
+                ret[k,j] = ret[k,j] * (n+m) / (2n+m)
+            end
+        end
+        for k = 1:K-1
+            ret[k,j] -= ret[k+1,j]
+        end
+    end
+    ret
+end
+
 # transforms for Zernike(b) rescale those for Normalized(Zernike(b))
 function *(P::ZernikeTransform, f::AbstractArray)
     if P.b > -1
@@ -660,7 +688,14 @@ function *(P::ZernikeTransform, f::AbstractArray)
         zernikelower!(ret, P.b)
     end
 end
-*(P::ZernikeITransform, f::AbstractMatrix) = NormalizedZernikeITransform(P) * _zernike2normalized(P.b, f)
+function *(P::ZernikeITransform{T}, f::AbstractMatrix) where T
+    if P.b > -1
+        NormalizedZernikeITransform(P) * _zernike2normalized(P.b, f)
+    else
+        ret = zernikeraise!(Matrix{promote_type(T, eltype(f))}(f), P.b)
+        NormalizedZernikeITransform(P) * _zernike2normalized(zero(P.b), ret)
+    end
+end
 
 # transforms for ComplexZernike(b) mix the Fourier modes of those for Zernike(b)
 *(P::NormalizedComplexZernikeTransform{T}, f::AbstractArray) where T = _zernike2complex(NormalizedZernikeTransform(P) * f, inv(sqrt(convert(T,2))))

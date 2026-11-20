@@ -2,7 +2,7 @@ using MultivariateOrthogonalPolynomials, ClassicalOrthogonalPolynomials, StaticA
 using RecipesBase
 import MultivariateOrthogonalPolynomials: ModalTrav, grid, ZernikeTransform, ZernikeITransform, NormalizedZernikeTransform, NormalizedZernikeITransform,
                                           ComplexZernikeTransform, ComplexZernikeITransform, NormalizedComplexZernikeTransform, NormalizedComplexZernikeITransform, *, ModalInterlace,
-                                          RadialUnitDisk, zernikegrid, pointchoice, checkpoints, zernikelower!
+                                          RadialUnitDisk, zernikegrid, pointchoice, checkpoints, zernikelower!, zernikeraise!
 import ClassicalOrthogonalPolynomials: HalfWeighted, expand
 import ForwardDiff: hessian
 import ContinuumArrays: broadcastbasis, basis, coefficients
@@ -88,6 +88,11 @@ import ContinuumArrays: broadcastbasis, basis, coefficients
             @test zernikelower!(big.(C), -1) ≈ D
             @test zernikelower!(C + im*C, -1) ≈ (1+im)*D
 
+            # raising inverts lowering
+            @test zernikeraise!(copy(D), -1) ≈ C
+            @test zernikeraise!(big.(D), -1) ≈ C
+            @test zernikeraise!(D + im*D, -1) ≈ (1+im)*C
+
             # the transform for Zernike(-1)
             f = (x,y) -> exp(x*cos(y)) + x^3*y
             for n in (20, 21)
@@ -95,6 +100,22 @@ import ContinuumArrays: broadcastbasis, basis, coefficients
                 N = (size(C,2)+1) ÷ 2
                 𝐱 = SVector(0.1, 0.2)
                 @test dot(Zernike(-1)[𝐱, Block.(1:N)], ModalTrav(C)) ≈ f(𝐱...)
+            end
+
+            # the inverse transform for Zernike(-1)
+            for n in (20, 21)
+                g = SVector.(grid(Zernike(), Block(n)))
+                V = [f(𝐱...) for 𝐱 in g]
+                P, Pi = ZernikeTransform(n, -1), ZernikeITransform(n, -1)
+                @test inv(P) isa ZernikeITransform
+                @test Pi * (P * V) ≈ V
+                @test inv(P) * (P * V) ≈ V
+                @test inv(Pi) * (Pi * (P * V)) ≈ P * V
+                c = BlockedArray(randn(sum(1:n)), 1:n)
+                Vc = Pi * c
+                @test Vc ≈ [dot(Zernike(-1)[𝐱, Block.(1:n)], c) for 𝐱 in g]
+                @test Pi * (c + im*c) ≈ (1+im)*Vc
+                @test Pi * ModalTrav(BlockedArray(1:sum(1:n), 1:n)).matrix ≈ Pi * Vector{Float64}(1:sum(1:n))
             end
         end
     end
