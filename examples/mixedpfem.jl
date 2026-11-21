@@ -20,9 +20,9 @@ using MultivariateOrthogonalPolynomials, ClassicalOrthogonalPolynomials, FillArr
 
 C = Ultraspherical(-1/2)
 P = Legendre()
-P² = KronPolynomial(P,P)
-CP = KronPolynomial(C,P)
-PC = KronPolynomial(P,C)
+P² = KronInterlace(P,P)
+CP = KronInterlace(C,P)
+PC = KronInterlace(P,C)
 
 
 N = 30

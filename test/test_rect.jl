@@ -1,7 +1,7 @@
 using MultivariateOrthogonalPolynomials, ClassicalOrthogonalPolynomials, StaticArrays, LinearAlgebra, BlockArrays, FillArrays, Base64, LazyBandedMatrices, ArrayLayouts, Random, StatsBase, SparseArrays, DomainSets, Test
 using ClassicalOrthogonalPolynomials: expand, coefficients, recurrencecoefficients, normalized
-using MultivariateOrthogonalPolynomials: weaklaplacian, ClenshawKron
-using ContinuumArrays: plotgridvalues, ExpansionLayout, basis, grid
+using MultivariateOrthogonalPolynomials: weaklaplacian, ClenshawKron, KronOPLayout, KronInterlaceLayout
+using ContinuumArrays: plotgridvalues, ExpansionLayout, basis, grid, Basis
 using Base: oneto
 
 Random.seed!(3242)
@@ -17,7 +17,7 @@ Random.seed!(3242)
         @test T²[𝐱, Block(3)] ≈ [cos(2*acos(0.1)), 0.1*0.2, cos(2*acos(0.2))]
 
         U = ChebyshevU()
-        V = KronPolynomial(T, U)
+        V = KronInterlace(T, U)
         @test V[𝐱, Block(1)[1]] == V[𝐱, 1]
         @test V[𝐱, Block(1)] == V[𝐱, Block.(1:1)]
         @test V[𝐱, Block(2)] == [0.1,2*0.2]
@@ -180,8 +180,8 @@ Random.seed!(3242)
     end
 
     @testset "Show" begin
-        @test stringmime("text/plain", KronPolynomial(Legendre(), Chebyshev())) == "Legendre() ⊗ ChebyshevT()"
-        @test stringmime("text/plain", KronPolynomial(Legendre(), Chebyshev(), Jacobi(1,1))) == "Legendre() ⊗ ChebyshevT() ⊗ Jacobi(1, 1)"
+        @test stringmime("text/plain", KronInterlace(Legendre(), Chebyshev())) == "Legendre() ⊗ ChebyshevT()"
+        @test stringmime("text/plain", KronInterlace(Legendre(), Chebyshev(), Jacobi(1,1))) == "Legendre() ⊗ ChebyshevT() ⊗ Jacobi(1, 1)"
     end
 
     @testset "Plot" begin
@@ -321,11 +321,11 @@ Random.seed!(3242)
     end
 
     @testset "conversion bug" begin
-        P = KronPolynomial(Ultraspherical(1/2), Ultraspherical(1/2))
-        Q = KronPolynomial(Ultraspherical(1/2), Ultraspherical(3/2))
+        P = KronInterlace(Ultraspherical(1/2), Ultraspherical(1/2))
+        Q = KronInterlace(Ultraspherical(1/2), Ultraspherical(3/2))
         @test (Q \ (P*[1:10; zeros(∞)]))[1:10] ≈ (Q \ P)[1:10,1:10]*(1:10) ≈ ((Q \ P)*[1:10; zeros(∞)])[1:10]
 
-        CP = KronPolynomial(Ultraspherical(-1/2), Legendre())
+        CP = KronInterlace(Ultraspherical(-1/2), Legendre())
         c = transform(CP, splat((x,y) -> cos((x + 1)sin(y - 1))))
         f = CP*c
         M = CP'CP
@@ -335,13 +335,13 @@ Random.seed!(3242)
     end
 
     @testset "tuple constructors" begin
-        P = KronPolynomial(Legendre(), Chebyshev())
-        @test KronPolynomial((Legendre(), Chebyshev())) == KronPolynomial{2}((Legendre(), Chebyshev())) == KronPolynomial{2,Float64}((Legendre(), Chebyshev())) == P
-        @test KronPolynomial{2}(Legendre(), Chebyshev()) == KronPolynomial{2,Float64}(Legendre(), Chebyshev()) == P
+        P = KronInterlace(Legendre(), Chebyshev())
+        @test KronInterlace((Legendre(), Chebyshev())) == KronInterlace{2}((Legendre(), Chebyshev())) == KronInterlace{2,Float64}((Legendre(), Chebyshev())) == P
+        @test KronInterlace{2}(Legendre(), Chebyshev()) == KronInterlace{2,Float64}(Legendre(), Chebyshev()) == P
     end
 
     @testset "P'f for quasi-vector f" begin
-        P = KronPolynomial(Jacobi(1,1), Legendre())
+        P = KronInterlace(Jacobi(1,1), Legendre())
         f = splat((x,y) -> exp(x*cos(y))).(axes(P,1))
         @test MultivariateOrthogonalPolynomials.simplifiable(*, P', f) == Val(true)
         @test MultivariateOrthogonalPolynomials.simplifiable(*, f', P) == Val(true)
@@ -351,5 +351,28 @@ Random.seed!(3242)
             @test c[k] ≈ sum(exp(x*cos(y))*P[SVector(x,y),k] for (x,y) in ChebyshevInterval()^2) atol=1E-12
         end
         @test (f'P)[1:6] ≈ c[1:6]
+    end
+
+    @testset "non-polynomial factors" begin
+        P = Legendre()
+        W = Weighted(Jacobi(1,1))
+        WP = KronInterlace(W, P)
+
+        @test MemoryLayout(KronInterlace(P, ChebyshevT())) isa KronOPLayout{2}
+        @test MemoryLayout(RectPolynomial(Fill(P, 2))) isa KronOPLayout{2}
+        @test MemoryLayout(WP) isa KronInterlaceLayout{2}
+        @test WP isa Basis
+        @test !(WP isa MultivariateOrthogonalPolynomial)
+
+        𝐱 = SVector(0.1,0.2)
+        @test WP[𝐱, Block(3)] ≈ [W[0.1,3], W[0.1,2]*P[0.2,2], W[0.1,1]*P[0.2,3]]
+        @test WP[𝐱, 5] ≈ W[0.1,2]*P[0.2,2]
+
+        c = [1:6; zeros(∞)]
+        @test (WP*c)[𝐱] ≈ WP[𝐱,1:6]'*(1:6)
+        @test sum(WP*c) ≈ 8/3
+
+        f = expand(WP, splat((x,y) -> (1-x^2)*exp(x*cos(y))))
+        @test f[𝐱] ≈ (1-0.1^2)*exp(0.1cos(0.2))
     end
 end
