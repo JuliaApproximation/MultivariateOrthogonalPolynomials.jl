@@ -1,38 +1,68 @@
-struct KronPolynomial{d, T, PP} <: MultivariateOrthogonalPolynomial{d, T}
+"""
+    KronInterlace(A, B, …)
+
+represents the tensor product basis `A ⊗ B ⊗ …` with the columns interlaced by total degree,
+so that for `d = 2` the `N`-th block consists of `A[x,N-j+1]*B[y,j]` for `j = 1:N`.
+The factors can be general bases. When every factor is an orthogonal polynomial basis the
+`MemoryLayout` is `KronOPLayout`, a multivariate orthogonal polynomial layout,
+otherwise it is `KronInterlaceLayout`.
+"""
+struct KronInterlace{d, T, PP} <: Basis{T}
     args::PP
 end
 
-KronPolynomial{d,T}(a::NTuple{d,Any}) where {d,T} = KronPolynomial{d,T,typeof(a)}(a)
-KronPolynomial{d}(a::NTuple{d,Any}) where d = KronPolynomial{d,mapreduce(eltype, promote_type, a)}(a)
-KronPolynomial(a::NTuple{d,Any}) where d = KronPolynomial{d}(a)
-KronPolynomial{d,T}(a::Vararg{Any,d}) where {d,T} = KronPolynomial{d,T}(a)
-KronPolynomial{d}(a::Vararg{Any,d}) where d = KronPolynomial{d}(a)
-KronPolynomial(a::Vararg{Any,d}) where d = KronPolynomial{d}(a)
-KronPolynomial{d,T}(a::AbstractVector) where {d,T} = KronPolynomial{d,T,typeof(a)}(a)
-KronPolynomial{d}(a::AbstractVector) where d = KronPolynomial{d,eltype(eltype(a))}(a)
-KronPolynomial(a::AbstractVector) = KronPolynomial{length(a)}(a)
+KronInterlace{d,T}(a::NTuple{d,Any}) where {d,T} = KronInterlace{d,T,typeof(a)}(a)
+KronInterlace{d}(a::NTuple{d,Any}) where d = KronInterlace{d,mapreduce(eltype, promote_type, a)}(a)
+KronInterlace(a::NTuple{d,Any}) where d = KronInterlace{d}(a)
+KronInterlace{d,T}(a::Vararg{Any,d}) where {d,T} = KronInterlace{d,T}(a)
+KronInterlace{d}(a::Vararg{Any,d}) where d = KronInterlace{d}(a)
+KronInterlace(a::Vararg{Any,d}) where d = KronInterlace{d}(a)
+KronInterlace{d,T}(a::AbstractVector) where {d,T} = KronInterlace{d,T,typeof(a)}(a)
+KronInterlace{d}(a::AbstractVector) where d = KronInterlace{d,eltype(eltype(a))}(a)
+KronInterlace(a::AbstractVector) = KronInterlace{length(a)}(a)
 
-function show(io::IO, P::KronPolynomial)
+function show(io::IO, P::KronInterlace)
     for k = 1:length(P.args)
         print(io, "$(P.args[k])")
         k ≠ length(P.args) && print(io, " ⊗ ")
     end
 end
 
-==(A::KronPolynomial, B::KronPolynomial) = length(A.args) == length(B.args) && all(map(==, A.args, B.args))
+==(A::KronInterlace, B::KronInterlace) = length(A.args) == length(B.args) && all(map(==, A.args, B.args))
 
 
+"""
+    KronInterlaceLayout{d}
+
+is the layout of a `KronInterlace` whose factors are general bases.
+"""
+struct KronInterlaceLayout{d} <: AbstractBasisLayout end
+
+"""
+    KronOPLayout{d}
+
+is the layout of a `KronInterlace` whose factors are all orthogonal polynomials,
+so that it is a multivariate orthogonal polynomial.
+"""
 struct KronOPLayout{d} <: AbstractMultivariateOPLayout{d} end
-MemoryLayout(::Type{<:KronPolynomial{d}}) where d = KronOPLayout{d}()
 
-const RectPolynomial{T, PP} = KronPolynomial{2, T, PP}
+const KronInterlaceLayouts{d} = Union{KronInterlaceLayout{d}, KronOPLayout{d}}
+
+kroninterlacelayout(::Val{d}, ::Tuple{Vararg{AbstractOPLayout}}) where d = KronOPLayout{d}()
+kroninterlacelayout(::Val{d}, _) where d = KronInterlaceLayout{d}()
+
+kroninterlace_factorlayouts(::Type{PP}) where PP<:Tuple = map(MemoryLayout, fieldtypes(PP))
+kroninterlace_factorlayouts(::Type{PP}) where PP<:AbstractVector = (MemoryLayout(eltype(PP)),)
+MemoryLayout(::Type{<:KronInterlace{d,<:Any,PP}}) where {d,PP} = kroninterlacelayout(Val(d), kroninterlace_factorlayouts(PP))
+
+const RectPolynomial{T, PP} = KronInterlace{2, T, PP}
+
+copy(P::KronInterlace) = P
+
+axes(P::KronInterlace) = (Inclusion(cartesianproduct(map(domain, axes.(P.args, 1))...)), _krontrav_axes(axes.(P.args, 2)...))
 
 
-
-axes(P::KronPolynomial) = (Inclusion(cartesianproduct(map(domain, axes.(P.args, 1))...)), _krontrav_axes(axes.(P.args, 2)...))
-
-
-normalized(P::KronPolynomial) = KronPolynomial(map(normalized, P.args))
+normalized(P::KronInterlace) = KronInterlace(map(normalized, P.args))
 
 function getindex(P::RectPolynomial{T}, xy::StaticVector{2}, Jj::BlockIndex{1})::T where T
     a,b = P.args
@@ -47,6 +77,22 @@ function getindex(P::RectPolynomial, xy::StaticVector{2}, JR::BlockOneTo)
     N = size(JR,1)
     DiagTrav(A[x,OneTo(N)] .* B[y,OneTo(N)]')
 end
+
+# reduce other indexing to blocks
+_getindex(::Type{Tuple{IND1,IND2}}, P::KronInterlace, (𝐱,J)::Tuple{IND1,Block{1}}) where {IND1,IND2} = P[𝐱, Block.(OneTo(Int(J)))][J]
+_getindex(::Type{Tuple{IND1,IND2}}, P::KronInterlace, (𝐱,JR)::Tuple{IND1,BlockRange{1}}) where {IND1,IND2} = P[𝐱, Block.(OneTo(Int(maximum(JR))))][JR]
+_getindex(::Type{Tuple{IND1,IND2}}, P::KronInterlace, (𝐱,Jj)::Tuple{IND1,BlockIndex{1}}) where {IND1,IND2} = P[𝐱, block(Jj)][blockindex(Jj)]
+_getindex(::Type{Tuple{IND1,IND2}}, P::KronInterlace, (𝐱,j)::Tuple{IND1,IND2}) where {IND1,IND2} = P[𝐱, findblockindex(axes(P,2), j)]
+_getindex(::Type{Tuple{IND1,IND2}}, P::KronInterlace, (𝐱,jr)::Tuple{IND1,AbstractArray{IND2}}) where {IND1,IND2} = P[𝐱, Block.(OneTo(Int(findblock(axes(P,2), maximum(jr)))))][jr]
+
+# multiplication by coordinates is only closed for OPs
+for (Inc, f, d) in ((:FirstInclusion, :first, 1), (:LastInclusion, :last, 2))
+    @eval function layout_broadcasted(::Tuple{BroadcastLayout{typeof($f)},KronOPLayout{2}}, ::typeof(*), x::$Inc, P)
+        axes(x,1) == axes(P,1) || throw(DimensionMismatch())
+        P*jacobimatrix(Val($d), P)
+    end
+end
+
 # Actually Jxᵀ
 function jacobimatrix(::Val{1}, P::RectPolynomial)
     A,B = P.args
@@ -59,7 +105,7 @@ function jacobimatrix(::Val{2}, P::RectPolynomial)
     Y = jacobimatrix(B)
     KronTrav(Y, Eye{eltype(Y)}(∞))
 end
-function diff(P::KronPolynomial{N}, order::NTuple{N,Int}; dims...) where N
+function diff(P::KronInterlace{N}, order::NTuple{N,Int}; dims...) where N
     diffs = map(diff, P.args, order)
     RectPolynomial(map(basis, diffs)...) * KronTrav(reverse(map(coefficients, diffs))...)
 end
@@ -84,21 +130,21 @@ end
     KronTrav(PB'QB, PA'QA)
 end
 
-simplifiable(::typeof(*), ::QuasiAdjoint{T,<:KronPolynomial{d}}, ::AbstractQuasiVector) where {d,T} = Val(true)
-simplifiable(::typeof(*), ::QuasiAdjoint{T,<:AbstractQuasiVector}, ::KronPolynomial{d}) where {d,T} = Val(true)
-function mul(Ac::QuasiAdjoint{T,<:KronPolynomial{d}}, B::AbstractQuasiVector) where {d,T}
-    P = KronPolynomial{d, T}(map(_ -> Legendre{eltype(Ac)}(), parent(Ac).args))
+simplifiable(::typeof(*), ::QuasiAdjoint{T,<:KronInterlace{d}}, ::AbstractQuasiVector) where {d,T} = Val(true)
+simplifiable(::typeof(*), ::QuasiAdjoint{T,<:AbstractQuasiVector}, ::KronInterlace{d}) where {d,T} = Val(true)
+function mul(Ac::QuasiAdjoint{T,<:KronInterlace{d}}, B::AbstractQuasiVector) where {d,T}
+    P = KronInterlace{d, T}(map(_ -> Legendre{eltype(Ac)}(), parent(Ac).args))
     (Ac * P) * (P \ B)
 end
 
-mul(B::QuasiAdjoint{T,<:AbstractQuasiVector}, A::KronPolynomial{d}) where {d,T} = (A'B')'
+mul(B::QuasiAdjoint{T,<:AbstractQuasiVector}, A::KronInterlace{d}) where {d,T} = (A'B')'
 
 
-grammatrix(P::KronPolynomial) = KronTrav(reverse(grammatrix.(P.args))...)
+grammatrix(P::KronInterlace) = KronTrav(reverse(grammatrix.(P.args))...)
     
 
-basis_axes(d::Inclusion{<:Any,<:ProductDomain}, v) = KronPolynomial(map(d -> basis(Inclusion(d)),components(d.domain))...)
-basis_axes(d::Inclusion{<:Any,<:DomainSets.FixedIntervalProduct{N,T,D}}, v) where {N,T,D} = KronPolynomial(Fill(basis(Inclusion(D())), N))
+basis_axes(d::Inclusion{<:Any,<:ProductDomain}, v) = KronInterlace(map(d -> basis(Inclusion(d)),components(d.domain))...)
+basis_axes(d::Inclusion{<:Any,<:DomainSets.FixedIntervalProduct{N,T,D}}, v) where {N,T,D} = KronInterlace(Fill(basis(Inclusion(D())), N))
 
 struct TensorPlan{T, Plans}
     plans::Plans
@@ -113,7 +159,7 @@ function *(A::TensorPlan, B::AbstractArray)
     B
 end
 
-function plan_transform(P::KronPolynomial{d,<:Any,<:Fill}, (B,)::Tuple{Block{1}}, dims=1:1) where d
+function plan_transform(P::KronInterlace{d,<:Any,<:Fill}, (B,)::Tuple{Block{1}}, dims=1:1) where d
     @assert only(dims) == 1
 
     T = first(P.args)
@@ -121,7 +167,7 @@ function plan_transform(P::KronPolynomial{d,<:Any,<:Fill}, (B,)::Tuple{Block{1}}
     ApplyPlan(diagtrav, plan_transform(T, tuple(Fill(Int(B),d)...)))
 end
 
-function plan_transform(P::KronPolynomial{d,<:Any,<:Fill}, (B,n)::Tuple{Block{1},Int}, dims=1:1) where d
+function plan_transform(P::KronInterlace{d,<:Any,<:Fill}, (B,n)::Tuple{Block{1},Int}, dims=1:1) where d
     @assert only(dims) == 1
 
     T = first(P.args)
@@ -140,7 +186,7 @@ function plotgrid(P::RectPolynomial, B::Block{1})
 end
 
 
-function plan_transform(P::KronPolynomial{d}, B::Tuple{Block{1}}, dims=1:1) where d
+function plan_transform(P::KronInterlace{d}, B::Tuple{Block{1}}, dims=1:1) where d
     @assert dims == 1 || dims == 1:1 || dims == (1,)
     @assert d == 2
     N = Int(B[1])
@@ -148,12 +194,20 @@ function plan_transform(P::KronPolynomial{d}, B::Tuple{Block{1}}, dims=1:1) wher
     ApplyPlan(diagtrav, TensorPlan(Fx,Fy))
 end
 
+grid(P::KronInterlace, n::Integer) = grid(P, findblock(axes(P,2), n))
+plotgrid(P::KronInterlace, n::Integer) = plotgrid(P, findblock(axes(P,2), n))
+plan_transform(P::KronInterlace, Bs::NTuple{N,Int}, dims=ntuple(identity,Val(N))) where N = plan_transform(P, findblock.(Ref(axes(P,2)), Bs), dims)
+transform_ldiv(V::SubQuasiArray{<:Any,2,<:KronInterlace,<:Tuple{Inclusion,BlockSlice{BlockOneTo}}}, B::AbstractQuasiArray, _) = factorize(V) \ B
+
 applylayout(::Type{typeof(*)}, ::Lay, ::DiagTravLayout) where Lay <: AbstractBasisLayout = ExpansionLayout{Lay}()
 ContinuumArrays._mul_plotgrid(::Tuple{Any,DiagTravLayout{<:PaddedLayout}}, (P,c)::NTuple{2,Any}) = plotgrid(P, maximum(blockcolsupport(c)))
 
 pad(C::DiagTrav, ::BlockedOneTo{Int,RangeCumsum{Int,OneToInf{Int}}}) = DiagTrav(pad(C.array, ∞, ∞))
 
 QuasiArrays.mul(A::BivariateOrthogonalPolynomial, b::DiagTrav) = ApplyQuasiArray(*, A, b)
+# make sure block structure matches
+QuasiArrays.mul(A::KronInterlace, b::AbstractVector) = ApplyQuasiArray(*, A, BlockedVector(b, (axes(A,2),)))
+QuasiArrays.mul(A::KronInterlace, b::DiagTrav) = ApplyQuasiArray(*, A, b)
 
 
 #########
@@ -174,8 +228,8 @@ end
 
 ## Special Legendre case
 
-function transform_ldiv(K::KronPolynomial{d,V,<:Fill{<:Legendre}}, f::AbstractQuasiVector) where {d,V}
-    T = KronPolynomial{d}(Fill(ChebyshevT{V}(), size(K.args)...))
+function transform_ldiv(K::KronInterlace{d,V,<:Fill{<:Legendre}}, f::AbstractQuasiVector) where {d,V}
+    T = KronInterlace{d}(Fill(ChebyshevT{V}(), size(K.args)...))
     dat = invdiagtrav(T \ f)
     DiagTrav(pad(FastTransforms.th_cheb2leg(paddeddata(dat)), axes(dat)...))
 end
@@ -202,7 +256,7 @@ function layout_broadcasted(::Tuple{ExpansionLayout{KronOPLayout{2}},KronOPLayou
 end
 
 
-broadcastbasis(::typeof(+), A::KronPolynomial, B::KronPolynomial) =  KronPolynomial(broadcastbasis.(+, A.args, B.args)...)
+broadcastbasis(::typeof(+), A::KronInterlace, B::KronInterlace) =  KronInterlace(broadcastbasis.(+, A.args, B.args)...)
 
 
 
@@ -210,7 +264,7 @@ broadcastbasis(::typeof(+), A::KronPolynomial, B::KronPolynomial) =  KronPolynom
 # reshape/vec
 ####
 
-function reshape_layout(::ExpansionLayout{KronOPLayout{2}}, f)
+function reshape_layout(::ExpansionLayout{<:KronInterlaceLayouts{2}}, f)
     A,B = basis(f).args
     A*invdiagtrav(coefficients(f))*B'
 end

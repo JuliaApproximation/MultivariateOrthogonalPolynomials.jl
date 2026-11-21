@@ -2,10 +2,10 @@ module MultivariateOrthogonalPolynomialsStatsBaseExt
 using MultivariateOrthogonalPolynomials, StatsBase
 using MultivariateOrthogonalPolynomials.StaticArrays
 using MultivariateOrthogonalPolynomials.QuasiArrays
-using MultivariateOrthogonalPolynomials: ExpansionLayout, KronOPLayout
+using MultivariateOrthogonalPolynomials: ExpansionLayout, KronInterlaceLayouts
 import MultivariateOrthogonalPolynomials.QuasiArrays: sample_layout
 
-function sample_layout(::ExpansionLayout{KronOPLayout{2}}, f::AbstractQuasiVector, n::Integer)
+function sample_layout(::ExpansionLayout{<:KronInterlaceLayouts{2}}, f::AbstractQuasiVector, n::Integer)
     F = reshape(f)
     x = sample(sum(F; dims=2), n)
     # x = sample(F[:,y]) # TODO: this should work
@@ -13,6 +13,6 @@ function sample_layout(::ExpansionLayout{KronOPLayout{2}}, f::AbstractQuasiVecto
     map(SVector, x, y)
 end
 
-sample_layout(lay::ExpansionLayout{KronOPLayout{2}}, f::AbstractQuasiVector) = only(sample_layout(lay, f, 1))
+sample_layout(lay::ExpansionLayout{<:KronInterlaceLayouts{2}}, f::AbstractQuasiVector) = only(sample_layout(lay, f, 1))
 
 end
