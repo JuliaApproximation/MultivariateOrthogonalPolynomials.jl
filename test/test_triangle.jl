@@ -1,5 +1,5 @@
 using MultivariateOrthogonalPolynomials, StaticArrays, BlockArrays, BlockBandedMatrices, ArrayLayouts,
-        QuasiArrays, Test, ClassicalOrthogonalPolynomials, BandedMatrices, FastTransforms, LinearAlgebra, ContinuumArrays, ForwardDiff
+        QuasiArrays, Test, ClassicalOrthogonalPolynomials, BandedMatrices, FastTransforms, LinearAlgebra, ContinuumArrays, ForwardDiff, LazyArrays, Base64
 import MultivariateOrthogonalPolynomials: tri_forwardrecurrence, grid, TriangleRecurrenceA, TriangleRecurrenceB, TriangleRecurrenceC, xy_muladd!, ExpansionLayout, Triangle, ApplyBandedBlockBandedLayout, weightedgrammatrix
 
 import ContinuumArrays: broadcastbasis, basis, coefficients
@@ -584,6 +584,91 @@ import ContinuumArrays: broadcastbasis, basis, coefficients
         @test Q[a[𝐱], 1:3] ≈ P[𝐱, 1:3]
 
         @test affine(d, axes(P,1))[affine(axes(P,1), d)[𝐱]] ≈ 𝐱
+    end
+
+    @testset "equilateraltriangle" begin
+        d = equilateraltriangle()
+        @test d isa Triangle{Float64}
+        @test equilateraltriangle(BigFloat) isa Triangle{BigFloat}
+        s3 = sqrt(3)
+        @test d.a == SVector(1,0) && d.b ≈ SVector(-1/2, s3/2) && d.c ≈ SVector(-1/2, -s3/2)
+        # vertices are the cube roots of unity, so centroid is the origin and sides have length √3
+        ω = exp(2π*im/3)
+        @test complex(d.b...) ≈ ω && complex(d.c...) ≈ ω^2
+        @test (d.a + d.b + d.c) ≈ SVector(0,0) atol=1E-15
+        @test norm(d.b-d.a) ≈ norm(d.c-d.b) ≈ norm(d.a-d.c) ≈ s3
+        @test SVector(0,0) in d
+        @test SVector(0.5, 0.4) ∉ d
+        @test SVector(-0.4, 0.3) in d
+        @test SVector(-0.6, 0.3) ∉ d
+
+        a = affine(Triangle(), d)
+        @test a[SVector(0,0)] ≈ d.a
+        @test a[SVector(1,0)] ≈ d.b
+        @test a[SVector(0,1)] ≈ d.c
+        𝐱 = SVector(0.1,0.2)
+        @test affine(d, Triangle())[a[𝐱]] ≈ 𝐱
+        @test a[𝐱] ∈ d
+
+        @testset "translate the Koornwinder polynomials to an equilateraltriangle domain" begin
+        P = JacobiTriangle()
+        Q = P[affine(d, axes(P,1)), :]
+        @test Q[a[𝐱], 1:6] ≈ P[𝐱, 1:6]
+
+        # expansion on the equilateral triangle
+        f = ((x,y),) -> exp(x)*cos(y)
+        c = P \ (𝐱 -> f(a[𝐱])).(axes(P,1))
+        @test (Q*c)[a[𝐱]] ≈ f(a[𝐱])
+        end
+    end
+
+    @testset "Derivatives and integrals on mapped triangles" begin
+        # ∇ is chain-ruled through A⁻ᵀ, so check against exact derivatives on non-trivial triangles
+        f = ((x,y),) -> exp(x)*cos(y) + x*y^2
+        fx = ((x,y),) -> exp(x)*cos(y) + y^2
+        fy = ((x,y),) -> -exp(x)*sin(y) + 2x*y
+        fxx = ((x,y),) -> exp(x)*cos(y)
+        fxy = ((x,y),) -> -exp(x)*sin(y) + 2y
+        fyy = ((x,y),) -> -exp(x)*cos(y) + 2x
+        for d in (equilateraltriangle(), Triangle(SVector(1,0), SVector(0,1), SVector(1,1)), 2*equilateraltriangle() - SVector(0.3,0.1))
+            P = JacobiTriangle()
+            Q = P[affine(d, axes(P,1)), :]
+            x = axes(Q,1)
+            c = Q \ f.(x)
+            𝐱 = SVector(0.1,0.2) # mapped into d below
+            𝐲 = affine(Triangle(), d)[𝐱]
+            @test (Q*c)[𝐲] ≈ f(𝐲)
+            @test (diff(Q,(1,0))*c)[𝐲] ≈ fx(𝐲)
+            @test (diff(Q,(0,1))*c)[𝐲] ≈ fy(𝐲)
+            @test (diff(Q,(2,0))*c)[𝐲] ≈ fxx(𝐲)
+            @test (diff(Q,(1,1))*c)[𝐲] ≈ fxy(𝐲)
+            @test (diff(Q,(0,2))*c)[𝐲] ≈ fyy(𝐲)
+            @test ((Laplacian(x)*Q)*c)[𝐲] ≈ fxx(𝐲) + fyy(𝐲)
+            @test diff(Q,(0,0)) === Q
+
+            # integrals scale by |det| of the map
+            area = abs(det([d.b-d.a d.c-d.a]))/2
+            @test sum(Q; dims=1)[1] ≈ area
+        end
+
+        # exact integrals over the equilateral triangle: ∫x² = ∫y² = area/8 (polar moment area·s²/12 with s² = 3)
+        d = equilateraltriangle()
+        P = JacobiTriangle()
+        Q = P[affine(d, axes(P,1)), :]
+        x = axes(Q,1)
+        area = 3sqrt(3)/4
+        for g in (((x,y),) -> x^2, ((x,y),) -> y^2)
+            @test (sum(Q; dims=1) * (Q \ g.(x)))[1] ≈ area/8
+        end
+
+        # conversion between mapped bases with the same map
+        kr = affine(d, axes(P,1))
+        R = JacobiTriangle(1,1,1)[kr,:]
+        @test (R \ Q)[Block(1),Block(1)] ≈ (JacobiTriangle(1,1,1) \ P)[Block(1),Block(1)]
+
+        # weighted derivatives are not (yet) supported
+        W = Weighted(JacobiTriangle(1,1,1))[kr,:]
+        @test_throws ErrorException diff(W,(1,0))
     end
 
     @testset "Weighted derivatives" begin
