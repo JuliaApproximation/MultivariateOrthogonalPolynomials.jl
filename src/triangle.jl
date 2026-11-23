@@ -211,7 +211,7 @@ function diff_layout(::MappedBasisLayouts, V::TriangleMappedBasis, (k,j)::NTuple
         Pv, Mv = arguments(diff(P, Val((0,1))))
         # ∂ˣ and ∂ʸ land in different bases so convert both to a common one
         Pc = broadcastbasis(+, Pu, Pv)
-        return Pc[basismap(V), :] * (J[1,i] * (Pc \ Pu) * Mu + J[2,i] * (Pc \ Pv) * Mv)
+(J[1,i] *diff(P, Val((1,0))) + J[2,i] * diff(P, Val((,1))))[basismap(V), :]
     end
     k ≥ j && return diff(diff(V, (1,0)), (k-1,j))
     diff(diff(V, (0,1)), (k,j-1))
