@@ -340,8 +340,8 @@ end
 # The block-diagonal matrix that mixes the entries with Fourier modes -|m| and |m| in each block, which
 # are adjacent with the negative mode first. A column with a negative mode has diagonal entry d₋ and
 # sub-diagonal entry l₋, a column with a positive mode has super-diagonal entry u₊ and diagonal entry d₊,
-# and the m == 0 entries are left unchanged.
-function _zernikemixing(::Type{T}, d₋, l₋, u₊, d₊) where T
+# and the m == 0 entries are scaled by d₀.
+function _zernikemixing(::Type{T}, d₋, l₋, u₊, d₊, d₀=one(T)) where T
     k = mortar(Base.OneTo.(oneto(∞)))     # k counts the entry in a block
     n = mortar(Fill.(oneto(∞),oneto(∞)))  # n counts the block number which corresponds to the order (+1)
     neg = isodd.(k .+ n)                  # entries with negative Fourier mode
@@ -349,7 +349,7 @@ function _zernikemixing(::Type{T}, d₋, l₋, u₊, d₊) where T
     # the bands are conjugated as they are stored as an adjoint
     # (copying a transpose of a BlockBroadcastArray conjugates its entries)
     du = pos .* conj(convert(T, u₊))
-    d = neg .* conj(convert(T, d₋)) .+ pos .* conj(convert(T, d₊)) .+ (1 .- neg .- pos) .* one(T)
+    d = neg .* conj(convert(T, d₋)) .+ pos .* conj(convert(T, d₊)) .+ (1 .- neg .- pos) .* conj(convert(T, d₀))
     dl = neg .* conj(convert(T, l₋))
     _BandedBlockBandedMatrix(BlockBroadcastArray(hcat, du, d, dl)', axes(n,1), (0,0), (1,1))
 end
@@ -370,6 +370,15 @@ function \(A::Zernike{T}, B::ComplexZernike{V}) where {T,V}
     M = _zernike2complexzernike(TV, one(real(TV)))
     A.b == B.b ? M : (A \ Zernike{real(TV)}(B.b)) * M
 end
+
+# real and imaginary parts of ComplexZernike(b) in terms of Zernike(b):
+#   real(exp(±im*m*θ)) == cos(m*θ) and imag(exp(±im*m*θ)) == ±sin(m*θ),
+# where the m == 0 entries are real.
+isreal(::ComplexZernike) = false
+real(Z::ComplexZernike{T}) where T = Zernike{real(T)}(Z.b) * _zernikemixing(real(T), 0, 1, 0, 1, 1)
+imag(Z::ComplexZernike{T}) where T = Zernike{real(T)}(Z.b) * _zernikemixing(real(T), -1, 0, 1, 0, 0)
+layout_broadcasted(::Tuple{AbstractBasisLayout}, ::typeof(real), Z::ComplexZernike) = real(Z)
+layout_broadcasted(::Tuple{AbstractBasisLayout}, ::typeof(imag), Z::ComplexZernike) = imag(Z)
 
 
 ###
@@ -642,6 +651,34 @@ function zernikelower!(ret::AbstractMatrix, b)
     ret
 end
 
+"""
+    zernikeraise!(ret, b)
+
+converts in-place the coefficients in `Zernike(b)`, stored as the matrix of a ModalTrav,
+to coefficients in `Zernike(b+1)`, inverting `zernikelower!`. Only `b == -1` is currently supported.
+
+As `P_n^{(-1,m)} == (n+m)/(2n+m) * (P_n^{(0,m)} - P_{n-1}^{(0,m)})`, the coefficients are converted by
+division by `λ_k` followed by a backward difference, costing O(N^2) operations for N blocks.
+"""
+function zernikeraise!(ret::AbstractMatrix, b)
+    @assert b == -1
+    N = (size(ret,2)+1) ÷ 2 # number of blocks
+    for j in axes(ret,2)
+        m = j ÷ 2 # Fourier mode of the column
+        K = min(size(ret,1), (N-m+1) ÷ 2)
+        for k = 1:K
+            n = k-1
+            if !iszero(n)
+                ret[k,j] = ret[k,j] * (n+m) / (2n+m)
+            end
+        end
+        for k = 1:K-1
+            ret[k,j] -= ret[k+1,j]
+        end
+    end
+    ret
+end
+
 # transforms for Zernike(b) rescale those for Normalized(Zernike(b))
 function *(P::ZernikeTransform, f::AbstractArray)
     if P.b > -1
@@ -651,7 +688,14 @@ function *(P::ZernikeTransform, f::AbstractArray)
         zernikelower!(ret, P.b)
     end
 end
-*(P::ZernikeITransform, f::AbstractMatrix) = NormalizedZernikeITransform(P) * _zernike2normalized(P.b, f)
+function *(P::ZernikeITransform{T}, f::AbstractMatrix) where T
+    if P.b > -1
+        NormalizedZernikeITransform(P) * _zernike2normalized(P.b, f)
+    else
+        ret = zernikeraise!(Matrix{promote_type(T, eltype(f))}(f), P.b)
+        NormalizedZernikeITransform(P) * _zernike2normalized(zero(P.b), ret)
+    end
+end
 
 # transforms for ComplexZernike(b) mix the Fourier modes of those for Zernike(b)
 *(P::NormalizedComplexZernikeTransform{T}, f::AbstractArray) where T = _zernike2complex(NormalizedZernikeTransform(P) * f, inv(sqrt(convert(T,2))))
