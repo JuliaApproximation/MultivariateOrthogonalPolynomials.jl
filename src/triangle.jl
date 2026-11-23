@@ -218,7 +218,7 @@ function diff_layout(::MappedBasisLayouts, V::TriangleMappedBasis, (k,j)::NTuple
 end
 
 function sum_layout(::MappedBasisLayouts, V::TriangleMappedBasis, dims)
-    sum(demap(V); dims=dims) / abs(det(triangle_jacobian(basismap(V))))
+    sum(demap(V); dims=dims) / abs(det(basismap(V).A))
 end
 
 # The weighted derivative formulae lower the parameters, which is only valid if the
