@@ -201,7 +201,12 @@ triangle_jacobian(kr) = _edgematrix(kr.range.domain) / _edgematrix(kr.domain.dom
 
 ContinuumArrays.affinemap_A(m::TriangleMap) = triangle_jacobian(m)
 
-function diff_layout(::MappedBasisLayouts, V::TriangleMappedBasis, (k,j)::NTuple{2,Int}; dims...)
+# TODO: replace this with a generic version overloading 
+#  diff_mapped(kr::AbstractAffineQuasiVector, V, order::NTuple{2,Int}; dims...)
+# possibly using the definition
+#   (J[1,i] *diff(P, Val((1,0))) + J[2,i] * diff(P, Val((0,1))))[basismap(V), :]
+
+function diff(V::TriangleMappedBasis, (k,j)::NTuple{2,Int}; dims...)
     (k < 0 || j < 0) && throw(ArgumentError("order must be non-negative"))
     k == j == 0 && return V
     if k + j == 1
@@ -219,6 +224,7 @@ function diff_layout(::MappedBasisLayouts, V::TriangleMappedBasis, (k,j)::NTuple
     k ≥ j && return diff(diff(V, (1,0)), (k-1,j))
     diff(diff(V, (0,1)), (k,j-1))
 end
+
 
 # The weighted derivative formulae lower the parameters, which is only valid if the
 # weight vanishes on the relevant edges. Otherwise we avoid negative parameters by
