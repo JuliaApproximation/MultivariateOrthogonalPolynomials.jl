@@ -619,6 +619,7 @@ import ContinuumArrays: broadcastbasis, basis, coefficients
         f = ((x,y),) -> exp(x)*cos(y)
         c = P \ (𝐱 -> f(a[𝐱])).(axes(P,1))
         @test (Q*c)[a[𝐱]] ≈ f(a[𝐱])
+        end
     end
 
     @testset "Derivatives and integrals on mapped triangles" begin
