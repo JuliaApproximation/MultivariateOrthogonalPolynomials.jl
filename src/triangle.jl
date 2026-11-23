@@ -205,20 +205,21 @@ function diff_layout(::MappedBasisLayouts, V::TriangleMappedBasis, (k,j)::NTuple
     if k + j == 1
         P = demap(V)
         P isa JacobiTriangle || error("Derivatives of affinely mapped weighted triangle bases are not implemented")
-        J = triangle_jacobian(basismap(V))
+        kr = basismap(V)
+        J = triangle_jacobian(kr)
         i = k == 1 ? 1 : 2 # differentiate with respect to xᵢ
         Pu, Mu = arguments(diff(P, Val((1,0))))
         Pv, Mv = arguments(diff(P, Val((0,1))))
-        # ∂ˣ and ∂ʸ land in different bases so convert both to a common one
+        # ∂ᵘ and ∂ᵛ land in different bases so convert both to a common one
         Pc = broadcastbasis(+, Pu, Pv)
-(J[1,i] *diff(P, Val((1,0))) + J[2,i] * diff(P, Val((,1))))[basismap(V), :]
+        return Pc[kr, :] * (J[1,i] * ((Pc \ Pu) * Mu) + J[2,i] * ((Pc \ Pv) * Mv))
     end
     k ≥ j && return diff(diff(V, (1,0)), (k-1,j))
     diff(diff(V, (0,1)), (k,j-1))
 end
 
 function sum_layout(::MappedBasisLayouts, V::TriangleMappedBasis, dims)
-    sum(demap(V); dims=dims) / abs(det(basismap(V).A))
+    sum(demap(V); dims=dims) / abs(det(triangle_jacobian(basismap(V))))
 end
 
 # The weighted derivative formulae lower the parameters, which is only valid if the
