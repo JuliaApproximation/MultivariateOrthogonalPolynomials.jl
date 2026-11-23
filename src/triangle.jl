@@ -18,7 +18,7 @@ Triangle{T}(d::Triangle) where T = Triangle{T}(d.a, d.b, d.c)
 The equilateral triangle centred at the origin whose vertices are the cube roots of unity
 `(1,0)`, `(-1/2,√3/2)`, `(-1/2,-√3/2)` (i.e. `1, ω, ω²` for `ω = exp(2πi/3)`).
 """
-function EquilateralTriangle(::Type{T}=Float64) where T
+function equilateraltriangle(::Type{T}=Float64) where T
     s = sqrt(T(3))/2
     Triangle(SVector{2,T}(1,0), SVector{2,T}(-1/2,s), SVector{2,T}(-1/2,-s))
 end
