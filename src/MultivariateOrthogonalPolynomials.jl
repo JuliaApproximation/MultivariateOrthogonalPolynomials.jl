@@ -27,7 +27,7 @@ import HarmonicOrthogonalPolynomials: BivariateOrthogonalPolynomial, Multivariat
                                           MultivariateOPLayout, AbstractMultivariateOPLayout, MAX_PLOT_BLOCKS
 
 export MultivariateOrthogonalPolynomial, BivariateOrthogonalPolynomial,
-       UnitTriangle, UnitDisk, Triangle, EquilateralTriangle,
+       UnitTriangle, UnitDisk, Triangle, equilateraltriangle,
        JacobiTriangle, TriangleWeight, WeightedTriangle,
        DunklXuDisk, DunklXuDiskWeight, WeightedDunklXuDisk,
        Zernike, ZernikeWeight, zerniker, zernikez, normalizedzerniker, normalizedzernikez,

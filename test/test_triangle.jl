@@ -586,10 +586,10 @@ import ContinuumArrays: broadcastbasis, basis, coefficients
         @test affine(d, axes(P,1))[affine(axes(P,1), d)[𝐱]] ≈ 𝐱
     end
 
-    @testset "EquilateralTriangle" begin
-        d = EquilateralTriangle()
+    @testset "equilateraltriangle" begin
+        d = equilateraltriangle()
         @test d isa Triangle{Float64}
-        @test EquilateralTriangle(BigFloat) isa Triangle{BigFloat}
+        @test equilateraltriangle(BigFloat) isa Triangle{BigFloat}
         s3 = sqrt(3)
         @test d.a == SVector(1,0) && d.b ≈ SVector(-1/2, s3/2) && d.c ≈ SVector(-1/2, -s3/2)
         # vertices are the cube roots of unity, so centroid is the origin and sides have length √3
@@ -610,7 +610,7 @@ import ContinuumArrays: broadcastbasis, basis, coefficients
         @test affine(d, Triangle())[a[𝐱]] ≈ 𝐱
         @test a[𝐱] ∈ d
 
-        @testset "translate the Koornwinder polynomials to an EquilateralTriangle domain" begin
+        @testset "translate the Koornwinder polynomials to an equilateraltriangle domain" begin
         P = JacobiTriangle()
         Q = P[affine(d, axes(P,1)), :]
         @test Q[a[𝐱], 1:6] ≈ P[𝐱, 1:6]
@@ -629,7 +629,7 @@ import ContinuumArrays: broadcastbasis, basis, coefficients
         fxx = ((x,y),) -> exp(x)*cos(y)
         fxy = ((x,y),) -> -exp(x)*sin(y) + 2y
         fyy = ((x,y),) -> -exp(x)*cos(y) + 2x
-        for d in (EquilateralTriangle(), Triangle(SVector(1,0), SVector(0,1), SVector(1,1)), 2*EquilateralTriangle() - SVector(0.3,0.1))
+        for d in (equilateraltriangle(), Triangle(SVector(1,0), SVector(0,1), SVector(1,1)), 2*equilateraltriangle() - SVector(0.3,0.1))
             P = JacobiTriangle()
             Q = P[affine(d, axes(P,1)), :]
             x = axes(Q,1)
@@ -651,7 +651,7 @@ import ContinuumArrays: broadcastbasis, basis, coefficients
         end
 
         # exact integrals over the equilateral triangle: ∫x² = ∫y² = area/8 (polar moment area·s²/12 with s² = 3)
-        d = EquilateralTriangle()
+        d = equilateraltriangle()
         P = JacobiTriangle()
         Q = P[affine(d, axes(P,1)), :]
         x = axes(Q,1)

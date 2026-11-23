@@ -13,7 +13,7 @@ Triangle() = Triangle(SVector(0,0), SVector(1,0), SVector(0,1))
 Triangle(a, b, c) = Triangle{promote_type(eltype(eltype(a)), eltype(eltype(b)), eltype(eltype(c)))}(a,b, c)
 Triangle{T}(d::Triangle) where T = Triangle{T}(d.a, d.b, d.c)
 """
-    EquilateralTriangle([T=Float64])
+    equilateraltriangle([T=Float64])
 
 The equilateral triangle centred at the origin whose vertices are the cube roots of unity
 `(1,0)`, `(-1/2,√3/2)`, `(-1/2,-√3/2)` (i.e. `1, ω, ω²` for `ω = exp(2πi/3)`).
@@ -197,7 +197,9 @@ function _edgematrix(d)
 end
 
 # the (constant) Jacobian ∂(range)/∂(domain) of an affine map between triangles
-triangle_jacobian(kr::TriangleMap) = _edgematrix(kr.range.domain) / _edgematrix(kr.domain.domain)
+triangle_jacobian(kr) = _edgematrix(kr.range.domain) / _edgematrix(kr.domain.domain)
+
+ContinuumArrays.affinemap_A(m::TriangleMap) = triangle_jacobian(m)
 
 function diff_layout(::MappedBasisLayouts, V::TriangleMappedBasis, (k,j)::NTuple{2,Int}; dims...)
     (k < 0 || j < 0) && throw(ArgumentError("order must be non-negative"))
@@ -211,14 +213,10 @@ function diff_layout(::MappedBasisLayouts, V::TriangleMappedBasis, (k,j)::NTuple
         Pv, Mv = arguments(diff(P, Val((0,1))))
         # ∂ˣ and ∂ʸ land in different bases so convert both to a common one
         Pc = broadcastbasis(+, Pu, Pv)
-(J[1,i] *diff(P, Val((1,0))) + J[2,i] * diff(P, Val((,1))))[basismap(V), :]
+        (J[1,i] *diff(P, Val((1,0))) + J[2,i] * diff(P, Val((0,1))))[basismap(V), :]
     end
     k ≥ j && return diff(diff(V, (1,0)), (k-1,j))
     diff(diff(V, (0,1)), (k,j-1))
-end
-
-function sum_layout(::MappedBasisLayouts, V::TriangleMappedBasis, dims)
-    sum(demap(V); dims=dims) / abs(det(basismap(V).A))
 end
 
 # The weighted derivative formulae lower the parameters, which is only valid if the
