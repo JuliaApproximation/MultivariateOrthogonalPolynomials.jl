@@ -210,7 +210,7 @@ function diff_layout(::MappedBasisLayouts, V::TriangleMappedBasis, (k,j)::NTuple
         Pu, Mu = arguments(diff(P, Val((1,0))))
         Pv, Mv = arguments(diff(P, Val((0,1))))
         # ∂ˣ and ∂ʸ land in different bases so convert both to a common one
-        Pc = JacobiTriangle(P.a+1, P.b+1, P.c+1)
+        Pc = broadcastbasis(+, Pu, Pv)
         return Pc[basismap(V), :] * (J[1,i] * (Pc \ Pu) * Mu + J[2,i] * (Pc \ Pv) * Mv)
     end
     k ≥ j && return diff(diff(V, (1,0)), (k-1,j))
