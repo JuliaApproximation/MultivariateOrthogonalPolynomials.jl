@@ -1,7 +1,7 @@
 using MultivariateOrthogonalPolynomials, ClassicalOrthogonalPolynomials, Test
 
 P = Legendre()
-P² = RectPolynomial(P,P)
+P² = RectInterlace(P,P)
 p₀ = expand(P², 𝐱 -> 1)
 x,y = coordinates(P²)
 w = P²/P²\ (x-y).^2

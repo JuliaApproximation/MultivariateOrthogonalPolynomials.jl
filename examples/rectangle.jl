@@ -5,7 +5,7 @@ using ContinuumArrays: grid
 # 2D
 ####
 
-P = RectPolynomial(Legendre(), Legendre())
+P = RectInterlace(Legendre(), Legendre())
 f = (x,y) -> exp(x*cos(y))
 c = transform(P, splat(f))
 
@@ -26,7 +26,7 @@ N = 10
 ####
 
 # following isn't implemented yet:
-# P = KronPolynomial(Legendre(), Legendre(), Legendre())
+# P = KronInterlace(Legendre(), Legendre(), Legendre())
 
 # instead we can do the transform manually, using 1D plan_transforms
 # the following only uses ClassicalOrthogonalPolynomials.jl, no functionality from MultivariateOrthogonalPolynomials.jl

@@ -17,14 +17,15 @@ import ArrayLayouts: MemoryLayout, sublayout, sub_materialize, mul, colsupport
 import BlockArrays: block, blockindex, BlockSlice, viewblock, blockcolsupport, AbstractBlockStyle, BlockStyle
 import BlockBandedMatrices: _BandedBlockBandedMatrix, AbstractBandedBlockBandedMatrix, _BandedMatrix, blockbandwidths, subblockbandwidths
 import LinearAlgebra: factorize
-import LazyArrays: arguments, paddeddata, LazyArrayStyle, LazyLayout, PaddedLayout, AbstractPaddedLayout, PaddedVector, applylayout, LazyMatrix, ApplyMatrix, ApplyLayout, simplifiable
+import LazyArrays: arguments, paddeddata, LazyArrayStyle, LazyLayout, PaddedLayout, AbstractPaddedLayout, PaddedVector, applylayout, LazyMatrix, ApplyMatrix, ApplyLayout, BroadcastLayout, simplifiable
 import LazyBandedMatrices: LazyBandedBlockBandedLayout, AbstractBandedBlockBandedLayout, AbstractLazyBandedBlockBandedLayout, _krontrav_axes, DiagTravLayout, diagtrav, invdiagtrav, ApplyBandedBlockBandedLayout, krontrav
 import InfiniteArrays: InfiniteCardinal, OneToInf
 
-import ClassicalOrthogonalPolynomials: jacobimatrix, Weighted, orthogonalityweight, HalfWeighted, WeightedBasis, pad, recurrencecoefficients, clenshaw, weightedgrammatrix, Clenshaw, OPLayout, normalized, normalizationconstant, polynomialtype
+import ClassicalOrthogonalPolynomials: jacobimatrix, Weighted, orthogonalityweight, HalfWeighted, WeightedBasis, pad, recurrencecoefficients, clenshaw, weightedgrammatrix, Clenshaw, OPLayout, AbstractOPLayout, normalized, normalizationconstant, polynomialtype
 import HarmonicOrthogonalPolynomials: BivariateOrthogonalPolynomial, MultivariateOrthogonalPolynomial, Plan,
                                           AngularMomentum, angularmomentum, BlockOneTo, BlockRange1, interlace,
-                                          MultivariateOPLayout, AbstractMultivariateOPLayout, MAX_PLOT_BLOCKS
+                                          MultivariateOPLayout, AbstractMultivariateOPLayout, MAX_PLOT_BLOCKS,
+                                          FirstInclusion, LastInclusion
 
 export MultivariateOrthogonalPolynomial, BivariateOrthogonalPolynomial,
        UnitTriangle, UnitDisk,
@@ -33,7 +34,7 @@ export MultivariateOrthogonalPolynomial, BivariateOrthogonalPolynomial,
        Zernike, ZernikeWeight, zerniker, zernikez, normalizedzerniker, normalizedzernikez,
        ComplexZernike, complexzernikez, normalizedcomplexzernikez,
        AngularMomentum,
-       RadialCoordinate, Weighted, Block, jacobimatrix, KronPolynomial, RectPolynomial,
+       RadialCoordinate, Weighted, Block, jacobimatrix, KronInterlace, RectInterlace,
        grammatrix, oneto, coordinates, Laplacian, AbsLaplacian, laplacian, abslaplacian, angularmomentum, weaklaplacian
 
 
@@ -57,6 +58,9 @@ include("rect.jl")
 include("disk.jl")
 include("rectdisk.jl")
 include("triangle.jl")
+
+Base.@deprecate_binding KronPolynomial KronInterlace
+Base.@deprecate_binding RectPolynomial RectInterlace
 
 
 end # module
