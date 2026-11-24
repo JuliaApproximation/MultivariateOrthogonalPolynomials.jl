@@ -5,7 +5,7 @@ using ContinuumArrays: grid
 # 2D
 ####
 
-P = RectPolynomial(Legendre(), Legendre())
+P = RectInterlace(Legendre(), Legendre())
 f = (x,y) -> exp(x*cos(y))
 c = transform(P, splat(f))
 

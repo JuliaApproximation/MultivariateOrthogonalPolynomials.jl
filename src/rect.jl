@@ -55,7 +55,7 @@ kroninterlace_factorlayouts(::Type{PP}) where PP<:Tuple = map(MemoryLayout, fiel
 kroninterlace_factorlayouts(::Type{PP}) where PP<:AbstractVector = (MemoryLayout(eltype(PP)),)
 MemoryLayout(::Type{<:KronInterlace{d,<:Any,PP}}) where {d,PP} = kroninterlacelayout(Val(d), kroninterlace_factorlayouts(PP))
 
-const RectPolynomial{T, PP} = KronInterlace{2, T, PP}
+const RectInterlace{T, PP} = KronInterlace{2, T, PP}
 
 copy(P::KronInterlace) = P
 
@@ -64,14 +64,14 @@ axes(P::KronInterlace) = (Inclusion(cartesianproduct(map(domain, axes.(P.args, 1
 
 normalized(P::KronInterlace) = KronInterlace(map(normalized, P.args))
 
-function getindex(P::RectPolynomial{T}, xy::StaticVector{2}, Jj::BlockIndex{1})::T where T
+function getindex(P::RectInterlace{T}, xy::StaticVector{2}, Jj::BlockIndex{1})::T where T
     a,b = P.args
     J,j = Int(block(Jj)),blockindex(Jj)
     x,y = xy
     a[x,J-j+1]b[y,j]
 end
-getindex(P::RectPolynomial, xy::StaticVector{2}, B::Block{1}) = [P[xy, B[j]] for j=1:Int(B)]
-function getindex(P::RectPolynomial, xy::StaticVector{2}, JR::BlockOneTo)
+getindex(P::RectInterlace, xy::StaticVector{2}, B::Block{1}) = [P[xy, B[j]] for j=1:Int(B)]
+function getindex(P::RectInterlace, xy::StaticVector{2}, JR::BlockOneTo)
     A,B = P.args
     x,y = xy
     N = size(JR,1)
@@ -79,9 +79,7 @@ function getindex(P::RectPolynomial, xy::StaticVector{2}, JR::BlockOneTo)
 end
 
 # reduce other indexing to blocks
-_getindex(::Type{Tuple{IND1,IND2}}, P::KronInterlace, (𝐱,J)::Tuple{IND1,Block{1}}) where {IND1,IND2} = P[𝐱, Block.(OneTo(Int(J)))][J]
 _getindex(::Type{Tuple{IND1,IND2}}, P::KronInterlace, (𝐱,JR)::Tuple{IND1,BlockRange{1}}) where {IND1,IND2} = P[𝐱, Block.(OneTo(Int(maximum(JR))))][JR]
-_getindex(::Type{Tuple{IND1,IND2}}, P::KronInterlace, (𝐱,Jj)::Tuple{IND1,BlockIndex{1}}) where {IND1,IND2} = P[𝐱, block(Jj)][blockindex(Jj)]
 _getindex(::Type{Tuple{IND1,IND2}}, P::KronInterlace, (𝐱,j)::Tuple{IND1,IND2}) where {IND1,IND2} = P[𝐱, findblockindex(axes(P,2), j)]
 _getindex(::Type{Tuple{IND1,IND2}}, P::KronInterlace, (𝐱,jr)::Tuple{IND1,AbstractArray{IND2}}) where {IND1,IND2} = P[𝐱, Block.(OneTo(Int(findblock(axes(P,2), maximum(jr)))))][jr]
 
@@ -94,37 +92,37 @@ for (Inc, f, d) in ((:FirstInclusion, :first, 1), (:LastInclusion, :last, 2))
 end
 
 # Actually Jxᵀ
-function jacobimatrix(::Val{1}, P::RectPolynomial)
+function jacobimatrix(::Val{1}, P::RectInterlace)
     A,B = P.args
     X = jacobimatrix(A)
     KronTrav(Eye{eltype(X)}(∞), X)
 end
 # Actually Jyᵀ
-function jacobimatrix(::Val{2}, P::RectPolynomial)
+function jacobimatrix(::Val{2}, P::RectInterlace)
     A,B = P.args
     Y = jacobimatrix(B)
     KronTrav(Y, Eye{eltype(Y)}(∞))
 end
 function diff(P::KronInterlace{N}, order::NTuple{N,Int}; dims...) where N
     diffs = map(diff, P.args, order)
-    RectPolynomial(map(basis, diffs)...) * KronTrav(reverse(map(coefficients, diffs))...)
+    RectInterlace(map(basis, diffs)...) * KronTrav(reverse(map(coefficients, diffs))...)
 end
 
 
-function weaklaplacian(P::RectPolynomial)
+function weaklaplacian(P::RectInterlace)
     A,B = P.args
     Δ_A,Δ_B = weaklaplacian(A), weaklaplacian(B)
     M_A,M_B = grammatrix(A), grammatrix(B)
     KronTrav(M_B,Δ_A) + KronTrav(Δ_B,M_A)
 end
 
-function \(P::RectPolynomial, Q::RectPolynomial)
+function \(P::RectInterlace, Q::RectInterlace)
     PA,PB = P.args
     QA,QB = Q.args
     krontrav(PB\QB, PA\QA)
 end
 
-@simplify function *(Ac::QuasiAdjoint{<:Any,<:RectPolynomial}, B::RectPolynomial)
+@simplify function *(Ac::QuasiAdjoint{<:Any,<:RectInterlace}, B::RectInterlace)
     PA,PB = Ac'.args
     QA,QB = B.args
     KronTrav(PB'QB, PA'QA)
@@ -175,12 +173,12 @@ function plan_transform(P::KronInterlace{d,<:Any,<:Fill}, (B,n)::Tuple{Block{1},
     ApplyPlan(A -> diagtrav(A; dims=1:d), plan_transform(T, tuple(Fill(Int(B),d)...,n), 1:d))
 end
 
-function grid(P::RectPolynomial, B::Block{1})
+function grid(P::RectInterlace, B::Block{1})
     x,y = grid.(P.args, Int(B))
     SVector.(x, y')
 end
 
-function plotgrid(P::RectPolynomial, B::Block{1})
+function plotgrid(P::RectInterlace, B::Block{1})
     x,y = plotgrid.(P.args, Int(B))
     SVector.(x, y')
 end
@@ -237,7 +235,7 @@ end
 
 ## sum
 
-function Base._sum(P::RectPolynomial, dims::Int)
+function Base._sum(P::RectInterlace, dims::Int)
     @assert dims == 1
     KronTrav(reverse(sum.(P.args; dims=1))...)
 end
@@ -272,5 +270,5 @@ end
 # TODO: generalise
 function vec_layout(::KronExpansionLayout{OPLayout, OPLayout}, f)
     A,C,Bc = arguments(f)
-    RectPolynomial(A, Bc') * DiagTrav(C)
+    RectInterlace(A, Bc') * DiagTrav(C)
 end

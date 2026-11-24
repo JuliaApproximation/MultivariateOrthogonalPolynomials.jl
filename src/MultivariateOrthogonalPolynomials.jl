@@ -34,7 +34,7 @@ export MultivariateOrthogonalPolynomial, BivariateOrthogonalPolynomial,
        Zernike, ZernikeWeight, zerniker, zernikez, normalizedzerniker, normalizedzernikez,
        ComplexZernike, complexzernikez, normalizedcomplexzernikez,
        AngularMomentum,
-       RadialCoordinate, Weighted, Block, jacobimatrix, KronInterlace, RectPolynomial,
+       RadialCoordinate, Weighted, Block, jacobimatrix, KronInterlace, RectInterlace,
        grammatrix, oneto, coordinates, Laplacian, AbsLaplacian, laplacian, abslaplacian, angularmomentum, weaklaplacian
 
 
@@ -60,6 +60,7 @@ include("rectdisk.jl")
 include("triangle.jl")
 
 Base.@deprecate_binding KronPolynomial KronInterlace
+Base.@deprecate_binding RectPolynomial RectInterlace
 
 
 end # module

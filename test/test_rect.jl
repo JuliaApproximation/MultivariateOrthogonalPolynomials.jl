@@ -1,15 +1,15 @@
 using MultivariateOrthogonalPolynomials, ClassicalOrthogonalPolynomials, StaticArrays, LinearAlgebra, BlockArrays, FillArrays, Base64, LazyBandedMatrices, ArrayLayouts, Random, StatsBase, SparseArrays, DomainSets, Test
 using ClassicalOrthogonalPolynomials: expand, coefficients, recurrencecoefficients, normalized
 using MultivariateOrthogonalPolynomials: weaklaplacian, ClenshawKron, KronOPLayout, KronInterlaceLayout
-using ContinuumArrays: plotgridvalues, ExpansionLayout, basis, grid, Basis
+using ContinuumArrays: plotgridvalues, plotgrid, ExpansionLayout, basis, grid, Basis
 using Base: oneto
 
 Random.seed!(3242)
 
-@testset "RectPolynomial" begin
+@testset "RectInterlace" begin
     @testset "Evaluation" begin
         T = ChebyshevT()
-        T² = RectPolynomial(T, T)
+        T² = RectInterlace(T, T)
         𝐱 = SVector(0.1,0.2)
         @test T²[𝐱, Block(1)[1]] == T²[𝐱, 1]
         @test T²[𝐱, Block(1)] == T²[𝐱, Block.(1:1)]
@@ -26,7 +26,7 @@ Random.seed!(3242)
 
     @testset "Transform" begin
         T,U = ChebyshevT(),ChebyshevU()
-        T² = RectPolynomial(Fill(T, 2))
+        T² = RectInterlace(Fill(T, 2))
         T²ₙ = T²[:,Block.(Base.OneTo(5))]
         x,y = coordinates(T²ₙ)
         @test T²ₙ \ one.(x) == [1; zeros(14)]
@@ -36,11 +36,11 @@ Random.seed!(3242)
         𝐟 = expand(T², f)
         @test 𝐟[SVector(0.1,0.2)] ≈ f(SVector(0.1,0.2))
 
-        U² = RectPolynomial(Fill(U, 2))
+        U² = RectInterlace(Fill(U, 2))
         𝐟 = expand(U², f)
         @test 𝐟[SVector(0.1,0.2)] ≈ f(SVector(0.1,0.2))
 
-        TU = RectPolynomial(T,U)
+        TU = RectInterlace(T,U)
         𝐟 = expand(TU, f)
         @test 𝐟[SVector(0.1,0.2)] ≈ f(SVector(0.1,0.2))
         
@@ -65,7 +65,7 @@ Random.seed!(3242)
 
             @test T² \ A ≈ [I(3); Zeros(∞,3)]
 
-            P² = RectPolynomial(Fill(Legendre(),2))
+            P² = RectInterlace(Fill(Legendre(),2))
             F = plan_transform(P², (Block(N),3), 1)
             𝐱 = grid(P², Block(N))
             @test F * A[𝐱,:] ≈ P²[:,Block.(Base.OneTo(N))] \ A ≈ [I(3); Zeros(52,3)]
@@ -78,7 +78,7 @@ Random.seed!(3242)
     @testset "Jacobi matrices" begin
         T = ChebyshevT()
         U = ChebyshevU()
-        TU = RectPolynomial(T, U)
+        TU = RectInterlace(T, U)
         X = jacobimatrix(Val{1}(), TU)
         Y = jacobimatrix(Val{2}(), TU)
         x, y = coordinates(TU)
@@ -96,9 +96,9 @@ Random.seed!(3242)
     @testset "gram matrix" begin
         P = Legendre()
         Q = Ultraspherical(3/2)
-        PQ = RectPolynomial(P, Q)
+        PQ = RectInterlace(P, Q)
         T = ChebyshevT()
-        T² = RectPolynomial(T, T)
+        T² = RectInterlace(T, T)
         M = grammatrix(PQ)
         f = expand(PQ, splat((x,y) -> exp(x*cos(y + 1))))
         g = expand(PQ, splat((x,y) -> sin(x*cos(y + 1)+2)))
@@ -108,8 +108,8 @@ Random.seed!(3242)
     @testset "Conversion" begin
         T = ChebyshevT()
         U = ChebyshevU()
-        T² = RectPolynomial(T, T)
-        U² = RectPolynomial(U, U)
+        T² = RectInterlace(T, T)
+        U² = RectInterlace(U, U)
         U²\T²
     end
 
@@ -117,9 +117,9 @@ Random.seed!(3242)
         T = ChebyshevT()
         U = ChebyshevU()
         C = Ultraspherical(2)
-        T² = RectPolynomial(T, T)
-        U² = RectPolynomial(U, U)
-        C² = RectPolynomial(C, C)
+        T² = RectInterlace(T, T)
+        U² = RectInterlace(U, U)
+        C² = RectInterlace(C, C)
         𝐱 = axes(T²,1)
         D_x,D_y = Derivative(𝐱,(1,0)),Derivative(𝐱,(0,1))
         D_x*T²
@@ -137,11 +137,11 @@ Random.seed!(3242)
         Q = Jacobi(1,1)
         W = Weighted(Q)
         P = Legendre()
-        W² = RectPolynomial(W, W)
-        P² = RectPolynomial(P, P)
-        Q² = RectPolynomial(Q, Q)
+        W² = RectInterlace(W, W)
+        P² = RectInterlace(P, P)
+        Q² = RectInterlace(Q, Q)
 
-        @test P² == RectPolynomial(Jacobi(0,0), Jacobi(0,0))
+        @test P² == RectInterlace(Jacobi(0,0), Jacobi(0,0))
 
         @testset "strong form" begin
             𝐱 = axes(W²,1)
@@ -171,7 +171,7 @@ Random.seed!(3242)
 
     @testset "Legendre" begin
         P = Legendre()
-        P² = RectPolynomial(Fill(P, 2))
+        P² = RectInterlace(Fill(P, 2))
         𝐱 = axes(P²,1)
         f = P² / P² \ broadcast(𝐱 -> ((x,y) = 𝐱; exp(x*cos(y))), 𝐱)
         @test f[SVector(0.1,0.2)] ≈ exp(0.1cos(0.2))
@@ -185,14 +185,14 @@ Random.seed!(3242)
     end
 
     @testset "Plot" begin
-        P = RectPolynomial(Legendre(),Legendre())
+        P = RectInterlace(Legendre(),Legendre())
         x,F = plotgridvalues(P[:,1])
         @test x == SVector.(ChebyshevGrid{2}(40), ChebyshevGrid{2}(40)')
         @test F == ones(40,40)
     end
 
     @testset "sum" begin
-        for P in (RectPolynomial(Legendre(),Legendre()), RectPolynomial(Legendre(),Chebyshev()))
+        for P in (RectInterlace(Legendre(),Legendre()), RectInterlace(Legendre(),Chebyshev()))
             p₀ = expand(P, 𝐱 -> 1)
             @test sum(p₀) ≈ 4.0
             f = expand(P, splat((x,y) -> exp(cos(x^2*y))))
@@ -201,7 +201,7 @@ Random.seed!(3242)
     end
 
     @testset "diff" begin
-        P = RectPolynomial(Legendre(),Legendre())
+        P = RectInterlace(Legendre(),Legendre())
         f = expand(P, splat((x,y) -> 1))
         @test diff(f,(1,0))[SVector(0.1,0.2)] == diff(f,(0,1))[SVector(0.1,0.2)] == 0.0
         f = expand(P, splat((x,y) -> x))
@@ -225,7 +225,7 @@ Random.seed!(3242)
 
     @testset "variable coefficients" begin
         T,U = ChebyshevT(), ChebyshevU()
-        P = RectPolynomial(T, U)
+        P = RectInterlace(T, U)
         x,y = coordinates(P)
         X = P\(x .* P)
         Y = P\(y .* P)
@@ -259,14 +259,14 @@ Random.seed!(3242)
 
         @test (𝐚 .* 𝐚)[SVector(0.1,0.2)] ≈ 𝐚[SVector(0.1,0.2)]^2
 
-        𝐛 = expand(RectPolynomial(Legendre(),Ultraspherical(3/2)),splat((x,y) -> cos(x*sin(y))))
+        𝐛 = expand(RectInterlace(Legendre(),Ultraspherical(3/2)),splat((x,y) -> cos(x*sin(y))))
         @test (𝐛 .* 𝐚)[SVector(0.1,0.2)] ≈ 𝐚[SVector(0.1,0.2)]𝐛[SVector(0.1,0.2)]
 
-        𝐜 = expand(RectPolynomial(Legendre(),Jacobi(1,0)),splat((x,y) -> cos(x*sin(y))))
+        𝐜 = expand(RectInterlace(Legendre(),Jacobi(1,0)),splat((x,y) -> cos(x*sin(y))))
     end
 
     @testset "reshape/vec" begin
-        P = RectPolynomial(Legendre(),Chebyshev())
+        P = RectInterlace(Legendre(),Chebyshev())
         f = expand(P, splat((x,y) -> cos((x-0.1)*exp(y))))
         F = reshape(f)
         @test F[0.1,0.2] ≈ f[SVector(0.1,0.2)]
@@ -286,7 +286,7 @@ Random.seed!(3242)
     end
 
     @testset "sample" begin
-        P = RectPolynomial(Legendre(),Legendre())
+        P = RectInterlace(Legendre(),Legendre())
         f = expand(P, splat((x,y) -> exp(x*cos(y-0.1))))
         F = reshape(f)
         @test sum(F; dims=1)[1,0.2] ≈ 2.346737615950585
@@ -359,10 +359,11 @@ Random.seed!(3242)
         WP = KronInterlace(W, P)
 
         @test MemoryLayout(KronInterlace(P, ChebyshevT())) isa KronOPLayout{2}
-        @test MemoryLayout(RectPolynomial(Fill(P, 2))) isa KronOPLayout{2}
+        @test MemoryLayout(RectInterlace(Fill(P, 2))) isa KronOPLayout{2}
         @test MemoryLayout(WP) isa KronInterlaceLayout{2}
         @test WP isa Basis
         @test !(WP isa MultivariateOrthogonalPolynomial)
+        @test copy(WP) === WP
 
         𝐱 = SVector(0.1,0.2)
         @test WP[𝐱, Block(3)] ≈ [W[0.1,3], W[0.1,2]*P[0.2,2], W[0.1,1]*P[0.2,3]]
@@ -374,5 +375,11 @@ Random.seed!(3242)
 
         f = expand(WP, splat((x,y) -> (1-x^2)*exp(x*cos(y))))
         @test f[𝐱] ≈ (1-0.1^2)*exp(0.1cos(0.2))
+
+        @test plotgrid(WP, 6) == plotgrid(WP, Block(3))
+
+        g = splat((x,y) -> (1-x^2)*(x*y + y^2)).(axes(WP,1))
+        c = WP[:, Block.(oneto(5))] \ g
+        @test WP[𝐱, Block.(oneto(5))]'c ≈ g[𝐱]
     end
 end
