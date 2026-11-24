@@ -724,7 +724,7 @@ end
 # dims is a non-empty tuple of pairs, listing the dimensions of the rows and columns of the slices
 function _zernikeslicesize(A::AbstractArray, dims::Tuple)
     if !(dims isa Tuple{NTuple{2,Int},Vararg{NTuple{2,Int}}}) || !all(d -> allunique(d) && all(k -> 1 ≤ k ≤ ndims(A), d), dims)
-        throw(ArgumentError("dims must be a non-empty tuple of pairs of dimensions of A, such as ((1,3),), got $dims"))
+        throw(ArgumentError("dims must be a pair of dimensions of A or a non-empty tuple of such pairs, such as (1,3) or ((1,3),(2,4)), got $dims"))
     end
     map(k -> size(A, k), first(dims))
 end
@@ -748,7 +748,8 @@ for (Trans, ITrans, trans, itrans, name) in (
 
         Without `dims`, `A` is an `n × (4n-3)` matrix. Otherwise, as for the plans in FastTransforms, the transform is applied
         in order to the slices of `A` spanned by each pair in `dims`: for example, `dims = ((1,3),)` acts on `A[:,k,:]` for every `k`,
-        and `dims = ((1,3), (2,4))` acts on `A[:,k,:,l]` for every `k` and `l`, then on `A[k,:,l,:]`.
+        and `dims = ((1,3), (2,4))` acts on `A[:,k,:,l]` for every `k` and `l`, then on `A[k,:,l,:]`. When the transform is
+        applied once, the pair can be given on its own, so `dims = (1,3)` is the same as `dims = ((1,3),)`.
 
         See also [`$f`](@ref), which plans and applies the transform in one step.
         """
@@ -764,6 +765,8 @@ for (Trans, ITrans, trans, itrans, name) in (
             $plan_f(A::AbstractArray, dims::Tuple) = $plan_f(A, 0, dims)
             $plan_f(A::AbstractArray{T}, b::Number, dims::Tuple) where T =
                 FastTransforms.NDimsPlan($Tr{float(real(T))}(_zernikeblocks(_zernikeslicesize(A, dims)), b), size(A), dims)
+            # a single pair (i,j) is shorthand for ((i,j),)
+            $plan_f(A::AbstractArray, b::Number, dims::NTuple{2,Int}) = $plan_f(A, b, (dims,))
             @doc $doc $f(A::AbstractArray, args...) = $plan_f(A, args...) * A
         end
     end

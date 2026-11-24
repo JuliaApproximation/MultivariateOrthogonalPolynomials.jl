@@ -171,7 +171,22 @@ import ContinuumArrays: broadcastbasis, basis, coefficients
             C = plan_zerniketransform(V, ((1,2),)) * V
             @test ModalTrav(C[:,:,2]) ≈ plan_transform(Zernike(), Block(N)) * [f(𝐱..., z[2]) for 𝐱 in SVector.(g)]
 
-            @test_throws ArgumentError plan_zerniketransform(A, (1,3))
+            # a single pair is shorthand for a tuple containing it
+            for b in (0, 1)
+                P = plan_izerniketransform(A, b, (1,3))
+                @test P isa FastTransforms.NDimsPlan
+                @test P.dims == ((1,3),)
+                @test P * A ≈ plan_izerniketransform(A, b, ((1,3),)) * A
+                @test plan_zerniketransform(A, b, (1,3)) * (P * A) ≈ inv(P) * (P * A) ≈ P \ (P * A) ≈ A
+            end
+            @test plan_zerniketransform(A, (1,3)) * A ≈ plan_zerniketransform(A, ((1,3),)) * A
+            @test plan_zerniketransform(Aᵀ, (3,1)) * Aᵀ ≈ plan_zerniketransform(Aᵀ, ((3,1),)) * Aᵀ
+            @test plan_zerniketransform(A[:,2,:], (1,2)) * A[:,2,:] ≈ plan_zerniketransform(A[:,2,:]) * A[:,2,:]
+
+            @test_throws ArgumentError plan_zerniketransform(A, (1,))
+            @test_throws ArgumentError plan_zerniketransform(A, (1,2,3))
+            @test_throws ArgumentError plan_zerniketransform(A, (1,4))
+            @test_throws ArgumentError plan_zerniketransform(A, (1,1))
             @test_throws ArgumentError plan_zerniketransform(A, ((1,4),))
             @test_throws ArgumentError plan_zerniketransform(A, ((1,1),))
             @test_throws DimensionMismatch plan_zerniketransform(A, ((1,2),))
@@ -204,7 +219,9 @@ import ContinuumArrays: broadcastbasis, basis, coefficients
             @test zerniketransform(complex.(V, 2V)) ≈ complex.(zerniketransform(V), 2zerniketransform(V))
             @test zerniketransform(ones(Int, n, m)) ≈ zerniketransform(ones(n, m))
             @test_throws DimensionMismatch zerniketransform(randn(n, m+1))
-            @test_throws ArgumentError zerniketransform(A3, (1,3))
+            @test zerniketransform(A3, (1,3)) ≈ zerniketransform(A3, 0, (1,3)) ≈ zerniketransform(A3, ((1,3),))
+            @test izerniketransform(zerniketransform(A3, 1, (1,3)), 1, (1,3)) ≈ A3
+            @test_throws ArgumentError zerniketransform(A3, (1,))
         end
     end
     @testset "Basics" begin
