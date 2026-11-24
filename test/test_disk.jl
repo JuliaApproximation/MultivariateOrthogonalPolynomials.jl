@@ -171,11 +171,57 @@ import ContinuumArrays: broadcastbasis, basis, coefficients
             C = plan_zerniketransform(V, ((1,2),)) * V
             @test ModalTrav(C[:,:,2]) ≈ plan_transform(Zernike(), Block(N)) * [f(𝐱..., z[2]) for 𝐱 in SVector.(g)]
 
-            @test_throws ArgumentError plan_zerniketransform(A, (1,3))
+            # a single pair is shorthand for a tuple containing it
+            for b in (0, 1)
+                P = plan_izerniketransform(A, b, (1,3))
+                @test P isa FastTransforms.NDimsPlan
+                @test P.dims == ((1,3),)
+                @test P * A ≈ plan_izerniketransform(A, b, ((1,3),)) * A
+                @test plan_zerniketransform(A, b, (1,3)) * (P * A) ≈ inv(P) * (P * A) ≈ P \ (P * A) ≈ A
+            end
+            @test plan_zerniketransform(A, (1,3)) * A ≈ plan_zerniketransform(A, ((1,3),)) * A
+            @test plan_zerniketransform(Aᵀ, (3,1)) * Aᵀ ≈ plan_zerniketransform(Aᵀ, ((3,1),)) * Aᵀ
+            @test plan_zerniketransform(A[:,2,:], (1,2)) * A[:,2,:] ≈ plan_zerniketransform(A[:,2,:]) * A[:,2,:]
+
+            @test_throws ArgumentError plan_zerniketransform(A, (1,))
+            @test_throws ArgumentError plan_zerniketransform(A, (1,2,3))
+            @test_throws ArgumentError plan_zerniketransform(A, (1,4))
+            @test_throws ArgumentError plan_zerniketransform(A, (1,1))
             @test_throws ArgumentError plan_zerniketransform(A, ((1,4),))
             @test_throws ArgumentError plan_zerniketransform(A, ((1,1),))
             @test_throws DimensionMismatch plan_zerniketransform(A, ((1,2),))
             @test_throws DimensionMismatch plan_zerniketransform(randn(n, m+1))
+        end
+
+        @testset "planning and applying transforms" begin
+            n = 4 # the transforms act on n × (4n-3) slices
+            m, N = 4n-3, 2n-1
+            for b in (0, 1, -1),
+                (f, fi, plan_f, plan_if) in ((zerniketransform, izerniketransform, plan_zerniketransform, plan_izerniketransform),
+                                             (normalizedzerniketransform, inormalizedzerniketransform, plan_normalizedzerniketransform, plan_inormalizedzerniketransform),
+                                             (complexzerniketransform, icomplexzerniketransform, plan_complexzerniketransform, plan_icomplexzerniketransform),
+                                             (normalizedcomplexzerniketransform, inormalizedcomplexzerniketransform, plan_normalizedcomplexzerniketransform, plan_inormalizedcomplexzerniketransform))
+                A, A3 = randn(n, m), randn(n, 3, m)
+                @test f(A, b) ≈ plan_f(A, b) * A
+                @test fi(A, b) ≈ plan_if(A, b) * A
+                @test fi(f(A, b), b) ≈ A
+                @test f(A3, b, ((1,3),)) ≈ plan_f(A3, b, ((1,3),)) * A3
+                @test fi(A3, b, ((1,3),)) ≈ plan_if(A3, b, ((1,3),)) * A3
+                @test fi(f(A3, b, ((1,3),)), b, ((1,3),)) ≈ A3
+            end
+
+            g = grid(Zernike(), Block(N))
+            V = [exp(x*cos(y)) for (x,y) in SVector.(g)]
+            @test ModalTrav(zerniketransform(V)) ≈ ModalTrav(zerniketransform(V, 0)) ≈ plan_transform(Zernike(), Block(N)) * V
+            @test izerniketransform(zerniketransform(V)) ≈ V
+            A3 = randn(n, 3, m)
+            @test zerniketransform(A3, ((1,3),)) ≈ zerniketransform(A3, 0, ((1,3),))
+            @test zerniketransform(complex.(V, 2V)) ≈ complex.(zerniketransform(V), 2zerniketransform(V))
+            @test zerniketransform(ones(Int, n, m)) ≈ zerniketransform(ones(n, m))
+            @test_throws DimensionMismatch zerniketransform(randn(n, m+1))
+            @test zerniketransform(A3, (1,3)) ≈ zerniketransform(A3, 0, (1,3)) ≈ zerniketransform(A3, ((1,3),))
+            @test izerniketransform(zerniketransform(A3, 1, (1,3)), 1, (1,3)) ≈ A3
+            @test_throws ArgumentError zerniketransform(A3, (1,))
         end
     end
     @testset "Basics" begin

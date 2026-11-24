@@ -724,7 +724,7 @@ end
 # dims is a non-empty tuple of pairs, listing the dimensions of the rows and columns of the slices
 function _zernikeslicesize(A::AbstractArray, dims::Tuple)
     if !(dims isa Tuple{NTuple{2,Int},Vararg{NTuple{2,Int}}}) || !all(d -> allunique(d) && all(k -> 1 ≤ k ≤ ndims(A), d), dims)
-        throw(ArgumentError("dims must be a non-empty tuple of pairs of dimensions of A, such as ((1,3),), got $dims"))
+        throw(ArgumentError("dims must be a pair of dimensions of A or a non-empty tuple of such pairs, such as (1,3) or ((1,3),(2,4)), got $dims"))
     end
     map(k -> size(A, k), first(dims))
 end
@@ -733,27 +733,41 @@ end
 LinearAlgebra.lmul!(P::Union{AbstractZernikeTransform,AbstractZernikeITransform}, x::AbstractMatrix) = copyto!(x, P * x)
 LinearAlgebra.ldiv!(P::Union{AbstractZernikeTransform,AbstractZernikeITransform}, x::AbstractMatrix) = copyto!(x, inv(P) * x)
 
-for (Trans, ITrans, plan, iplan, name) in (
-        (:ZernikeTransform, :ZernikeITransform, :plan_zerniketransform, :plan_izerniketransform, "Zernike(b)"),
-        (:NormalizedZernikeTransform, :NormalizedZernikeITransform, :plan_normalizedzerniketransform, :plan_inormalizedzerniketransform, "Normalized(Zernike(b))"),
-        (:ComplexZernikeTransform, :ComplexZernikeITransform, :plan_complexzerniketransform, :plan_icomplexzerniketransform, "ComplexZernike(b)"),
-        (:NormalizedComplexZernikeTransform, :NormalizedComplexZernikeITransform, :plan_normalizedcomplexzerniketransform, :plan_inormalizedcomplexzerniketransform, "Normalized(ComplexZernike(b))"))
-    for (Tr, plan_f, desc) in ((Trans, plan, "values on `grid($name, Block(2n-1))` to the coefficients in `$name`"),
-                               (ITrans, iplan, "the coefficients in `$name` to values on `grid($name, Block(2n-1))`"))
-        doc = """
+for (Trans, ITrans, trans, itrans, name) in (
+        (:ZernikeTransform, :ZernikeITransform, :zerniketransform, :izerniketransform, "Zernike(b)"),
+        (:NormalizedZernikeTransform, :NormalizedZernikeITransform, :normalizedzerniketransform, :inormalizedzerniketransform, "Normalized(Zernike(b))"),
+        (:ComplexZernikeTransform, :ComplexZernikeITransform, :complexzerniketransform, :icomplexzerniketransform, "ComplexZernike(b)"),
+        (:NormalizedComplexZernikeTransform, :NormalizedComplexZernikeITransform, :normalizedcomplexzerniketransform, :inormalizedcomplexzerniketransform, "Normalized(ComplexZernike(b))"))
+    for (Tr, f, desc) in ((Trans, trans, "values on `grid($name, Block(2n-1))` to the coefficients in `$name`"),
+                          (ITrans, itrans, "the coefficients in `$name` to values on `grid($name, Block(2n-1))`"))
+        plan_f = Symbol("plan_", f)
+        plan_doc = """
             $plan_f(A, [b=0,] [dims])
 
         plans the transform from $desc, where the coefficients are stored as the `n × (4n-3)` matrix of a `ModalTrav`.
 
         Without `dims`, `A` is an `n × (4n-3)` matrix. Otherwise, as for the plans in FastTransforms, the transform is applied
         in order to the slices of `A` spanned by each pair in `dims`: for example, `dims = ((1,3),)` acts on `A[:,k,:]` for every `k`,
-        and `dims = ((1,3), (2,4))` acts on `A[:,k,:,l]` for every `k` and `l`, then on `A[k,:,l,:]`.
+        and `dims = ((1,3), (2,4))` acts on `A[:,k,:,l]` for every `k` and `l`, then on `A[k,:,l,:]`. When the transform is
+        applied once, the pair can be given on its own, so `dims = (1,3)` is the same as `dims = ((1,3),)`.
+
+        See also [`$f`](@ref), which plans and applies the transform in one step.
+        """
+        doc = """
+            $f(A, [b=0,] [dims])
+
+        applies the transform from $desc, where the coefficients are stored as the `n × (4n-3)` matrix of a `ModalTrav`.
+        This is equivalent to `$plan_f(A, b, dims) * A`: to apply the transform to several arrays of the same size,
+        it is faster to use [`$plan_f`](@ref) to plan the transform once.
         """
         @eval begin
-            @doc $doc $plan_f(A::AbstractMatrix{T}, b::Number=0) where T = $Tr{float(real(T))}(_zernikeblocks(size(A)), b)
+            @doc $plan_doc $plan_f(A::AbstractMatrix{T}, b::Number=0) where T = $Tr{float(real(T))}(_zernikeblocks(size(A)), b)
             $plan_f(A::AbstractArray, dims::Tuple) = $plan_f(A, 0, dims)
             $plan_f(A::AbstractArray{T}, b::Number, dims::Tuple) where T =
                 FastTransforms.NDimsPlan($Tr{float(real(T))}(_zernikeblocks(_zernikeslicesize(A, dims)), b), size(A), dims)
+            # a single pair (i,j) is shorthand for ((i,j),)
+            $plan_f(A::AbstractArray, b::Number, dims::NTuple{2,Int}) = $plan_f(A, b, (dims,))
+            @doc $doc $f(A::AbstractArray, args...) = $plan_f(A, args...) * A
         end
     end
 end
