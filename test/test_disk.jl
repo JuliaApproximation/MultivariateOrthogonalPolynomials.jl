@@ -118,6 +118,65 @@ import ContinuumArrays: broadcastbasis, basis, coefficients
                 @test Pi * ModalTrav(BlockedArray(1:sum(1:n), 1:n)).matrix ≈ Pi * Vector{Float64}(1:sum(1:n))
             end
         end
+
+        @testset "plans with dims" begin
+            n = 4 # the transforms act on n × (4n-3) slices
+            m, N = 4n-3, 2n-1
+            for b in (0, 1, -1),
+                (plan_f, plan_if, Trans, ITrans) in ((plan_zerniketransform, plan_izerniketransform, ZernikeTransform, ZernikeITransform),
+                                                     (plan_normalizedzerniketransform, plan_inormalizedzerniketransform, NormalizedZernikeTransform, NormalizedZernikeITransform),
+                                                     (plan_complexzerniketransform, plan_icomplexzerniketransform, ComplexZernikeTransform, ComplexZernikeITransform),
+                                                     (plan_normalizedcomplexzerniketransform, plan_inormalizedcomplexzerniketransform, NormalizedComplexZernikeTransform, NormalizedComplexZernikeITransform))
+                F, Fi = Trans{Float64}(N, b), ITrans{Float64}(N, b)
+                @test plan_f(randn(n, m), b) isa Trans{Float64}
+                @test plan_if(randn(n, m), b) isa ITrans{Float64}
+
+                for A in (randn(n, 3, m), randn(ComplexF64, n, 3, m))
+                    P, Pi = plan_f(A, b, ((1,3),)), plan_if(A, b, ((1,3),))
+                    @test size(P) == size(Pi) == size(A)
+                    B, Bi = similar(A, ComplexF64), similar(A, ComplexF64)
+                    for k in axes(A,2)
+                        B[:,k,:] = F * A[:,k,:]
+                        Bi[:,k,:] = Fi * A[:,k,:]
+                    end
+                    @test P * A ≈ B
+                    @test Pi * A ≈ Bi
+                    @test Pi * (P * A) ≈ inv(P) * (P * A) ≈ P \ (P * A) ≈ A
+                end
+
+                # 4-array: A[:,k,:,j] then A[k,:,j,:]
+                A = randn(n, n, m, m)
+                P = plan_f(A, b, ((1,3), (2,4)))
+                B = similar(A, ComplexF64)
+                for k in axes(A,2), j in axes(A,4)
+                    B[:,k,:,j] = F * A[:,k,:,j]
+                end
+                for k in axes(A,1), j in axes(A,3)
+                    B[k,:,j,:] = F * B[k,:,j,:]
+                end
+                @test P * A ≈ B
+                @test plan_if(A, b, ((1,3), (2,4))) * B ≈ A
+            end
+
+            A = randn(n, 3, m)
+            @test plan_zerniketransform(A, ((1,3),)) * A ≈ plan_zerniketransform(A, 0, ((1,3),)) * A
+            @test plan_zerniketransform(A[:,2,:]) * A[:,2,:] ≈ (plan_zerniketransform(A, ((1,3),)) * A)[:,2,:]
+            # rows along dimension 3, columns along dimension 1
+            Aᵀ = permutedims(A, (3,2,1))
+            @test plan_zerniketransform(Aᵀ, ((3,1),)) * Aᵀ ≈ permutedims(plan_zerniketransform(A, ((1,3),)) * A, (3,2,1))
+            # transforming values on the grid of a function on the cylinder in the disk variables
+            f = (x,y,z) -> exp(x*cos(y+z)) + x^3*y*z
+            g, z = grid(Zernike(), Block(N)), [0.1, 0.2, 0.3]
+            V = [f(𝐱..., z_k) for 𝐱 in SVector.(g), z_k in z]
+            C = plan_zerniketransform(V, ((1,2),)) * V
+            @test ModalTrav(C[:,:,2]) ≈ plan_transform(Zernike(), Block(N)) * [f(𝐱..., z[2]) for 𝐱 in SVector.(g)]
+
+            @test_throws ArgumentError plan_zerniketransform(A, (1,3))
+            @test_throws ArgumentError plan_zerniketransform(A, ((1,4),))
+            @test_throws ArgumentError plan_zerniketransform(A, ((1,1),))
+            @test_throws DimensionMismatch plan_zerniketransform(A, ((1,2),))
+            @test_throws DimensionMismatch plan_zerniketransform(randn(n, m+1))
+        end
     end
     @testset "Basics" begin
         @test checkpoints(UnitDisk()) == [SVector(0.1,0.2), SVector(0.2,0.3)]
