@@ -177,6 +177,35 @@ import ContinuumArrays: broadcastbasis, basis, coefficients
             @test_throws DimensionMismatch plan_zerniketransform(A, ((1,2),))
             @test_throws DimensionMismatch plan_zerniketransform(randn(n, m+1))
         end
+
+        @testset "planning and applying transforms" begin
+            n = 4 # the transforms act on n × (4n-3) slices
+            m, N = 4n-3, 2n-1
+            for b in (0, 1, -1),
+                (f, fi, plan_f, plan_if) in ((zerniketransform, izerniketransform, plan_zerniketransform, plan_izerniketransform),
+                                             (normalizedzerniketransform, inormalizedzerniketransform, plan_normalizedzerniketransform, plan_inormalizedzerniketransform),
+                                             (complexzerniketransform, icomplexzerniketransform, plan_complexzerniketransform, plan_icomplexzerniketransform),
+                                             (normalizedcomplexzerniketransform, inormalizedcomplexzerniketransform, plan_normalizedcomplexzerniketransform, plan_inormalizedcomplexzerniketransform))
+                A, A3 = randn(n, m), randn(n, 3, m)
+                @test f(A, b) ≈ plan_f(A, b) * A
+                @test fi(A, b) ≈ plan_if(A, b) * A
+                @test fi(f(A, b), b) ≈ A
+                @test f(A3, b, ((1,3),)) ≈ plan_f(A3, b, ((1,3),)) * A3
+                @test fi(A3, b, ((1,3),)) ≈ plan_if(A3, b, ((1,3),)) * A3
+                @test fi(f(A3, b, ((1,3),)), b, ((1,3),)) ≈ A3
+            end
+
+            g = grid(Zernike(), Block(N))
+            V = [exp(x*cos(y)) for (x,y) in SVector.(g)]
+            @test ModalTrav(zerniketransform(V)) ≈ ModalTrav(zerniketransform(V, 0)) ≈ plan_transform(Zernike(), Block(N)) * V
+            @test izerniketransform(zerniketransform(V)) ≈ V
+            A3 = randn(n, 3, m)
+            @test zerniketransform(A3, ((1,3),)) ≈ zerniketransform(A3, 0, ((1,3),))
+            @test zerniketransform(complex.(V, 2V)) ≈ complex.(zerniketransform(V), 2zerniketransform(V))
+            @test zerniketransform(ones(Int, n, m)) ≈ zerniketransform(ones(n, m))
+            @test_throws DimensionMismatch zerniketransform(randn(n, m+1))
+            @test_throws ArgumentError zerniketransform(A3, (1,3))
+        end
     end
     @testset "Basics" begin
         @test checkpoints(UnitDisk()) == [SVector(0.1,0.2), SVector(0.2,0.3)]
