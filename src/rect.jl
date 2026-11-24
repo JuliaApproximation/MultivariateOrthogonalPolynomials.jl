@@ -195,7 +195,6 @@ end
 grid(P::KronInterlace, n::Integer) = grid(P, findblock(axes(P,2), n))
 plotgrid(P::KronInterlace, n::Integer) = plotgrid(P, findblock(axes(P,2), n))
 plan_transform(P::KronInterlace, Bs::NTuple{N,Int}, dims=ntuple(identity,Val(N))) where N = plan_transform(P, findblock.(Ref(axes(P,2)), Bs), dims)
-transform_ldiv(V::SubQuasiArray{<:Any,2,<:KronInterlace,<:Tuple{Inclusion,BlockSlice{BlockOneTo}}}, B::AbstractQuasiArray, _) = factorize(V) \ B
 
 applylayout(::Type{typeof(*)}, ::Lay, ::DiagTravLayout) where Lay <: AbstractBasisLayout = ExpansionLayout{Lay}()
 ContinuumArrays._mul_plotgrid(::Tuple{Any,DiagTravLayout{<:PaddedLayout}}, (P,c)::NTuple{2,Any}) = plotgrid(P, maximum(blockcolsupport(c)))
