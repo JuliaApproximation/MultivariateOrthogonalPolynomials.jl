@@ -703,8 +703,14 @@ end
 *(P::ComplexZernikeTransform{T}, f::AbstractArray) where T = _zernike2complex(ZernikeTransform(P) * f, one(T)/2)
 *(P::ComplexZernikeITransform{T}, f::AbstractMatrix) where T = ZernikeITransform(P) * _complex2zernike(f, one(T)/2)
 
-# coefficients given as a vector are laid out as a ModalTrav
-*(P::AbstractZernikeITransform, f::AbstractVector) = P * ModalTrav(f).matrix
+# coefficients given as a vector are laid out as a ModalTrav, padded with zeros to fill the 2Ñ-1 blocks
+# stored in the Ñ × (4Ñ-3) matrix. A ModalTrav that fills them is not copied.
+function *(P::AbstractZernikeITransform, f::AbstractVector)
+    N = 2(P.N ÷ 2) + 1
+    n = N * (N+1) ÷ 2
+    length(f) ≤ n || throw(DimensionMismatch("expected at most $n coefficients, got $(length(f))"))
+    P * ModalTrav(length(f) == n ? f : [f; zeros(eltype(f), n - length(f))]).matrix
+end
 
 plan_transform(Q::NormalizedZernike{T}, (N,)::Tuple{Block{1}}, dims=1) where T = ApplyPlan(ModalTrav, NormalizedZernikeTransform{real(T)}(Int(N), Q.P.b))
 plan_transform(Z::Zernike{T}, (N,)::Tuple{Block{1}}, dims=1) where T = ApplyPlan(ModalTrav, ZernikeTransform{real(T)}(Int(N), Z.b))
@@ -714,6 +720,16 @@ plan_transform(Z::ComplexZernike{T}, (N,)::Tuple{Block{1}}, dims=1) where T = Ap
 # values on grid(Z, Block(2n-1)) form an n × (4n-3) matrix, rather than an array with a dimension for each variable,
 # so transform(Z, A) works for A on grid(Z, n) or grid(Z, Block(N))
 plan_transform(Z::ZernikeBases, A::AbstractMatrix) = plan_transform(Z, Block(_zernikeblocks(size(A))))
+
+# the inverse transforms map the coefficients in the first N blocks, as a vector or as the matrix of a ModalTrav,
+# to values on grid(Z, Block(N))
+plan_itransform(Q::NormalizedZernike{T}, (N,)::Tuple{Block{1}}, dims=1) where T = NormalizedZernikeITransform{real(T)}(Int(N), Q.P.b)
+plan_itransform(Z::Zernike{T}, (N,)::Tuple{Block{1}}, dims=1) where T = ZernikeITransform{real(T)}(Int(N), Z.b)
+plan_itransform(Q::NormalizedComplexZernike{T}, (N,)::Tuple{Block{1}}, dims=1) where T = NormalizedComplexZernikeITransform{real(T)}(Int(N), Q.P.b)
+plan_itransform(Z::ComplexZernike{T}, (N,)::Tuple{Block{1}}, dims=1) where T = ComplexZernikeITransform{real(T)}(Int(N), Z.b)
+# n coefficients are padded with zeros to fill the block containing the nth coefficient
+plan_itransform(Z::ZernikeBases, (n,)::Tuple{Int}, dims=1) = plan_itransform(Z, (findblock(axes(Z,2), n),), dims)
+plan_itransform(Z::ZernikeBases, C::AbstractMatrix) = plan_itransform(Z, Block(_zernikeblocks(size(C))))
 
 ###
 # Plans acting on slices of arrays, as for the plans in FastTransforms
