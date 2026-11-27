@@ -223,6 +223,24 @@ import ContinuumArrays: broadcastbasis, basis, coefficients
             @test izerniketransform(zerniketransform(A3, 1, (1,3)), 1, (1,3)) ≈ A3
             @test_throws ArgumentError zerniketransform(A3, (1,))
         end
+
+        @testset "transform values on the grid" begin
+            f = splat((x,y) -> 1 + x - 2y^2 + 3x*y)
+            𝐱 = SVector(0.1, 0.2)
+            for Z in (Zernike(), Zernike(1), ComplexZernike(), Normalized(Zernike()), Normalized(ComplexZernike()))
+                for n in (1, 10, 16)
+                    g = grid(Z, n)
+                    N = 2size(g,1)-1 # the values determine the first N blocks of coefficients
+                    c = transform(Z, f.(g))
+                    @test c isa ModalTrav
+                    @test blocklength(c) == N
+                    @test c ≈ plan_transform(Z, Block(N)) * f.(g)
+                end
+                c = transform(Z, f.(grid(Z, 10)))
+                @test transpose(Z[𝐱, 1:length(c)]) * Vector(c) ≈ f(𝐱) # f is a polynomial of degree 2
+                @test_throws DimensionMismatch transform(Z, randn(3, 8))
+            end
+        end
     end
     @testset "Basics" begin
         @test checkpoints(UnitDisk()) == [SVector(0.1,0.2), SVector(0.2,0.3)]

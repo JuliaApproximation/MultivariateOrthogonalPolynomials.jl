@@ -711,6 +711,10 @@ plan_transform(Z::Zernike{T}, (N,)::Tuple{Block{1}}, dims=1) where T = ApplyPlan
 plan_transform(Q::NormalizedComplexZernike{T}, (N,)::Tuple{Block{1}}, dims=1) where T = ApplyPlan(ModalTrav, NormalizedComplexZernikeTransform{real(T)}(Int(N), Q.P.b))
 plan_transform(Z::ComplexZernike{T}, (N,)::Tuple{Block{1}}, dims=1) where T = ApplyPlan(ModalTrav, ComplexZernikeTransform{real(T)}(Int(N), Z.b))
 
+# values on grid(Z, Block(2n-1)) form an n × (4n-3) matrix, rather than an array with a dimension for each variable,
+# so transform(Z, A) works for A on grid(Z, n) or grid(Z, Block(N))
+plan_transform(Z::ZernikeBases, A::AbstractMatrix) = plan_transform(Z, Block(_zernikeblocks(size(A))))
+
 ###
 # Plans acting on slices of arrays, as for the plans in FastTransforms
 ###
