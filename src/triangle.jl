@@ -182,7 +182,7 @@ end
 #
 # If `kr = affine(d, UnitTriangle())` then `Q = P[kr, :]` is `P` composed with the map `u = kr(x)`.
 # With `J = ∂u/∂x` constant, the chain rule gives ∂Q/∂xⱼ = Σᵢ J[i,j] (∂P/∂uᵢ)∘kr and
-# ∫_d Q dx = ∫_{unit} P du / |det J|.
+# ∫_d Q dx = ∫_{unit} P du / det J, oriented (so negative if kr reverses orientation).
 ###
 
 const TriangleDomain = Union{Triangle,UnitTriangle}
@@ -200,11 +200,6 @@ triangle_jacobian(kr) = _edgematrix(kr.range.domain) / _edgematrix(kr.domain.dom
 
 ContinuumArrays.affinemap_A(m::TriangleMap) = triangle_jacobian(m)
 
-# TODO: replace this with a generic version overloading 
-#  diff_mapped(kr::AbstractAffineQuasiVector, V, order::NTuple{2,Int}; dims...)
-# possibly using the definition
-#   (J[1,i] *diff(P, Val((1,0))) + J[2,i] * diff(P, Val((0,1))))[basismap(V), :]
-
 function ContinuumArrays.diff_mapped(kr::AbstractAffineQuasiVector, V, (k,j)::NTuple{2,Int}; dims...)
     (k < 0 || j < 0) && throw(ArgumentError("order must be non-negative"))
     k == j == 0 && return V
@@ -212,8 +207,11 @@ function ContinuumArrays.diff_mapped(kr::AbstractAffineQuasiVector, V, (k,j)::NT
         P = demap(V)
         J = kr.A
         i = k == 1 ? 1 : 2 # differentiate with respect to xᵢ
-        Pu, Mu = arguments(diff(P, Val((1,0))))
-        Pv, Mv = arguments(diff(P, Val((0,1))))
+        # use basis/coefficients rather than destructuring `arguments`, as the product can have
+        # more than two factors (e.g. weighted bases that differentiate via JacobiTriangle())
+        Du, Dv = diff(P, Val((1,0))), diff(P, Val((0,1)))
+        Pu, Mu = ContinuumArrays.basis(Du), ContinuumArrays.coefficients(Du)
+        Pv, Mv = ContinuumArrays.basis(Dv), ContinuumArrays.coefficients(Dv)
         Pc = broadcastbasis(+, Pu, Pv)
         return Pc[kr, :] * (J[1,i] * ((Pc \ Pu) * Mu) + J[2,i] * ((Pc \ Pv) * Mv))
     end
@@ -221,7 +219,8 @@ function ContinuumArrays.diff_mapped(kr::AbstractAffineQuasiVector, V, (k,j)::NT
     diff(diff(V, (0,1)), (k,j-1))
 end
 
-diff_layout(::MappedBasisLayouts, V, order::NTuple{2,Int}; dims...) = diff_mapped(basismap(V), V, order; dims...)
+# resolves an ambiguity with diff_layout(::AbstractBasisLayout, a, ::NTuple{2,Int})
+diff_layout(::MappedBasisLayouts, V, order::NTuple{2,Int}; dims...) = ContinuumArrays.diff_mapped(basismap(V), V, order; dims...)
 
 # The weighted derivative formulae lower the parameters, which is only valid if the
 # weight vanishes on the relevant edges. Otherwise we avoid negative parameters by
