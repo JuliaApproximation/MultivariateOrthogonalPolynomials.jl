@@ -646,8 +646,9 @@ import ContinuumArrays: broadcastbasis, basis, coefficients
             @test ((Laplacian(x)*Q)*c)[𝐲] ≈ fxx(𝐲) + fyy(𝐲)
             @test diff(Q,(0,0)) === Q
 
-            # integrals scale by |det| of the map
-            area = abs(det([d.b-d.a d.c-d.a]))/2
+            # integrals are oriented (differential forms), so scale by the signed det of the map:
+            # a clockwise triangle such as (1,0),(0,1),(1,1) has negative area
+            area = det([d.b-d.a d.c-d.a])/2
             @test sum(Q; dims=1)[1] ≈ area
         end
 
@@ -666,9 +667,26 @@ import ContinuumArrays: broadcastbasis, basis, coefficients
         R = JacobiTriangle(1,1,1)[kr,:]
         @test (R \ Q)[Block(1),Block(1)] ≈ (JacobiTriangle(1,1,1) \ P)[Block(1),Block(1)]
 
-        # weighted derivatives are not (yet) supported
-        W = Weighted(JacobiTriangle(1,1,1))[kr,:]
-        @test_throws ErrorException diff(W,(1,0))
+        # weighted derivatives: compare with ForwardDiff on a function of the weight's form.
+        # (u,v) = J*(𝐲 - d.a) are the coordinates of 𝐲 in the reference triangle.
+        # Mixed parameters, e.g. (1,0,1), differentiate via JacobiTriangle() in one direction only.
+        for d in (equilateraltriangle(), Triangle(SVector(1.,0), SVector(0.,1), SVector(1.,1)), 2*equilateraltriangle() - SVector(0.3,0.1)),
+                (a,b,c) in ((1,1,1), (0,0,0), (1,0,1), (0,1,1), (1,1,0))
+            kr = affine(d, axes(P,1))
+            J = kr.A
+            W = Weighted(JacobiTriangle(a,b,c))[kr,:]
+            f = 𝐲 -> ((u,v) = J*(𝐲 - d.a); u^a * v^b * (1-u-v)^c * cos(𝐲[1] + 2𝐲[2]))
+            cf = W \ f.(axes(W,1))
+            𝐲 = affine(Triangle(), d)[SVector(0.1,0.2)]
+            ∇f = ForwardDiff.gradient(f, 𝐲)
+            ∇²f = ForwardDiff.hessian(f, 𝐲)
+            @test (W*cf)[𝐲] ≈ f(𝐲)
+            @test (diff(W,(1,0))*cf)[𝐲] ≈ ∇f[1]
+            @test (diff(W,(0,1))*cf)[𝐲] ≈ ∇f[2]
+            @test (diff(W,(2,0))*cf)[𝐲] ≈ ∇²f[1,1]
+            @test (diff(W,(1,1))*cf)[𝐲] ≈ ∇²f[1,2]
+            @test (diff(W,(0,2))*cf)[𝐲] ≈ ∇²f[2,2]
+        end
     end
 
     @testset "Weighted derivatives" begin
