@@ -753,16 +753,18 @@ end
 LinearAlgebra.lmul!(P::Union{AbstractZernikeTransform,AbstractZernikeITransform}, x::AbstractMatrix) = copyto!(x, P * x)
 LinearAlgebra.ldiv!(P::Union{AbstractZernikeTransform,AbstractZernikeITransform}, x::AbstractMatrix) = copyto!(x, inv(P) * x)
 
-for (Trans, ITrans, trans, itrans, name) in (
-        (:ZernikeTransform, :ZernikeITransform, :zerniketransform, :izerniketransform, "Zernike(b)"),
-        (:NormalizedZernikeTransform, :NormalizedZernikeITransform, :normalizedzerniketransform, :inormalizedzerniketransform, "Normalized(Zernike(b))"),
-        (:ComplexZernikeTransform, :ComplexZernikeITransform, :complexzerniketransform, :icomplexzerniketransform, "ComplexZernike(b)"),
-        (:NormalizedComplexZernikeTransform, :NormalizedComplexZernikeITransform, :normalizedcomplexzerniketransform, :inormalizedcomplexzerniketransform, "Normalized(ComplexZernike(b))"))
-    for (Tr, f, desc) in ((Trans, trans, "values on `grid($name, Block(2n-1))` to the coefficients in `$name`"),
-                          (ITrans, itrans, "the coefficients in `$name` to values on `grid($name, Block(2n-1))`"))
+# the inverse transforms are also named after their plans, eg, zernikeitransform for ZernikeITransform
+for (Trans, ITrans, trans, itrans, itrans_alias, name) in (
+        (:ZernikeTransform, :ZernikeITransform, :zerniketransform, :izerniketransform, :zernikeitransform, "Zernike(b)"),
+        (:NormalizedZernikeTransform, :NormalizedZernikeITransform, :normalizedzerniketransform, :inormalizedzerniketransform, :normalizedzernikeitransform, "Normalized(Zernike(b))"),
+        (:ComplexZernikeTransform, :ComplexZernikeITransform, :complexzerniketransform, :icomplexzerniketransform, :complexzernikeitransform, "ComplexZernike(b)"),
+        (:NormalizedComplexZernikeTransform, :NormalizedComplexZernikeITransform, :normalizedcomplexzerniketransform, :inormalizedcomplexzerniketransform, :normalizedcomplexzernikeitransform, "Normalized(ComplexZernike(b))"))
+    for (Tr, f, aliases, desc) in ((Trans, trans, (), "values on `grid($name, Block(2n-1))` to the coefficients in `$name`"),
+                                   (ITrans, itrans, (itrans_alias,), "the coefficients in `$name` to values on `grid($name, Block(2n-1))`"))
         plan_f = Symbol("plan_", f)
+        plan_aliases = map(g -> Symbol("plan_", g), aliases)
         plan_doc = """
-            $plan_f(A, [b=0,] [dims])
+            $(join(("$g(A, [b=0,] [dims])" for g in (plan_f, plan_aliases...)), "\n    "))
 
         plans the transform from $desc, where the coefficients are stored as the `n × (4n-3)` matrix of a `ModalTrav`.
 
@@ -774,7 +776,7 @@ for (Trans, ITrans, trans, itrans, name) in (
         See also [`$f`](@ref), which plans and applies the transform in one step.
         """
         doc = """
-            $f(A, [b=0,] [dims])
+            $(join(("$g(A, [b=0,] [dims])" for g in (f, aliases...)), "\n    "))
 
         applies the transform from $desc, where the coefficients are stored as the `n × (4n-3)` matrix of a `ModalTrav`.
         This is equivalent to `$plan_f(A, b, dims) * A`: to apply the transform to several arrays of the same size,
@@ -788,6 +790,12 @@ for (Trans, ITrans, trans, itrans, name) in (
             # a single pair (i,j) is shorthand for ((i,j),)
             $plan_f(A::AbstractArray, b::Number, dims::NTuple{2,Int}) = $plan_f(A, b, (dims,))
             @doc $doc $f(A::AbstractArray, args...) = $plan_f(A, args...) * A
+        end
+        for (g, plan_g) in zip(aliases, plan_aliases)
+            @eval begin
+                const $plan_g = $plan_f
+                const $g = $f
+            end
         end
     end
 end

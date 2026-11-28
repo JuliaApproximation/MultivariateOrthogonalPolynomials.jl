@@ -222,6 +222,19 @@ import ContinuumArrays: broadcastbasis, basis, coefficients, itransform, plan_it
             @test zerniketransform(A3, (1,3)) ≈ zerniketransform(A3, 0, (1,3)) ≈ zerniketransform(A3, ((1,3),))
             @test izerniketransform(zerniketransform(A3, 1, (1,3)), 1, (1,3)) ≈ A3
             @test_throws ArgumentError zerniketransform(A3, (1,))
+
+            # the inverse transforms are also named after their plans, eg, zernikeitransform for ZernikeITransform
+            @test zernikeitransform === izerniketransform
+            @test normalizedzernikeitransform === inormalizedzerniketransform
+            @test complexzernikeitransform === icomplexzerniketransform
+            @test normalizedcomplexzernikeitransform === inormalizedcomplexzerniketransform
+            @test plan_zernikeitransform === plan_izerniketransform
+            @test plan_normalizedzernikeitransform === plan_inormalizedzerniketransform
+            @test plan_complexzernikeitransform === plan_icomplexzerniketransform
+            @test plan_normalizedcomplexzernikeitransform === plan_inormalizedcomplexzerniketransform
+            @test zernikeitransform(zerniketransform(V)) ≈ V
+            @test complexzernikeitransform(complexzerniketransform(A3, -1, (1,3)), -1, (1,3)) ≈ A3
+            @test plan_complexzernikeitransform(A3, (1,3)) * A3 ≈ icomplexzerniketransform(A3, (1,3))
         end
 
         @testset "transform values on the grid" begin
