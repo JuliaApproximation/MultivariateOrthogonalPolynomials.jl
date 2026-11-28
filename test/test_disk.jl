@@ -5,7 +5,7 @@ import MultivariateOrthogonalPolynomials: ModalTrav, grid, ZernikeTransform, Zer
                                           RadialUnitDisk, zernikegrid, pointchoice, checkpoints, zernikelower!, zernikeraise!
 import ClassicalOrthogonalPolynomials: HalfWeighted, expand
 import ForwardDiff: hessian
-import ContinuumArrays: broadcastbasis, basis, coefficients
+import ContinuumArrays: broadcastbasis, basis, coefficients, itransform, plan_itransform
 
 @testset "Disk" begin
     @testset "Transform" begin
@@ -222,6 +222,42 @@ import ContinuumArrays: broadcastbasis, basis, coefficients
             @test zerniketransform(A3, (1,3)) ≈ zerniketransform(A3, 0, (1,3)) ≈ zerniketransform(A3, ((1,3),))
             @test izerniketransform(zerniketransform(A3, 1, (1,3)), 1, (1,3)) ≈ A3
             @test_throws ArgumentError zerniketransform(A3, (1,))
+        end
+
+        @testset "transform values on the grid" begin
+            f = splat((x,y) -> 1 + x - 2y^2 + 3x*y)
+            𝐱 = SVector(0.1, 0.2)
+            for Z in (Zernike(), Zernike(1), ComplexZernike(), Normalized(Zernike()), Normalized(ComplexZernike()))
+                for n in (1, 10, 16)
+                    g = grid(Z, n)
+                    N = 2size(g,1)-1 # the values determine the first N blocks of coefficients
+                    c = transform(Z, f.(g))
+                    @test c isa ModalTrav
+                    @test blocklength(c) == N
+                    @test c ≈ plan_transform(Z, Block(N)) * f.(g)
+                end
+                c = transform(Z, f.(grid(Z, 10)))
+                @test transpose(Z[𝐱, 1:length(c)]) * Vector(c) ≈ f(𝐱) # f is a polynomial of degree 2
+                @test_throws DimensionMismatch transform(Z, randn(3, 8))
+            end
+        end
+
+        @testset "itransform" begin
+            for Z in (Zernike(), Zernike(1), Zernike(-1), ComplexZernike(), Normalized(Zernike()), Normalized(ComplexZernike()))
+                for n in (1, 10, 12, 15) # 12 coefficients do not fill a block, and are padded with zeros
+                    c = randn(n)
+                    N = Int(findblock(axes(Z,2), n))
+                    g = grid(Z, Block(N))
+                    V = itransform(Z, c)
+                    @test V ≈ plan_itransform(Z, c) * c ≈ plan_itransform(Z, Block(N)) * c
+                    @test V ≈ [transpose(Z[SVector(𝐱), 1:n]) * c for 𝐱 in g] # values of the expansion on the grid
+                    C = transform(Z, V)
+                    @test C[1:n] ≈ c
+                    @test itransform(Z, C) ≈ itransform(Z, C.matrix) ≈ V
+                end
+                @test_throws DimensionMismatch plan_itransform(Z, Block(3)) * randn(7)
+                @test_throws DimensionMismatch itransform(Z, randn(3, 8))
+            end
         end
     end
     @testset "Basics" begin
