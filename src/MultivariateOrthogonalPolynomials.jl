@@ -37,6 +37,8 @@ export MultivariateOrthogonalPolynomial, BivariateOrthogonalPolynomial,
        plan_complexzerniketransform, plan_icomplexzerniketransform, plan_normalizedcomplexzerniketransform, plan_inormalizedcomplexzerniketransform,
        zerniketransform, izerniketransform, normalizedzerniketransform, inormalizedzerniketransform,
        complexzerniketransform, icomplexzerniketransform, normalizedcomplexzerniketransform, inormalizedcomplexzerniketransform,
+       plan_zernikeitransform, plan_normalizedzernikeitransform, plan_complexzernikeitransform, plan_normalizedcomplexzernikeitransform,
+       zernikeitransform, normalizedzernikeitransform, complexzernikeitransform, normalizedcomplexzernikeitransform,
        AngularMomentum,
        RadialCoordinate, Weighted, Block, jacobimatrix, KronInterlace, RectInterlace,
        grammatrix, oneto, coordinates, Laplacian, AbsLaplacian, laplacian, abslaplacian, angularmomentum, weaklaplacian
